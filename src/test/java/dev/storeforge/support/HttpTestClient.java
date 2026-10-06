@@ -37,6 +37,24 @@ public final class HttpTestClient {
         return send(request, headers);
     }
 
+    public HttpResponse<String> patch(String path, String jsonBody, Map<String, String> headers) {
+        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(jsonBody));
+        return send(request, headers);
+    }
+
+    public HttpResponse<String> delete(String path, Map<String, String> headers) {
+        return send(HttpRequest.newBuilder(URI.create(baseUrl + path)).DELETE(), headers);
+    }
+
+    public HttpResponse<String> request(String method, String path, String jsonBody, Map<String, String> headers) {
+        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .header("Content-Type", "application/json")
+                .method(method, jsonBody == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(jsonBody));
+        return send(request, headers);
+    }
+
     private HttpResponse<String> send(HttpRequest.Builder request, Map<String, String> headers) {
         headers.forEach(request::header);
         try {

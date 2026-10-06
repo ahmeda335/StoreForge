@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 /** Test double for the email port: keeps sent messages in memory so tests can read links from them. */
 public class RecordingEmailSender implements EmailSender {
 
-    private static final Pattern TOKEN = Pattern.compile("#token=([A-Za-z0-9_-]+)");
+    private static final Pattern TOKEN = Pattern.compile("[#&]token=([A-Za-z0-9_-]+)");
 
     private final List<EmailMessage> sent = new CopyOnWriteArrayList<>();
 

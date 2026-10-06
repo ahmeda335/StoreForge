@@ -65,6 +65,10 @@ server:
     include-message: never
 
 storeforge:
+  stores:
+    platform-domain: ${PLATFORM_DOMAIN:storeforge.localhost}
+    invitation-ttl: 7d
+    app-base-url: ${APP_BASE_URL:http://localhost:4200}
   mail:
     from: ${MAIL_FROM:StoreForge <no-reply@storeforge.localhost>}
   auth:

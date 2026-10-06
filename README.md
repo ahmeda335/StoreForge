@@ -2,7 +2,7 @@
 
 A multi-tenant commerce platform (Shopify-inspired), built as a long-term learning project in backend engineering, SaaS architecture, reliability, security, observability and production operations.
 
-> Status: **Phase 2 (Identity & authentication) complete.** See [docs/PROGRESS.md](docs/PROGRESS.md).
+> Status: **Phase 3 (Stores, multi-tenancy & authorization) complete.** See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Quick start
 
@@ -14,7 +14,7 @@ docker compose up -d                 # PostgreSQL 17 (owner/app roles) + Mailpit
 
 curl localhost:8081/actuator/health/readiness
 curl -i localhost:8080/anything      # → 404 application/problem+json with a requestId
-# Auth walkthrough: http/auth.http (register → verify → login → /admin/v1/me → refresh)
+# Walkthroughs: http/auth.http (register → verify → login → refresh), http/stores.http (store, roles, invitations, audit)
 ```
 
 Run the app in a container instead: `docker compose --profile app up -d --build`.

@@ -5,8 +5,9 @@
 | P0 Blueprint | ✅ Done (2026-10-06) | [blueprint/](blueprint/README.md), ADR-001…005 |
 | P1 Foundation | ✅ Done (2026-10-06) | See below |
 | P2 Identity & authentication | ✅ Done (2026-10-06) | See below |
-| P3 Stores, tenancy & authorization | ⏭ Next | Study list below |
-| P4–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P3 Stores, tenancy & authorization | ✅ Done (2026-10-06) | See below |
+| P4 Catalog | ⏭ Next | Study list below |
+| P5–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -56,4 +57,24 @@
 - Strict reuse detection needs single-flight refresh in the SPA (F1).
 - No MFA, no breached-password check (P14). No CORS configuration yet (added with the SPA in F1).
 
-**Study before P3:** PostgreSQL row-level security (`CREATE POLICY`, `USING` vs. `WITH CHECK`, `ENABLE`/`FORCE ROW LEVEL SECURITY`, why owners bypass it); `SET LOCAL` vs. `SET` and why it matters with connection pools; RBAC modelling and privilege escalation; the write-skew anomaly ("≥1 owner" invariant) and how row locks prevent it; blueprint [04-multi-tenancy](blueprint/04-multi-tenancy.md).
+**Study before P3 (historical):** PostgreSQL row-level security (`CREATE POLICY`, `USING` vs. `WITH CHECK`, `ENABLE`/`FORCE ROW LEVEL SECURITY`, why owners bypass it); `SET LOCAL` vs. `SET` and why it matters with connection pools; RBAC modelling and privilege escalation; the write-skew anomaly ("≥1 owner" invariant) and how row locks prevent it; blueprint [04-multi-tenancy](blueprint/04-multi-tenancy.md).
+
+## P3: Stores, tenancy & authorization (as built)
+
+**What exists**
+- `stores` module: create store (atomic provisioning: store, platform domain, Owner + Staff roles, owner membership, audit), my stores, get/rename, members (list/change role/remove/leave), roles (list/create/delete), invitations (invite/list/revoke/accept), audit log endpoint. `StoreAccess` is the authorization decision point for all future tenant modules.
+- `audit` module: append-only audit log written inside business transactions, keyset-paginated.
+- Tenancy kernel: `StoreId`, `TenantTransactions` (transaction-local `set_config`), RLS function and policies (V3), keyset `Cursor`/`Page`.
+- Decisions: [ADR-009](decisions/ADR-009-tenant-context-and-directory-tables.md) (directory vs. data tables, explicit tenant transactions, 404 for non-members).
+
+**Tests: 93 total** (28 unit + 65 integration). New: tenant isolation suite over auto-discovered endpoints, RLS meta-test and behaviour tests (including a pooled-connection context-leak test), anti-escalation matrix, concurrent mutual demotion, audit pagination.
+
+**Verified:** the write-skew mutation experiment ([EXP-003](experiments/EXP-003-write-skew-last-owner.md)): removing the lock fails the concurrency test 5/5.
+
+**Known limitations**
+- Membership is looked up per request (no cache); one extra `set_config` round trip per tenant transaction (measure in P15).
+- No store suspension endpoints (P14), no custom domains or storefront resolution yet (P4), no store-creation quota.
+- Invitation emails are not durable (P9).
+- No ArchUnit rule yet enforcing `StoreId` parameters on tenant repositories (RLS + isolation suite cover the risk). Revisit in P4 when the first large tenant module lands.
+
+**Study before P4:** aggregate design (product with variants and options as one consistency boundary); optimistic locking with `@Version` and HTTP `ETag`/`If-Match` (412 vs. 409); JPA fetching (N+1, `@EntityGraph`, DTO projections) and how to assert query counts in tests; B-tree composite indexes for `WHERE store_id = ? AND status = ? ORDER BY created_at DESC, id DESC`; PostgreSQL `NULLS NOT DISTINCT` unique constraints (variant option combinations).

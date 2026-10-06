@@ -19,10 +19,11 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - HTTP assertions go through `support.HttpTestClient` (`java.net.http`), a black-box client hitting the real server, so filters, headers and content types are all exercised.
 - Assert on stable contracts (`code`, status, headers), not human text.
 - Emails are captured by `RecordingEmailSender` (replaces the SMTP adapter in all ITs); `AuthFlows` bundles register/verify/login steps.
-- Each test uses unique emails (`uniqueEmail()`), because the context, database and rate-limiter buckets are shared across test classes.
+- Each test uses unique emails (`uniqueEmail()`) and stores (`StoreFlows.uniqueHandle()`), because the context, database and rate-limiter buckets are shared across test classes.
+- `StoreFlows` creates owners with stores, roles and invited members over HTTP.
 - Concurrency tests start N threads on a `CountDownLatch` and assert **invariants** (exactly one user, exactly one successful rotation), not just "no exception".
 
-## Current suite (P1–P2)
+## Current suite (P1–P3)
 
 | Test | Level | Protects |
 |---|---|---|
@@ -38,3 +39,10 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 | `AccessTokenSecurityIT` | Security | Forged-token matrix (alg none, foreign key, HS256 confusion, expired, wrong aud/iss/typ, stale stamp, tampered); sanity check that a correctly signed token IS accepted |
 | `PasswordResetIT` | API | Reset revokes access + refresh tokens; single-use; newest link only; unknown email silent |
 | `SensitiveDataLoggingIT` | Security | No password/token/link in any output, including failure paths |
+| `StoreLifecycleIT` | API | Store creation (owner, roles, Location), handle uniqueness/reserved/format, audited rename, 401 |
+| `StaffManagementIT` | Security + concurrency | Invitation flow, invitation bound to email & single-use, anti-escalation matrix, per-endpoint permissions, last owner, **concurrent mutual demotion (write skew)**, role deletion rules |
+| `TenantIsolationIT` | Security | **Every** `{storeId}` endpoint (discovered from the handler registry) returns 404 for other stores; other stores' role/member ids are 404 inside my store |
+| `RowLevelSecurityIT` | Integration (DB) | RLS meta-test, no-context = no rows, cross-tenant read/write blocked, context ends with the transaction on a pooled connection, no tenant switching, audit append-only |
+| `AuditLogIT` | API | Keyset pagination: newest first, no gaps/duplicates, `hasMore`, invalid cursor |
+
+**Mutation testing by hand:** removing the store row lock makes the write-skew test fail 5/5 ([EXP-003](../experiments/EXP-003-write-skew-last-owner.md)). Do this whenever a test guards a concurrency mechanism: a test that passes without the mechanism proves nothing.

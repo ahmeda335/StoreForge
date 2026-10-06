@@ -35,6 +35,17 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | V1 | `V1__baseline_privileges.sql` | Default privileges: every future table/sequence/function created by the owner is usable by the app role |
 | V2 | `V2__identity.sql` | `citext` extension; `users`, `refresh_tokens`, `email_tokens` (see [domains/identity.md](../domains/identity.md)) |
+| V3 | `V3__stores_tenancy.sql` | `current_store_id()`; directory tables `stores`, `store_domains`, `store_members`; RLS tables `roles`, `invitations`, `audit_log` (append-only for the app). See [domains/stores.md](../domains/stores.md) |
+
+## Row-level security (P3)
+
+| Table kind | Tables | Protection |
+|---|---|---|
+| Platform | `users`, `refresh_tokens`, `email_tokens` | Not tenant data |
+| Tenant directory | `stores`, `store_domains`, `store_members` | Application scoping by the stores module only ([ADR-009](../decisions/ADR-009-tenant-context-and-directory-tables.md)) |
+| Tenant data | `roles`, `invitations`, `audit_log` (+ every future business table) | `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy `tenant_isolation` `USING`/`WITH CHECK (store_id = current_store_id())` |
+
+Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes lead with `store_id` → `UNIQUE (store_id, id)` if children reference it → composite FKs to parents → ENABLE + FORCE RLS + `tenant_isolation` policy **in the same migration**. `RowLevelSecurityIT` fails the build if the RLS part is missing.
 
 ## Access patterns: JPA vs. JdbcClient
 
@@ -51,6 +62,8 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 | Conditional `UPDATE ... WHERE <still valid> RETURNING` | refresh tokens, email tokens | Double use of single-use tokens |
 | Atomic increment `x = x + 1` | `failed_login_count` | Lost updates of the lockout counter |
 | `@DynamicUpdate` | `User` | A stale entity overwriting columns updated by atomic SQL |
+| Parent-row lock (`SELECT ... FOR UPDATE` on `stores`) | Owner changes | Write skew on "≥ 1 owner" ([EXP-003](../experiments/EXP-003-write-skew-last-owner.md)) |
+| Composite FK `(store_id, x_id)` | `store_members`, `invitations` → `roles` | Cross-tenant references |
 
 Migration rules (from the blueprint):
 - `src/main/resources/db/migration/V{n}__snake_case_description.sql`; never edit an applied migration (checksum).

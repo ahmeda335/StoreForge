@@ -14,6 +14,7 @@ Design and target stack: [blueprint/15-observability-monitoring.md](../blueprint
 | `http_server_requests_seconds_*` (histogram) | RED metrics: rate, errors (`status`/`outcome` labels), duration percentiles | Spring MVC observation | `:8081/actuator/prometheus` |
 | `hikaricp_connections_{active,idle,pending}`, `_timeout_total` | Pool saturation is the earliest sign of DB trouble or long transactions | Hikari | same |
 | `jvm_*`, `process_*` | Memory, GC, threads, CPU | Micrometer binders | same |
+| `storeId` log field | Which tenant a log line belongs to (per-tenant debugging without a metrics label) | `TenantTransactions` (MDC) | Log lines written inside tenant transactions |
 | `userId` log field | Who made the request (an ID, never the email) | `UserMdcFilter` after bearer authentication | Log lines of authenticated `/admin/**` requests |
 | `storeforge_auth_logins_total{outcome}` | Login outcomes: `success`, `invalid_credentials`, `locked`, `disabled`, `email_not_verified`. The client sees one generic answer; we keep the real reason here | `LoginService` | `/actuator/prometheus` |
 | `storeforge_auth_token_refreshes_total{outcome}` | `rotated`, `reuse_detected` (possible token theft), `invalid` | `TokenService` | same |

@@ -7,7 +7,7 @@ One page per business module, written when the module is implemented: responsibi
 | `shared` (kernel) | P1 | No business logic. See [architecture overview](../architecture/overview.md) |
 | `identity` | P2 | [identity.md](identity.md) |
 | `notifications` | P2 | Email port; documented in [identity.md](identity.md) until it has its own logic (P9) |
-| `stores` | P3 | — |
+| `stores` (+ `audit`) | P3 | [stores.md](stores.md) |
 | `catalog` | P4 | — |
 | `inventory` | P5 | — |
 

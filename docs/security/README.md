@@ -32,8 +32,21 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 
 **Accepted risks / follow-ups:** in-memory rate limits (per instance, P12); `X-Forwarded-For` must be overwritten by the proxy (P16); ephemeral signing key allowed by default for local dev; production must set `AUTH_SIGNING_JWK` and `AUTH_ALLOW_EPHEMERAL_SIGNING_KEY=false` (P16).
 
+## P3 additions (tenancy & authorization)
+
+| Control | Implementation | Verified by |
+|---|---|---|
+| Cross-tenant access (IDOR, OWASP API1) | Membership check per request, 404 for non-members | `TenantIsolationIT` (auto-discovers every `{storeId}` endpoint) |
+| Defense in depth for forgotten filters | PostgreSQL RLS (ENABLE + FORCE) on tenant data; transaction-local tenant context | `RowLevelSecurityIT` (meta-test + behaviour) |
+| Cross-tenant references | Composite foreign keys `(store_id, role_id)` | `TenantIsolationIT.otherStoresResourceIdsAreNotFoundInsideMyStore` |
+| Function-level authorization (API5) | Permission per operation in services | `StaffManagementIT.permissionsAreEnforcedPerEndpoint` |
+| Privilege escalation | Subset rule (`StoreMember.covers`), owners-only for owners | `StaffManagementIT.membersCannotGrantMoreThanTheyHave` |
+| Invitation hijacking | Bound to the invited verified email; single use; hashed token | `StaffManagementIT.invitationsOnlyWorkForTheInvitedEmailAndOnlyOnce` |
+| Tamper-evident history | Audit log append-only at the DB privilege level | `RowLevelSecurityIT.theAuditLogIsAppendOnlyForTheApplication` |
+| Handle squatting on platform names | Reserved handle list | `StoreLifecycleIT` |
+
 ## Not yet (by design)
-Tenant authorization / RBAC (P3), MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
+MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 
 ## Accepted risk
 Actuator health shows component details including exception class names. This is acceptable only because the management port is private.

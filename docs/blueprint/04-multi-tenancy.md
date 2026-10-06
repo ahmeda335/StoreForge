@@ -51,7 +51,7 @@ sequenceDiagram
     TX->>DB: COMMIT (setting disappears)
 ```
 
-`TenantContext` is a request-scoped value (not a static `ThreadLocal` that leaks across pooled threads). A `TenantAwareTransaction` hook runs `SET LOCAL` at transaction start. `SET LOCAL` is used, never `SET`, because with connection pooling a session-level `SET` survives on the connection and would apply to the **next tenant's** request.
+As built (P3, [ADR-009](../decisions/ADR-009-tenant-context-and-directory-tables.md)): services call `TenantTransactions.inStore(storeId, work)` explicitly. It opens the transaction and runs `set_config('app.current_store_id', id, true)`, the parameterizable `SET LOCAL`. Tables are split into a small **tenant directory** (`stores`, `store_domains`, `store_members`: no RLS, owned by the stores module) and **tenant data** (everything else: RLS). `SET LOCAL` is used, never `SET`, because with connection pooling a session-level `SET` survives on the connection and would apply to the **next tenant's** request.
 
 ## Per concern
 

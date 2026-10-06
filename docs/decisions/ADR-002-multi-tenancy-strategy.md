@@ -1,6 +1,6 @@
 # ADR-002: Shared schema, store = tenant, PostgreSQL row-level security
 
-- **Status:** Accepted
+- **Status:** Accepted, refined by [ADR-009](ADR-009-tenant-context-and-directory-tables.md) (directory tables without RLS; explicit tenant transactions)
 - **Date:** 2026-10-06
 - **Phase:** P0 (implementation in P3)
 

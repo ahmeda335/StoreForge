@@ -2,9 +2,9 @@
 
 > This page describes what **exists in code now**. The target architecture is in [blueprint/03-architecture.md](../blueprint/03-architecture.md). Diagrams marked *planned* link to the blueprint and are redrawn here when their phase is implemented.
 
-Current phase: **P2 Identity & authentication** (complete).
+Current phase: **P3 Stores, tenancy & authorization** (complete).
 
-## System context (P2)
+## System context (P3)
 
 ```mermaid
 flowchart LR
@@ -13,6 +13,10 @@ flowchart LR
     subgraph App[StoreForge application, one process]
         F[RequestIdFilter] --> SEC[Spring Security chains<br/>auth · admin · fallback] --> MVC[Spring MVC controllers] --> EH[ApiExceptionHandler]
         MVC --> ID[identity module]
+        MVC --> ST[stores module]
+        ST --> ID
+        ST --> AU[audit module]
+        ST --> NT
         ID --> NT[notifications module]
     end
     App -->|"JDBC as storeforge_app (DML)"| PG[(PostgreSQL 17<br/>schema storeforge)]
@@ -45,7 +49,25 @@ Defined in [blueprint/03-architecture.md](../blueprint/03-architecture.md#layers
 |---|---|---|---|
 | `shared` | OPEN (all sub-packages usable) | `web` (request IDs, problem details), `error` (`StoreForgeException`, `ConstraintViolations`), `ids` (UUIDv7), `ratelimit`, `time` (`Clock`) | All modules |
 | `notifications` | Closed | API: `EmailSender`, `EmailMessage`; internal SMTP adapter | identity (later: outbox jobs) |
-| `identity` | Closed | API: `UserPrincipal`; internal web/application/domain/persistence/security | Any module's controllers (via `@AuthenticationPrincipal`) |
+| `identity` | Closed | API: `UserPrincipal`, `UserDirectory`; internal web/application/domain/persistence/security | Any module's controllers (via `@AuthenticationPrincipal`); stores |
+| `audit` | Closed | API: `AuditLog`, `AuditEntry`; internal JDBC implementation | stores (and every future tenant module) |
+| `stores` | Closed | API: `StoreAccess`, `StoreMember`, `Permission`, `StoreNotFoundException`, `PermissionDeniedException` | Every tenant-scoped module (catalog in P4…) |
+
+Shared kernel additions in P3: `tenancy` (`StoreId`, `TenantTransactions`), `pagination` (`Cursor`, `Page`), `crypto` (`SecretTokens`), `email` (`EmailAddress`).
+
+### Tenant isolation layers (P3)
+
+```mermaid
+flowchart TB
+    R["Request /admin/v1/stores/{storeId}/..."] --> A1["1. Authentication: JWT → UserPrincipal"]
+    A1 --> A2["2. TenantTransactions.inStore(storeId): BEGIN + set_config(app.current_store_id, LOCAL)"]
+    A2 --> A3["3. StoreAccess.require: membership + permission (404 / 403)"]
+    A3 --> A4["4. Repositories: explicit store_id predicates"]
+    A4 --> A5["5. PostgreSQL RLS: USING / WITH CHECK on tenant-data tables"]
+    A5 --> A6["6. Composite FKs (store_id, id): no cross-store references"]
+```
+
+See [domains/stores.md](../domains/stores.md#request-flow-tenant-scoped-endpoint) for the full sequence.
 
 ### Security filter chains (P2)
 
@@ -76,7 +98,8 @@ flowchart TB
 | Flow | Phase | Blueprint diagram |
 |---|---|---|
 | Authentication / token refresh | P2 ✅ | [domains/identity.md](../domains/identity.md#flows) |
-| Tenant resolution and RLS | P3 | [04](../blueprint/04-multi-tenancy.md#request-context) |
+| Tenant context and RLS | P3 ✅ | [domains/stores.md](../domains/stores.md#request-flow-tenant-scoped-endpoint) |
+| Storefront host → store resolution | P4 | [04](../blueprint/04-multi-tenancy.md#tenant-identification) |
 | Inventory reservation | P5 | [06](../blueprint/06-database.md#inventory-preventing-oversell) |
 | Checkout → order | P7–P8 | [06](../blueprint/06-database.md#transactions-and-isolation) |
 | Outbox → jobs → handlers | P9 | [09](../blueprint/09-events-async.md#transactional-outbox) |

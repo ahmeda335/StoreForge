@@ -1,0 +1,51 @@
+### Stores, roles, invitations, audit log (run http/auth.http first to get an access token)
+
+@base = http://localhost:8080
+
+### Create a store (caller becomes Owner)
+POST {{base}}/admin/v1/stores
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"handle": "acme", "name": "Acme Outfitters", "currency": "USD"}
+
+> {% client.global.set("storeId", response.body.id); %}
+
+### My stores
+GET {{base}}/admin/v1/stores
+Authorization: Bearer {{accessToken}}
+
+### Roles (Owner + Staff are created with the store)
+GET {{base}}/admin/v1/stores/{{storeId}}/roles
+Authorization: Bearer {{accessToken}}
+
+### Create a custom role
+POST {{base}}/admin/v1/stores/{{storeId}}/roles
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"name": "Support", "permissions": ["orders:read", "customers:read"]}
+
+> {% client.global.set("roleId", response.body.id); %}
+
+### Invite someone (email appears in Mailpit: http://localhost:8025)
+POST {{base}}/admin/v1/stores/{{storeId}}/invitations
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"email": "support@example.test", "roleId": "{{roleId}}"}
+
+### Accept (as the INVITED user: log in as them first; token from the link after "&token=")
+POST {{base}}/admin/v1/stores/{{storeId}}/invitations/acceptance
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"token": "PASTE_TOKEN"}
+
+### Members
+GET {{base}}/admin/v1/stores/{{storeId}}/members
+Authorization: Bearer {{accessToken}}
+
+### Audit log (newest first, cursor-paginated)
+GET {{base}}/admin/v1/stores/{{storeId}}/audit-log?limit=10
+Authorization: Bearer {{accessToken}}

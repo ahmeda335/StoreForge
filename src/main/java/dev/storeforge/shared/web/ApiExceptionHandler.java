@@ -8,10 +8,12 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -44,6 +46,19 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(exception.status(), exception.getMessage());
         problem.setProperty("code", exception.code());
         return handleExceptionInternal(exception, problem, exception.headers(), exception.status(), request);
+    }
+
+    /**
+     * Two writers changed the same aggregate concurrently and JPA's {@code @Version} check caught the
+     * second one at flush time. Retrying blindly would overwrite the other change; the client must
+     * reload and decide.
+     */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    ResponseEntity<Object> handleOptimisticLock(ObjectOptimisticLockingFailureException exception, WebRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "The resource was modified concurrently. Reload it and retry.");
+        problem.setProperty("code", "concurrent_modification");
+        return handleExceptionInternal(exception, problem, new HttpHeaders(), HttpStatus.CONFLICT, request);
     }
 
     /**

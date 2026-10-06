@@ -14,7 +14,7 @@ stateDiagram-v2
     CheckoutOpen --> Completed: POST /completion (Idempotency-Key, expectedTotal)
     Completed --> [*]: the order is placed in the same transaction (P8)
     note right of Completed
-      stock reserved for 15 min
+      stock held for payment window + grace
       lines + totals frozen
       customer recorded
       cart CONVERTED

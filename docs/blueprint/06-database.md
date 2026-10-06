@@ -12,7 +12,7 @@
 | Enums | `text` + `CHECK (status IN (...))` | Native PG enums are awkward to evolve (no drop value) |
 | Naming | snake_case, plural tables, `fk_`, `uq_`, `ix_`, `ck_` prefixes | Errors name the constraint. The app maps `uq_products_store_handle` → a 409 with a field error |
 | Tenant FKs | Composite `(store_id, id)` | Cross-tenant references become impossible |
-| Schema | Single schema `public`. The app role is not the owner | RLS requires a non-owner role |
+| Schema | Single dedicated schema `storeforge` owned by `storeforge_owner`; `public` unused (refined in P1, see ADR-006) | RLS requires a non-owner runtime role; a dedicated schema keeps grants explicit |
 
 ## Soft vs. hard deletion
 

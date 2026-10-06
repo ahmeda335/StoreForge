@@ -2,18 +2,22 @@
 
 > This page describes what **exists in code now**. The target architecture is in [blueprint/03-architecture.md](../blueprint/03-architecture.md). Diagrams marked *planned* link to the blueprint and are redrawn here when their phase is implemented.
 
-Current phase: **P3 Stores, tenancy & authorization** (complete).
+Current phase: **P4 Catalog** (complete).
 
-## System context (P3)
+## System context (P4)
 
 ```mermaid
 flowchart LR
     Client[HTTP client / SPA] -->|":8080 /auth/v1, /admin/v1"| App
+    Shopper[Shopper browser] -->|":8080 /storefront/v1 (Host = store)"| App
     Ops[Operator / orchestrator / Prometheus] -->|":8081 management: health, metrics"| App
     subgraph App[StoreForge application, one process]
         F[RequestIdFilter] --> SEC[Spring Security chains<br/>auth · admin · fallback] --> MVC[Spring MVC controllers] --> EH[ApiExceptionHandler]
         MVC --> ID[identity module]
         MVC --> ST[stores module]
+        MVC --> CA[catalog module]
+        CA --> ST
+        CA --> AU
         ST --> ID
         ST --> AU[audit module]
         ST --> NT
@@ -51,7 +55,8 @@ Defined in [blueprint/03-architecture.md](../blueprint/03-architecture.md#layers
 | `notifications` | Closed | API: `EmailSender`, `EmailMessage`; internal SMTP adapter | identity (later: outbox jobs) |
 | `identity` | Closed | API: `UserPrincipal`, `UserDirectory`; internal web/application/domain/persistence/security | Any module's controllers (via `@AuthenticationPrincipal`); stores |
 | `audit` | Closed | API: `AuditLog`, `AuditEntry`; internal JDBC implementation | stores (and every future tenant module) |
-| `stores` | Closed | API: `StoreAccess`, `StoreMember`, `Permission`, `StoreNotFoundException`, `PermissionDeniedException` | Every tenant-scoped module (catalog in P4…) |
+| `stores` | Closed | API: `StoreAccess`, `StoreMember`, `Permission`, `StoreDirectory`, `StoreInfo`, `@CurrentStorefront`, exceptions | Every tenant-scoped module |
+| `catalog` | Closed | No public API yet; internal domain (Product aggregate), persistence (JPA + SQL read models), admin + storefront controllers | — |
 
 Shared kernel additions in P3: `tenancy` (`StoreId`, `TenantTransactions`), `pagination` (`Cursor`, `Page`), `crypto` (`SecretTokens`), `email` (`EmailAddress`).
 
@@ -75,6 +80,7 @@ See [domains/stores.md](../domains/stores.md#request-flow-tenant-scoped-endpoint
 |---|---|---|
 | 1 | `/auth/**` | permitAll; stateless; endpoints protect themselves (rate limits, CSRF checks on cookie endpoints) |
 | 2 | `/admin/**` | Bearer JWT required (`NimbusJwtDecoder` ES256 + RFC 9068 validators → `UserTokenConverter`); problem-details 401/403 |
+| 3 | `/storefront/**` | Public (anonymous); store resolved from the hostname by `@CurrentStorefront` |
 | last | everything else | permitAll (unknown paths → 404; actuator lives on the private management port) |
 
 Authentication and authorization flows: see [domains/identity.md](../domains/identity.md#flows).
@@ -99,7 +105,8 @@ flowchart TB
 |---|---|---|
 | Authentication / token refresh | P2 ✅ | [domains/identity.md](../domains/identity.md#flows) |
 | Tenant context and RLS | P3 ✅ | [domains/stores.md](../domains/stores.md#request-flow-tenant-scoped-endpoint) |
-| Storefront host → store resolution | P4 | [04](../blueprint/04-multi-tenancy.md#tenant-identification) |
+| Storefront host → store resolution | P4 ✅ | [domains/catalog.md](../domains/catalog.md#flows) |
+| Product edit with optimistic concurrency | P4 ✅ | [domains/catalog.md](../domains/catalog.md#flows) |
 | Inventory reservation | P5 | [06](../blueprint/06-database.md#inventory-preventing-oversell) |
 | Checkout → order | P7–P8 | [06](../blueprint/06-database.md#transactions-and-isolation) |
 | Outbox → jobs → handlers | P9 | [09](../blueprint/09-events-async.md#transactional-outbox) |

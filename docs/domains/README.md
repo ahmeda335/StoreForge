@@ -8,7 +8,7 @@ One page per business module, written when the module is implemented: responsibi
 | `identity` | P2 | [identity.md](identity.md) |
 | `notifications` | P2 | Email port; documented in [identity.md](identity.md) until it has its own logic (P9) |
 | `stores` (+ `audit`) | P3 | [stores.md](stores.md) |
-| `catalog` | P4 | — |
+| `catalog` | P4 | [catalog.md](catalog.md) |
 | `inventory` | P5 | — |
 
 Target design for all modules: [blueprint/03-architecture.md](../blueprint/03-architecture.md) and [blueprint/05-domain-model.md](../blueprint/05-domain-model.md).

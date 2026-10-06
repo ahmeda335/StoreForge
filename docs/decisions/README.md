@@ -14,3 +14,4 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [007](ADR-007-error-and-correlation-model.md) | RFC 9457 problem details + request IDs | Accepted | P1 |
 | [008](ADR-008-token-details-and-revocation.md) | Access-token format (RFC 9068), security-stamp revocation, strict refresh rotation | Accepted | P2 |
 | [009](ADR-009-tenant-context-and-directory-tables.md) | Tenant directory vs. tenant data; explicit tenant transactions; 404 for non-members | Accepted | P3 |
+| [010](ADR-010-catalog-persistence-and-concurrency.md) | JPA aggregates for writes, SQL read models for lists, ETag/If-Match optimistic concurrency | Accepted | P4 |

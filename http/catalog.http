@@ -1,0 +1,35 @@
+### Catalog (run http/auth.http and http/stores.http first: accessToken, storeId)
+
+@base = http://localhost:8080
+
+### Create a product with two variants
+POST {{base}}/admin/v1/stores/{{storeId}}/products
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"title": "Classic Tee", "status": "ACTIVE", "vendor": "Acme", "options": ["Size", "Color"],
+ "variants": [
+   {"sku": "TEE-M-RED", "price": "19.99", "compareAtPrice": "24.99", "options": ["M", "Red"]},
+   {"sku": "TEE-L-RED", "price": "21.50", "options": ["L", "Red"]}]}
+
+> {% client.global.set("productId", response.body.id); client.global.set("etag", response.headers.valueOf("ETag")); %}
+
+### Edit with optimistic concurrency (repeat with the old ETag to see 412)
+PATCH {{base}}/admin/v1/stores/{{storeId}}/products/{{productId}}
+Authorization: Bearer {{accessToken}}
+If-Match: {{etag}}
+Content-Type: application/json
+
+{"title": "Classic Tee 2.0"}
+
+### List (filters: status, vendor, q; sort: -createdAt | createdAt)
+GET {{base}}/admin/v1/stores/{{storeId}}/products?status=ACTIVE&limit=10
+Authorization: Bearer {{accessToken}}
+
+### Public storefront (store chosen by hostname; replace "acme" with your store handle)
+GET {{base}}/storefront/v1/products
+X-Forwarded-Host: acme.storeforge.localhost
+
+### Single product by handle
+GET {{base}}/storefront/v1/products/classic-tee
+X-Forwarded-Host: acme.storeforge.localhost

@@ -6,8 +6,9 @@
 | P1 Foundation | ✅ Done (2026-10-06) | See below |
 | P2 Identity & authentication | ✅ Done (2026-10-06) | See below |
 | P3 Stores, tenancy & authorization | ✅ Done (2026-10-06) | See below |
-| P4 Catalog | ⏭ Next | Study list below |
-| P5–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P4 Catalog | ✅ Done (2026-10-06) | See below |
+| P5 Inventory & concurrency | ⏭ Next | Study list below |
+| P6–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -77,4 +78,19 @@
 - Invitation emails are not durable (P9).
 - No ArchUnit rule yet enforcing `StoreId` parameters on tenant repositories (RLS + isolation suite cover the risk). Revisit in P4 when the first large tenant module lands.
 
-**Study before P4:** aggregate design (product with variants and options as one consistency boundary); optimistic locking with `@Version` and HTTP `ETag`/`If-Match` (412 vs. 409); JPA fetching (N+1, `@EntityGraph`, DTO projections) and how to assert query counts in tests; B-tree composite indexes for `WHERE store_id = ? AND status = ? ORDER BY created_at DESC, id DESC`; PostgreSQL `NULLS NOT DISTINCT` unique constraints (variant option combinations).
+**Study before P4 (historical):** aggregate design (product with variants and options as one consistency boundary); optimistic locking with `@Version` and HTTP `ETag`/`If-Match` (412 vs. 409); JPA fetching (N+1, `@EntityGraph`, DTO projections) and how to assert query counts in tests; B-tree composite indexes for `WHERE store_id = ? AND status = ? ORDER BY created_at DESC, id DESC`; PostgreSQL `NULLS NOT DISTINCT` unique constraints (variant option combinations).
+
+## P4: Catalog (as built)
+
+**What exists**
+- `catalog` module: Product aggregate (options, 1–100 variants, money in minor units), admin API (create/list/get/update, variant add/update/remove) with ETag/If-Match, public storefront API (list, by handle) resolved from the hostname.
+- `stores`: `StoreDirectory` (cached host → store, 60s, negative caching), `@CurrentStorefront`, a `/storefront/**` security chain.
+- Shared: `Money`, `InvalidParameterException`, 409 `concurrent_modification` mapping.
+- V4 migration with RLS, composite FK, partial unique SKU index, `NULLS NOT DISTINCT` option combinations.
+- [ADR-010](decisions/ADR-010-catalog-persistence-and-concurrency.md): JPA for aggregates, SQL read models for lists, HTTP optimistic concurrency.
+
+**Tests: 113 total** (37 unit + 76 integration). New: aggregate rule matrix, If-Match 412, 6 concurrent writers → one winner, storefront isolation by hostname, **N+1 detector** (mutation-tested: 9 vs. 18 statements).
+
+**Known limitations:** `ILIKE` search (FTS in P13); no images/collections; no stock on the storefront (P5); no storefront caching or rate limiting (P12/P13); 9 statements per storefront list request (investigate in P15).
+
+**Study before P5:** PostgreSQL MVCC and READ COMMITTED re-check behaviour on UPDATE (docs ch. 13.2); lost update vs. write skew (recap EXP-003); `SELECT ... FOR UPDATE` vs. conditional `UPDATE ... WHERE available >= :q`; deadlocks and why lock ordering prevents them (`40P01`); `FOR UPDATE SKIP LOCKED` for sweepers; append-only ledgers and reconciliation; [ADR-004](decisions/ADR-004-inventory-concurrency.md).

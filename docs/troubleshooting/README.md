@@ -17,4 +17,7 @@
 | `IllegalStateException: Transaction is already bound to another store` | Nested `inStore` for a different store inside one transaction | Use separate transactions per store |
 | `new row violates row-level security policy` | Writing a row whose `store_id` differs from the transaction's tenant | Bug: the row belongs to another store, or the context is wrong |
 | `404 store_not_found` for a store you just created | Using another user's token, or the store id of another environment | Check `GET /admin/v1/stores` with the same token |
+| Storefront returns `404 store_not_found` locally | The hostname doesn't map to a store (`localhost` alone is not a store) | Send `X-Forwarded-Host: <handle>.storeforge.localhost`, or browse `http://<handle>.storeforge.localhost:8080` |
+| `412 precondition_failed` on a product write | Your `If-Match` ETag is stale (someone changed the product) | `GET` the product again, re-apply your change, send the new ETag |
+| `invalid_product: Invalid amount` | More decimal places than the store currency allows, or not a number | Send `"19.99"` for USD, `"1500"` for JPY |
 | Compile fails on a warning | `-Xlint:all -Werror` | Fix the warning, or suppress it narrowly with a justification comment |

@@ -45,6 +45,19 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 | Tamper-evident history | Audit log append-only at the DB privilege level | `RowLevelSecurityIT.theAuditLogIsAppendOnlyForTheApplication` |
 | Handle squatting on platform names | Reserved handle list | `StoreLifecycleIT` |
 
+## P4 additions (catalog, first public API)
+
+| Control | Implementation | Verified by |
+|---|---|---|
+| Public API exposure | Storefront DTOs exclude SKU, status and internal timestamps; DRAFT/ARCHIVED products are 404 | `StorefrontCatalogIT` |
+| Storefront tenant isolation | Store from the hostname only; reads in a tenant transaction (RLS) | `StorefrontCatalogIT.productHandlesResolvePerStore` |
+| Injection via filters/sort | Allow-listed `sort`/`status`; `ILIKE` wildcards escaped; bound parameters | `ProductAdminIT.listFiltersSortsAndPaginates` |
+| Unbounded payloads (API4) | Max 100 variants, 3 options, size limits on all strings, page size ≤ 100 | Bean Validation + domain rules |
+| Lost updates | ETag/If-Match + `@Version` | `ProductAdminIT` |
+| Catalog endpoints in the isolation suite | Sample bodies for every catalog write | `TenantIsolationIT` |
+
+**Not yet:** storefront rate limiting (scraping) arrives with Redis (P12). HTML in descriptions is stored as given and must be sanitized before any rendering (P14 sanitization; the API itself returns JSON only).
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

@@ -20,10 +20,11 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - Assert on stable contracts (`code`, status, headers), not human text.
 - Emails are captured by `RecordingEmailSender` (replaces the SMTP adapter in all ITs); `AuthFlows` bundles register/verify/login steps.
 - Each test uses unique emails (`uniqueEmail()`) and stores (`StoreFlows.uniqueHandle()`), because the context, database and rate-limiter buckets are shared across test classes.
-- `StoreFlows` creates owners with stores, roles and invited members over HTTP.
+- `StoreFlows` creates owners with stores, roles and invited members over HTTP; `CatalogFlows` creates products.
+- `QueryCounter` (test-only `BeanPostProcessor`) wraps the `DataSource` and counts prepared statements: use it to assert constant query counts for list endpoints.
 - Concurrency tests start N threads on a `CountDownLatch` and assert **invariants** (exactly one user, exactly one successful rotation), not just "no exception".
 
-## Current suite (P1–P3)
+## Current suite (P1–P4)
 
 | Test | Level | Protects |
 |---|---|---|
@@ -44,5 +45,8 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 | `TenantIsolationIT` | Security | **Every** `{storeId}` endpoint (discovered from the handler registry) returns 404 for other stores; other stores' role/member ids are 404 inside my store |
 | `RowLevelSecurityIT` | Integration (DB) | RLS meta-test, no-context = no rows, cross-tenant read/write blocked, context ends with the transaction on a pooled connection, no tenant switching, audit append-only |
 | `AuditLogIT` | API | Keyset pagination: newest first, no gaps/duplicates, `hasMore`, invalid cursor |
+| `MoneyTest` | Unit | Minor units per currency, strict parsing, exact arithmetic, currency mismatch |
+| `ProductAdminIT` | API + concurrency | Product creation and money, aggregate rules → precise error codes, If-Match 412, **6 concurrent writers → one winner**, variant lifecycle bumps the version, filters/sort/pagination, read-only role |
+| `StorefrontCatalogIT` | API + performance | Hostname → store, only ACTIVE, no internal fields, per-store handles, unknown host, **N+1 detector** (`QueryCounter`) |
 
 **Mutation testing by hand:** removing the store row lock makes the write-skew test fail 5/5 ([EXP-003](../experiments/EXP-003-write-skew-last-owner.md)). Do this whenever a test guards a concurrency mechanism: a test that passes without the mechanism proves nothing.

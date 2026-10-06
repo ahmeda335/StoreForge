@@ -22,3 +22,6 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [rbac-and-anti-escalation](rbac-and-anti-escalation.md) | P3 | Roles, permissions, 404 vs. 403, subset rule |
 | [write-skew-and-row-locks](write-skew-and-row-locks.md) | P3 | Set-level invariants under concurrency; materializing conflicts |
 | [keyset-pagination](keyset-pagination.md) | P3 | Cursor pagination vs. OFFSET |
+| [optimistic-locking-and-etags](optimistic-locking-and-etags.md) | P4 | `@Version`, ETag/If-Match, 412 vs. 409 |
+| [n-plus-one-and-read-models](n-plus-one-and-read-models.md) | P4 | Query-count thinking, LATERAL aggregates, read models, the N+1 detector |
+| [money](money.md) | P4 | Minor units, strict parsing, decimal strings on the wire |

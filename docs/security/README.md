@@ -88,6 +88,15 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 
 **Not yet:** storefront rate limiting (cart creation and checkout-completion abuse, card testing later) arrives with Redis in P12.
 
+## P8 additions (orders)
+
+| Control | Implementation | Verified by |
+|---|---|---|
+| Order history tamper resistance | `order_items`, `order_events` UPDATE/DELETE revoked; audit entries for merchant transitions | `OrderPlacementIT.orderLinesAreImmutableForTheApplication` |
+| Function-level authorization | `orders:read` vs. `orders:write` | `OrderLifecycleIT.readOnlyStaffCannotChangeOrders` |
+| Order IDOR across stores | Tenant path + RLS | `TenantIsolationIT` (order endpoints with sample bodies) |
+| Money integrity | Totals CHECK, paid orders can't be cancelled without refund | `OrderStateMachineTest`, `OrderLifecycleIT` |
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

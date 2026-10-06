@@ -20,13 +20,14 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - Assert on stable contracts (`code`, status, headers), not human text.
 - Emails are captured by `RecordingEmailSender` (replaces the SMTP adapter in all ITs); `AuthFlows` bundles register/verify/login steps.
 - Each test uses unique emails (`uniqueEmail()`) and stores (`StoreFlows.uniqueHandle()`), because the context, database and rate-limiter buckets are shared across test classes.
+- Platform-wide jobs (sweeper, order expiry) see **all** test stores' data in the shared database: assert on your own store's rows, not on global counts.
 - `StoreFlows` creates owners with stores, roles and invited members over HTTP; `CatalogFlows` creates products and stock; `StorefrontFlows` acts as an anonymous shopper (hostname + cart token).
 - Scheduling is **off** in tests (`storeforge.scheduling.enabled=false`); tests call background work (e.g. `ReservationSweeper.sweepOnce()`) explicitly.
 - Spans are captured by an `InMemorySpanExporter` bean (all ITs); call `SdkTracerProvider.forceFlush()` before asserting. No OTLP export happens in tests (the `otel` profile is off).
 - `QueryCounter` (test-only `BeanPostProcessor`) wraps the `DataSource` and counts prepared statements: use it to assert constant query counts for list endpoints.
 - Concurrency tests start N threads on a `CountDownLatch` and assert **invariants** (exactly one user, exactly one successful rotation), not just "no exception".
 
-## Current suite (P1–P7)
+## Current suite (P1–P8)
 
 | Test | Level | Protects |
 |---|---|---|
@@ -56,6 +57,9 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 | `CartIT` | API | Increment on re-add, live prices, quantity limits, token required, no cross-store carts, only sellable items, `no-store` |
 | `CheckoutIT` | API + integration | Completion reserves stock, freezes prices (unchanged after a catalog edit), records the customer, closes the cart; `total_changed` reserves nothing; insufficient stock leaves the checkout OPEN; contact details required; one customer per email |
 | `CheckoutIdempotencyIT` | Concurrency + security | **20 concurrent same-key retries → one execution, identical bodies**; different keys → one completion; key reuse → 422 without PII; failed attempts not stored (mutation-checked, EXP-006) |
+| `OrderStateMachineTest` | Unit | Every legal and illegal order transition, expiry idempotency |
+| `OrderPlacementIT` | API + concurrency | Order from checkout snapshot, per-store numbering, **12 concurrent orders → #1001..#1012**, immutable lines |
+| `OrderLifecycleIT` | API + concurrency | Pay → stock sold → fulfil → closed; cancel releases; illegal transitions; **pay vs. cancel race ×5**; expiry job; filters/search; read-only role |
 | `TracingIT` | Observability | One trace per request with JDBC `query` spans and the `storeforge.store_id` attribute; `inventory.reserve` parents its SQL spans (in-memory span exporter) |
 | `StorefrontCatalogIT` | API + performance | Hostname → store, only ACTIVE, no internal fields, per-store handles, unknown host, **N+1 detector** (`QueryCounter`) |
 

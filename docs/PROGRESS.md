@@ -10,8 +10,9 @@
 | P5 Inventory & concurrency | ✅ Done (2026-10-06) | See below |
 | P6 Observability stack & tracing | ✅ Done (2026-10-06) | See below |
 | P7 Customers, cart & checkout | ✅ Done (2026-10-06) | See below |
-| P8 Orders | ⏭ Next | Study list below |
-| P9–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P8 Orders | ✅ Done (2026-10-06) | See below |
+| P9 Outbox, jobs & notifications | ⏭ Next | Study list below |
+| P10–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -145,4 +146,19 @@
 
 **Known limitations:** no orders yet (P8); shipping/tax are 0 (P13); no storefront customer accounts; no cleanup of abandoned carts/idempotency keys (P9 jobs); no storefront rate limiting (P12); single-transaction idempotency must be upgraded to an IN_PROGRESS model for payments (P10).
 
-**Study before P8:** order state machines (financial vs. fulfillment status, illegal transitions); per-store human-friendly order numbers without gaps-vs-performance surprises (counter row with `UPDATE ... RETURNING` vs. sequences, why sequences can't be per tenant easily); compensation (cancel → release stock); what "PENDING_PAYMENT" means before payments exist; snapshotting addresses and lines on the order; how completion will create the order inside the same transaction; merchant order list read models.
+**Study before P8 (historical):** order state machines (financial vs. fulfillment status, illegal transitions); per-store human-friendly order numbers without gaps-vs-performance surprises (counter row with `UPDATE ... RETURNING` vs. sequences, why sequences can't be per tenant easily); compensation (cancel → release stock); what "PENDING_PAYMENT" means before payments exist; snapshotting addresses and lines on the order; how completion will create the order inside the same transaction; merchant order list read models.
+
+## P8: Orders (as built)
+
+**What exists**
+- `orders` module: Order aggregate with an orthogonal state machine (status / financial / fulfillment), placement inside checkout completion, gapless per-store numbers from #1001, immutable lines and timeline, manual payment (sells stock), fulfillment, cancellation (releases stock), `UnpaidOrderExpiry` job (payment window 15 min), admin list/detail API.
+- The order owns the payment deadline: reservations hold stock for window + grace.
+- V7 migration with CHECK constraints for forbidden state combinations; [ADR-014](decisions/ADR-014-orders-lifecycle.md); [EXP-007](experiments/EXP-007-pay-vs-cancel-race.md).
+
+**Tests: 163 total** (41 unit + 122 integration). New: `OrderStateMachineTest` (4), `OrderPlacementIT` (4: 12 concurrent orders → consecutive numbers), `OrderLifecycleIT` (7: pay/cancel race, expiry). The isolation suite flagged the new endpoints until sample bodies were added (it works as intended).
+
+**Verified manually:** V7 applied to the existing Compose volume; storefront purchase → order #1001 → manual payment (stock 4→2, reserved 0) → fulfillment (CLOSED, timeline PLACED/PAID/FULFILLED); zero ERROR lines.
+
+**Known limitations:** no payments/refunds (P10); no partial fulfillment/shipments (P13); no events/emails to the outside (P9); customers can't view orders; the per-store counter row is a hot spot under flash sales (measure in P15).
+
+**Study before P9:** the dual-write problem (DB + message/email in two systems); transactional outbox; at-least-once delivery and why consumers must be idempotent (inbox / processed-message table); job queues on PostgreSQL (`FOR UPDATE SKIP LOCKED`, leases/visibility timeouts, poison messages, dead-lettering); exponential backoff with jitter; propagating trace context and tenant context through a queue; [blueprint 09](blueprint/09-events-async.md) and [ADR-005](decisions/ADR-005-async-processing.md).

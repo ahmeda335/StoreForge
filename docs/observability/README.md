@@ -45,6 +45,8 @@ flowchart LR
 | `storeforge_notifications_emails_total{outcome}` | Email delivery | notifications | Prometheus |
 | `checkout.complete` span + `storeforge_checkout_complete_*` timer | Completion latency; the span parents the reservation and SQL spans | `CheckoutService` Observation | Tempo / Prometheus |
 | `storeforge_checkouts_completions_total{outcome}` | `completed` / `total_changed` (price changed during checkout) | `CheckoutService` | Prometheus |
+| `storeforge_orders_created_total`, `storeforge_orders_paid_total{method}`, `storeforge_orders_cancelled_total{reason}` | Sales funnel and expiry rate (`reason="payment_timeout"` rising → payment trouble) | `DefaultOrders`, `OrderService` | Prometheus |
+| Order timeline (`order_events`) | Per-order history for support | `OrderRecords` | `GET …/orders/{id}` |
 | `storeforge_idempotency_replays_total{scope}` | Retries answered from storage; a spike means clients are timing out | `Idempotency` | Prometheus |
 | `jvm_*`, `process_*` | Memory, GC, threads, CPU | Micrometer binders | Bundled "JVM Overview" dashboard |
 

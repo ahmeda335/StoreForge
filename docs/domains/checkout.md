@@ -12,7 +12,7 @@ stateDiagram-v2
     CartOpen --> CheckoutOpen: POST /checkouts (one OPEN per cart)
     CheckoutOpen --> CheckoutOpen: PATCH email / address
     CheckoutOpen --> Completed: POST /completion (Idempotency-Key, expectedTotal)
-    Completed --> [*]: P8 creates the order here, in the same transaction
+    Completed --> [*]: the order is placed in the same transaction (P8)
     note right of Completed
       stock reserved for 15 min
       lines + totals frozen
@@ -37,7 +37,7 @@ sequenceDiagram
     API->>DB: cart items → VariantLookup (catalog prices, ACTIVE only)
     API->>API: total == expectedTotal? (else 409 total_changed)
     API->>DB: Inventory.reserve (conditional UPDATEs, sorted, all-or-nothing)
-    API->>DB: customers upsert · checkout_lines insert · checkout COMPLETED · cart CONVERTED
+    API->>DB: customers upsert · checkout_lines insert · ORDER placed (number, items, PLACED event) · checkout COMPLETED · cart CONVERTED
     API->>DB: UPDATE idempotency_keys SET response · COMMIT
     API-->>C: 200 completed checkout, Idempotent-Replayed: false
 ```
@@ -60,7 +60,6 @@ sequenceDiagram
 `CartIT`, `CheckoutIT`, `CheckoutIdempotencyIT` (see [testing](../testing/README.md)); admin customers endpoints are covered by `TenantIsolationIT`.
 
 ## Known limitations
-- No orders yet (P8). A completed checkout whose reservation expires simply loses its stock hold. P8 handles expiry.
 - No payment (P10), shipping rates or tax (P13): `shipping` and `tax` are 0.
 - No storefront customer accounts. Abandoned carts and old idempotency keys are not cleaned up yet (P9 jobs).
 - No storefront rate limiting (cart creation abuse, P12).

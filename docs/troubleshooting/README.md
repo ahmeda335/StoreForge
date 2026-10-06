@@ -30,4 +30,6 @@
 | `404 cart_not_found` for a cart you just created | Missing/wrong `X-Cart-Token`, or a different hostname (store) | Send the token from the create response, same `X-Forwarded-Host` |
 | `409 total_changed` on completion | A price changed after the shopper loaded the checkout | Show the new total from the error detail; confirm with a **new** Idempotency-Key |
 | `422 idempotency_key_reused` | The same key was sent with a different body (or another cart token) | Use one key per completion attempt; new attempt → new key |
+| `409 cancel_requires_refund` | Paid orders can't be cancelled until refunds exist (P10) | — |
+| An unpaid order cancelled itself (`PAYMENT_TIMEOUT`) | The payment window (`ORDER_PAYMENT_WINDOW`, 15m) passed | Mark it paid within the window, or raise the window locally |
 | Compile fails on a warning | `-Xlint:all -Werror` | Fix the warning, or suppress it narrowly with a justification comment |

@@ -2,7 +2,7 @@
 
 A multi-tenant commerce platform (Shopify-inspired), built as a long-term learning project in backend engineering, SaaS architecture, reliability, security, observability and production operations.
 
-> Status: **Phase 7 (Customers, cart & checkout) complete.** Next: P8 (orders). See [docs/PROGRESS.md](docs/PROGRESS.md).
+> Status: **Phase 8 (Orders) complete.** Next: P9 (outbox, jobs & notifications). See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Quick start
 
@@ -14,7 +14,7 @@ docker compose up -d                 # PostgreSQL 17 (owner/app roles) + Mailpit
 
 curl localhost:8081/actuator/health/readiness
 curl -i localhost:8080/anything      # → 404 application/problem+json with a requestId
-# Walkthroughs: http/auth.http (register → verify → login → refresh), http/stores.http (store, roles, invitations, audit), http/catalog.http (products, If-Match, storefront), http/inventory.http (stock, ledger), http/storefront.http (cart → checkout → idempotent completion)
+# Walkthroughs: http/auth.http (register → verify → login → refresh), http/stores.http (store, roles, invitations, audit), http/catalog.http (products, If-Match, storefront), http/inventory.http (stock, ledger), http/storefront.http (cart → checkout → idempotent completion), http/orders.http (pay, fulfil, cancel)
 ```
 
 Run the app in a container instead: `docker compose --profile app up -d --build`.

@@ -62,6 +62,18 @@ class SecurityConfiguration {
                 .build();
     }
 
+    /**
+     * /storefront/**: the PUBLIC customer API. Anonymous by design; the store comes from the
+     * hostname. Customer accounts and cart tokens (P7) add their own authentication here.
+     */
+    @Bean
+    @Order(3)
+    SecurityFilterChain storefrontApi(HttpSecurity http) throws Exception {
+        return stateless(http.securityMatcher("/storefront/**"))
+                .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+                .build();
+    }
+
     /** Everything else (unknown paths → 404 problems; actuator on the private management port). */
     @Bean
     @Order(Ordered.LOWEST_PRECEDENCE)

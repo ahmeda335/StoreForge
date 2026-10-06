@@ -1,4 +1,4 @@
-package dev.storeforge.identity.internal.domain;
+package dev.storeforge.shared.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

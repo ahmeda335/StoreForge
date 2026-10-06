@@ -1,6 +1,6 @@
 package dev.storeforge.identity.internal.application;
 
-import dev.storeforge.identity.internal.domain.EmailAddress;
+import dev.storeforge.shared.email.EmailAddress;
 
 /**
  * NIST SP 800-63B style: length over complexity rules. The 128-char maximum is not about security

@@ -1,4 +1,4 @@
-package dev.storeforge.identity.internal.domain;
+package dev.storeforge.shared.email;
 
 import java.util.Locale;
 import java.util.regex.Pattern;

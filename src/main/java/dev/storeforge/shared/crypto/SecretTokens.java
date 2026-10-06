@@ -1,4 +1,4 @@
-package dev.storeforge.identity.internal.application;
+package dev.storeforge.shared.crypto;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

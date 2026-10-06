@@ -1,5 +1,6 @@
 package dev.storeforge.identity.internal.domain;
 
+import dev.storeforge.shared.email.EmailAddress;
 import dev.storeforge.shared.ids.Ids;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

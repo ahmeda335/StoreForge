@@ -1,7 +1,7 @@
 package dev.storeforge.identity.internal.application;
 
-import dev.storeforge.identity.internal.domain.EmailAddress;
 import dev.storeforge.identity.internal.security.AuthProperties;
+import dev.storeforge.shared.email.EmailAddress;
 import dev.storeforge.shared.ratelimit.RateLimiter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;

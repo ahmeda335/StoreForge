@@ -1,11 +1,12 @@
 package dev.storeforge.identity.internal.application;
 
 import dev.storeforge.identity.internal.domain.User;
-import dev.storeforge.identity.internal.persistence.RefreshTokenStore;
 import dev.storeforge.identity.internal.persistence.RefreshTokenStore.ConsumedToken;
+import dev.storeforge.identity.internal.persistence.RefreshTokenStore;
 import dev.storeforge.identity.internal.persistence.UserRepository;
 import dev.storeforge.identity.internal.security.AccessTokenIssuer;
 import dev.storeforge.identity.internal.security.AuthProperties;
+import dev.storeforge.shared.crypto.SecretTokens;
 import dev.storeforge.shared.ids.Ids;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;

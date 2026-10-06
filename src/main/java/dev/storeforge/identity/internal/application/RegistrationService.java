@@ -1,11 +1,12 @@
 package dev.storeforge.identity.internal.application;
 
-import dev.storeforge.identity.internal.domain.EmailAddress;
 import dev.storeforge.identity.internal.domain.User;
-import dev.storeforge.identity.internal.persistence.EmailTokenStore;
 import dev.storeforge.identity.internal.persistence.EmailTokenStore.Purpose;
+import dev.storeforge.identity.internal.persistence.EmailTokenStore;
 import dev.storeforge.identity.internal.persistence.UserRepository;
 import dev.storeforge.identity.internal.security.AuthProperties;
+import dev.storeforge.shared.crypto.SecretTokens;
+import dev.storeforge.shared.email.EmailAddress;
 import dev.storeforge.shared.error.ConstraintViolations;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;

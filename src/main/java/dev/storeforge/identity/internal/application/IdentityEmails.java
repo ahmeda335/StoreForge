@@ -1,6 +1,6 @@
 package dev.storeforge.identity.internal.application;
 
-import dev.storeforge.identity.internal.domain.EmailAddress;
+import dev.storeforge.shared.email.EmailAddress;
 
 /**
  * In-process events asking for an email to be sent AFTER the current transaction commits (an email

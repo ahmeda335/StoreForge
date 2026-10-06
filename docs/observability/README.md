@@ -21,6 +21,8 @@ Design and target stack: [blueprint/15-observability-monitoring.md](../blueprint
 | `storeforge_auth_registrations_total` | Signups | `RegistrationService` | same |
 | `storeforge_ratelimit_rejected_total{limiter}` | 429s per limiter (`auth-ip`, `auth-email`): attack or misbehaving client | `RateLimiter` | same |
 | `storeforge_notifications_emails_total{outcome}` | `sent` / `failed` | `SmtpEmailSender` | same |
+| `storeforge_inventory_reservations_total{outcome}` | `reserved` / `insufficient`: demand vs. stock-outs | `DefaultInventory` | same |
+| `storeforge_inventory_reservations_expired_total` | Abandoned checkouts returning stock; a sudden rise means checkout or payment trouble | `ReservationSweeper` | same |
 | `application="storeforge"` common tag | Distinguish services once there are several | `management.metrics.tags` | all metrics |
 
 Log levels ([blueprint conventions](../blueprint/15-observability-monitoring.md#logs)): ERROR = unexpected, needs a human (currently only `ApiExceptionHandler`); WARN = handled degradation; INFO = business-significant state changes; DEBUG off by default.

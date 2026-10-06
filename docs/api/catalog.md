@@ -29,4 +29,4 @@ The store is chosen by the **hostname**: `{handle}.storeforge.localhost` (or a v
 | `GET /storefront/v1/products?limit=&cursor=` | `200 {data: [{id, handle, title, description, vendor, productType, options, variants: [{id, title, price, compareAtPrice, options}]}], page}` | `store_not_found` (unknown/inactive host) |
 | `GET /storefront/v1/products/{handle}` | `200` product | `product_not_found` (also for drafts and other stores' products) |
 
-Only ACTIVE products. No SKUs, statuses or internal timestamps. No authentication.
+Only ACTIVE products. No SKUs, statuses or internal timestamps. No authentication. Each variant has `available` (in stock or untracked).

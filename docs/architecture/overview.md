@@ -2,9 +2,9 @@
 
 > This page describes what **exists in code now**. The target architecture is in [blueprint/03-architecture.md](../blueprint/03-architecture.md). Diagrams marked *planned* link to the blueprint and are redrawn here when their phase is implemented.
 
-Current phase: **P4 Catalog** (complete).
+Current phase: **P5 Inventory & concurrency** (complete).
 
-## System context (P4)
+## System context (P5)
 
 ```mermaid
 flowchart LR
@@ -18,6 +18,9 @@ flowchart LR
         MVC --> CA[catalog module]
         CA --> ST
         CA --> AU
+        CA --> IN[inventory module]
+        MVC --> IN
+        SW[ReservationSweeper @Scheduled] --> IN
         ST --> ID
         ST --> AU[audit module]
         ST --> NT
@@ -57,6 +60,7 @@ Defined in [blueprint/03-architecture.md](../blueprint/03-architecture.md#layers
 | `audit` | Closed | API: `AuditLog`, `AuditEntry`; internal JDBC implementation | stores (and every future tenant module) |
 | `stores` | Closed | API: `StoreAccess`, `StoreMember`, `Permission`, `StoreDirectory`, `StoreInfo`, `@CurrentStorefront`, exceptions | Every tenant-scoped module |
 | `catalog` | Closed | No public API yet; internal domain (Product aggregate), persistence (JPA + SQL read models), admin + storefront controllers | — |
+| `inventory` | Closed | API: `Inventory` (reserve/commit/release/availability, `MANDATORY` transactions), `ReservationLine`, `InsufficientStockException`; internal SQL store, admin controller, sweeper | catalog (availability); checkout/orders (P7/P8) |
 
 Shared kernel additions in P3: `tenancy` (`StoreId`, `TenantTransactions`), `pagination` (`Cursor`, `Page`), `crypto` (`SecretTokens`), `email` (`EmailAddress`).
 
@@ -107,7 +111,7 @@ flowchart TB
 | Tenant context and RLS | P3 ✅ | [domains/stores.md](../domains/stores.md#request-flow-tenant-scoped-endpoint) |
 | Storefront host → store resolution | P4 ✅ | [domains/catalog.md](../domains/catalog.md#flows) |
 | Product edit with optimistic concurrency | P4 ✅ | [domains/catalog.md](../domains/catalog.md#flows) |
-| Inventory reservation | P5 | [06](../blueprint/06-database.md#inventory-preventing-oversell) |
+| Inventory reservation & expiry | P5 ✅ | [domains/inventory.md](../domains/inventory.md#expiry-sweeper-adr-011) |
 | Checkout → order | P7–P8 | [06](../blueprint/06-database.md#transactions-and-isolation) |
 | Outbox → jobs → handlers | P9 | [09](../blueprint/09-events-async.md#transactional-outbox) |
 | Payment | P10 | [10](../blueprint/10-payments.md#lifecycle-and-state-machine) |

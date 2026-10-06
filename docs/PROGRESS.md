@@ -7,8 +7,9 @@
 | P2 Identity & authentication | ✅ Done (2026-10-06) | See below |
 | P3 Stores, tenancy & authorization | ✅ Done (2026-10-06) | See below |
 | P4 Catalog | ✅ Done (2026-10-06) | See below |
-| P5 Inventory & concurrency | ⏭ Next | Study list below |
-| P6–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P5 Inventory & concurrency | ✅ Done (2026-10-06) | See below |
+| P6 Observability stack & tracing | ⏭ Next | Study list below |
+| P7–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -93,4 +94,19 @@
 
 **Known limitations:** `ILIKE` search (FTS in P13); no images/collections; no stock on the storefront (P5); no storefront caching or rate limiting (P12/P13); 9 statements per storefront list request (investigate in P15).
 
-**Study before P5:** PostgreSQL MVCC and READ COMMITTED re-check behaviour on UPDATE (docs ch. 13.2); lost update vs. write skew (recap EXP-003); `SELECT ... FOR UPDATE` vs. conditional `UPDATE ... WHERE available >= :q`; deadlocks and why lock ordering prevents them (`40P01`); `FOR UPDATE SKIP LOCKED` for sweepers; append-only ledgers and reconciliation; [ADR-004](decisions/ADR-004-inventory-concurrency.md).
+**Study before P5 (historical):** PostgreSQL MVCC and READ COMMITTED re-check behaviour on UPDATE (docs ch. 13.2); lost update vs. write skew (recap EXP-003); `SELECT ... FOR UPDATE` vs. conditional `UPDATE ... WHERE available >= :q`; deadlocks and why lock ordering prevents them (`40P01`); `FOR UPDATE SKIP LOCKED` for sweepers; append-only ledgers and reconciliation; [ADR-004](decisions/ADR-004-inventory-concurrency.md).
+
+## P5: Inventory & concurrency (as built)
+
+**What exists**
+- `inventory` module: lazily created stock items, adjustments (never below reserved) with an append-only ledger, reservations (all-or-nothing, idempotent per checkout, deterministic lock order), commit/release, a `@Scheduled` expiry sweeper with `FOR UPDATE SKIP LOCKED`, storefront availability.
+- V5 migration; the `storeforge_tenant_scanner` role and a store-id-only SECURITY DEFINER function ([ADR-011](decisions/ADR-011-cross-tenant-background-work.md)).
+- Scheduling switch (`storeforge.scheduling.enabled`); `INVENTORY_SWEEPER_INTERVAL`.
+
+**Tests: 130 total** (37 unit + 93 integration). New: 100-buyer last-item race (repeated), opposite-order deadlock test, concurrent sweepers, ledger reconciliation, and the [EXP-004](experiments/EXP-004-oversell-three-ways.md) experiment (naive oversold 10× = pool size; SERIALIZABLE 9 aborts; conditional update exactly 1).
+
+**Verified manually:** fresh Compose provisioning + V1–V5 migrations; definer function owned by the NOLOGIN BYPASSRLS role; `SET ROLE storeforge_tenant_scanner` as the app role → permission denied; sweeper running every 5s without errors.
+
+**Known limitations:** no HTTP reservation path until checkout (P7); single location; hot-item throughput unmeasured (P15). **Existing local volumes must be re-created** (`docker compose down -v`) for the new role.
+
+**Study before P6:** the three signals and when each answers a question; OpenTelemetry concepts (API vs. SDK, resource, span, context propagation, OTLP, Collector); W3C `traceparent`; Micrometer Observation API and how Spring Boot 4 bridges it to OTel; Prometheus data model (labels, cardinality), counters vs. gauges vs. histograms and `rate()`/`histogram_quantile()`; exemplars (metric → trace links); head vs. tail sampling.

@@ -20,4 +20,7 @@
 | Storefront returns `404 store_not_found` locally | The hostname doesn't map to a store (`localhost` alone is not a store) | Send `X-Forwarded-Host: <handle>.storeforge.localhost`, or browse `http://<handle>.storeforge.localhost:8080` |
 | `412 precondition_failed` on a product write | Your `If-Match` ETag is stale (someone changed the product) | `GET` the product again, re-apply your change, send the new ETag |
 | `invalid_product: Invalid amount` | More decimal places than the store currency allows, or not a number | Send `"19.99"` for USD, `"1500"` for JPY |
+| Flyway fails on V5: `role "storeforge_tenant_scanner" does not exist` | Local volume provisioned before P5 (init scripts only run on an empty volume) | `docker compose down -v && docker compose up -d` (deletes local data) |
+| `409 stock_below_reserved` | Trying to reduce on-hand below units reserved by open checkouts | Wait for checkouts to complete/expire, or adjust by less |
+| Storefront shows `available: false` for a new product | Inventory never stocked (missing items count as 0) | Adjust stock (`RECEIVED`) or set `tracked: false` |
 | Compile fails on a warning | `-Xlint:all -Werror` | Fix the warning, or suppress it narrowly with a justification comment |

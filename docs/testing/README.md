@@ -21,10 +21,11 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - Emails are captured by `RecordingEmailSender` (replaces the SMTP adapter in all ITs); `AuthFlows` bundles register/verify/login steps.
 - Each test uses unique emails (`uniqueEmail()`) and stores (`StoreFlows.uniqueHandle()`), because the context, database and rate-limiter buckets are shared across test classes.
 - `StoreFlows` creates owners with stores, roles and invited members over HTTP; `CatalogFlows` creates products.
+- Scheduling is **off** in tests (`storeforge.scheduling.enabled=false`); tests call background work (e.g. `ReservationSweeper.sweepOnce()`) explicitly.
 - `QueryCounter` (test-only `BeanPostProcessor`) wraps the `DataSource` and counts prepared statements: use it to assert constant query counts for list endpoints.
 - Concurrency tests start N threads on a `CountDownLatch` and assert **invariants** (exactly one user, exactly one successful rotation), not just "no exception".
 
-## Current suite (P1–P4)
+## Current suite (P1–P5)
 
 | Test | Level | Protects |
 |---|---|---|
@@ -47,6 +48,10 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 | `AuditLogIT` | API | Keyset pagination: newest first, no gaps/duplicates, `hasMore`, invalid cursor |
 | `MoneyTest` | Unit | Minor units per currency, strict parsing, exact arithmetic, currency mismatch |
 | `ProductAdminIT` | API + concurrency | Product creation and money, aggregate rules → precise error codes, If-Match 412, **6 concurrent writers → one winner**, variant lifecycle bumps the version, filters/sort/pagination, read-only role |
+| `InventoryAdminIT` | API | Adjustments + ledger, never below reserved, reason allow-list, foreign/unknown variants, storefront availability (incl. untracked) |
+| `InventoryReservationIT` | Integration + concurrency | Commit/release semantics, all-or-nothing, idempotency, **3 concurrent sweepers expire each reservation once** |
+| `InventoryConcurrencyIT` | Concurrency | **100 buyers / 1 unit (×3)**, 80 / 50, opposite lock orders (no deadlock), ledger == levels |
+| `OversellExperimentIT` | Experiment | EXP-004: naive oversells (10/50), SERIALIZABLE aborts, conditional update exactly 1 |
 | `StorefrontCatalogIT` | API + performance | Hostname → store, only ACTIVE, no internal fields, per-store handles, unknown host, **N+1 detector** (`QueryCounter`) |
 
 **Mutation testing by hand:** removing the store row lock makes the write-skew test fail 5/5 ([EXP-003](../experiments/EXP-003-write-skew-last-owner.md)). Do this whenever a test guards a concurrency mechanism: a test that passes without the mechanism proves nothing.

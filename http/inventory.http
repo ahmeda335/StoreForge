@@ -1,0 +1,33 @@
+### Inventory (needs accessToken, storeId; set variantId from a product's variants[0].id)
+
+@base = http://localhost:8080
+@variantId = PASTE_VARIANT_ID
+
+### Current level (created lazily with 0)
+GET {{base}}/admin/v1/stores/{{storeId}}/variants/{{variantId}}/inventory
+Authorization: Bearer {{accessToken}}
+
+### Receive stock
+POST {{base}}/admin/v1/stores/{{storeId}}/variants/{{variantId}}/inventory/adjustments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"delta": 25, "reason": "RECEIVED", "note": "PO-1042"}
+
+### Write off damaged units (never below what is reserved → 409 stock_below_reserved)
+POST {{base}}/admin/v1/stores/{{storeId}}/variants/{{variantId}}/inventory/adjustments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"delta": -2, "reason": "DAMAGED"}
+
+### Ledger (newest first)
+GET {{base}}/admin/v1/stores/{{storeId}}/variants/{{variantId}}/inventory/transactions
+Authorization: Bearer {{accessToken}}
+
+### Stop tracking (always available on the storefront)
+PATCH {{base}}/admin/v1/stores/{{storeId}}/variants/{{variantId}}/inventory
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"tracked": false}

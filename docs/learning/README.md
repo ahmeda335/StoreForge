@@ -25,3 +25,5 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [optimistic-locking-and-etags](optimistic-locking-and-etags.md) | P4 | `@Version`, ETag/If-Match, 412 vs. 409 |
 | [n-plus-one-and-read-models](n-plus-one-and-read-models.md) | P4 | Query-count thinking, LATERAL aggregates, read models, the N+1 detector |
 | [money](money.md) | P4 | Minor units, strict parsing, decimal strings on the wire |
+| [postgresql-locking-and-conditional-updates](postgresql-locking-and-conditional-updates.md) | P5 | MVCC, EvalPlanQual, deadlocks and lock ordering, SKIP LOCKED, pool size as race width |
+| [security-definer-functions](security-definer-functions.md) | P5 | Controlled privilege escalation, search_path hijacking, least privilege |

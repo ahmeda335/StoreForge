@@ -58,6 +58,15 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 
 **Not yet:** storefront rate limiting (scraping) arrives with Redis (P12). HTML in descriptions is stored as given and must be sanitized before any rendering (P14 sanitization; the API itself returns JSON only).
 
+## P5 additions (inventory)
+
+| Control | Implementation | Verified by |
+|---|---|---|
+| Business-logic abuse: oversell | Conditional update + CHECK constraint | `InventoryConcurrencyIT`, EXP-004 |
+| Tamper-evident stock history | Ledger append-only at privilege level | REVOKE in V5 |
+| Narrow RLS bypass for workers | Definer function returns store ids only, pinned `search_path`, EXECUTE only for the app role; owner role NOLOGIN, not grantable to the app | [ADR-011](../decisions/ADR-011-cross-tenant-background-work.md); `SET ROLE` denied (manual check) |
+| Foreign variant ids | Composite FK `(store_id, variant_id)` → 404 | `InventoryAdminIT` |
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

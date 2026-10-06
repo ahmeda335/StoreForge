@@ -8,10 +8,11 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [001](ADR-001-modular-monolith.md) | Modular monolith with enforced module boundaries | Accepted | P0 |
 | [002](ADR-002-multi-tenancy-strategy.md) | Shared schema, store = tenant, PostgreSQL RLS | Accepted, refined by 009 | P0 (implemented P3) |
 | [003](ADR-003-authentication-strategy.md) | JWT access tokens + rotating opaque refresh tokens | Accepted, refined by 008 | P0 (implemented P2) |
-| [004](ADR-004-inventory-concurrency.md) | Atomic conditional updates + CHECK constraints for stock | Accepted | P0 (implemented P5) |
+| [004](ADR-004-inventory-concurrency.md) | Atomic conditional updates + CHECK constraints for stock | Accepted, implemented & measured (EXP-004) | P0 (implemented P5) |
 | [005](ADR-005-async-processing.md) | Transactional outbox + PostgreSQL job queue before any broker | Accepted | P0 (implemented P9) |
 | [006](ADR-006-foundation-stack.md) | Foundation stack: Java 21, Spring Boot 4, Maven, Flyway, separate DB roles | Accepted | P1 |
 | [007](ADR-007-error-and-correlation-model.md) | RFC 9457 problem details + request IDs | Accepted | P1 |
 | [008](ADR-008-token-details-and-revocation.md) | Access-token format (RFC 9068), security-stamp revocation, strict refresh rotation | Accepted | P2 |
 | [009](ADR-009-tenant-context-and-directory-tables.md) | Tenant directory vs. tenant data; explicit tenant transactions; 404 for non-members | Accepted | P3 |
 | [010](ADR-010-catalog-persistence-and-concurrency.md) | JPA aggregates for writes, SQL read models for lists, ETag/If-Match optimistic concurrency | Accepted | P4 |
+| [011](ADR-011-cross-tenant-background-work.md) | Cross-tenant background work via a store-id-only SECURITY DEFINER function | Accepted | P5 |

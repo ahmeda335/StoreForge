@@ -23,6 +23,7 @@ flowchart LR
 |---|---|---|---|---|
 | `postgres` | `infra/postgres/init/01-create-roles.sh` only | Everything | — | Never used by the app |
 | `storeforge_owner` | Flyway (`spring.flyway.user`) | DDL in schema `storeforge`; create trusted extensions | — | `search_path=storeforge` |
+| `storeforge_tenant_scanner` | Owner of narrow SECURITY DEFINER functions | `BYPASSRLS`, but **NOLOGIN**; nobody can become it except via its functions | Log in; the app role is not a member | — |
 | `storeforge_app` | Application (`spring.datasource.username`) | DML on tables, use sequences, execute functions | CREATE/ALTER/DROP (SQLSTATE 42501, tested) | `search_path=storeforge`, `statement_timeout=10s`, `idle_in_transaction_session_timeout=30s` |
 
 Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](../decisions/ADR-002-multi-tenancy-strategy.md)).
@@ -35,6 +36,7 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | V1 | `V1__baseline_privileges.sql` | Default privileges: every future table/sequence/function created by the owner is usable by the app role |
 | V2 | `V2__identity.sql` | `citext` extension; `users`, `refresh_tokens`, `email_tokens` (see [domains/identity.md](../domains/identity.md)) |
+| V5 | `V5__inventory.sql` | `inventory_items` (CHECK `reserved <= on_hand`), `inventory_reservations`, append-only `inventory_transactions`, RLS; `stores_with_expired_reservations()` SECURITY DEFINER ([ADR-011](../decisions/ADR-011-cross-tenant-background-work.md)) |
 | V4 | `V4__catalog.sql` | `products`, `product_variants` (RLS, composite FK, partial unique SKU, `NULLS NOT DISTINCT` option combos). See [domains/catalog.md](../domains/catalog.md) |
 | V3 | `V3__stores_tenancy.sql` | `current_store_id()`; directory tables `stores`, `store_domains`, `store_members`; RLS tables `roles`, `invitations`, `audit_log` (append-only for the app). See [domains/stores.md](../domains/stores.md) |
 
@@ -44,7 +46,7 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | Platform | `users`, `refresh_tokens`, `email_tokens` | Not tenant data |
 | Tenant directory | `stores`, `store_domains`, `store_members` | Application scoping by the stores module only ([ADR-009](../decisions/ADR-009-tenant-context-and-directory-tables.md)) |
-| Tenant data | `roles`, `invitations`, `audit_log`, `products`, `product_variants` (+ every future business table) | `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy `tenant_isolation` `USING`/`WITH CHECK (store_id = current_store_id())` |
+| Tenant data | `roles`, `invitations`, `audit_log`, `products`, `product_variants`, `inventory_items`, `inventory_reservations`, `inventory_transactions` (+ every future business table) | `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy `tenant_isolation` `USING`/`WITH CHECK (store_id = current_store_id())` |
 
 Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes lead with `store_id` → `UNIQUE (store_id, id)` if children reference it → composite FKs to parents → ENABLE + FORCE RLS + `tenant_isolation` policy **in the same migration**. `RowLevelSecurityIT` fails the build if the RLS part is missing.
 
@@ -65,7 +67,11 @@ Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes 
 | Atomic increment `x = x + 1` | `failed_login_count` | Lost updates of the lockout counter |
 | `@DynamicUpdate` | `User` | A stale entity overwriting columns updated by atomic SQL |
 | Parent-row lock (`SELECT ... FOR UPDATE` on `stores`) | Owner changes | Write skew on "≥ 1 owner" ([EXP-003](../experiments/EXP-003-write-skew-last-owner.md)) |
-| Composite FK `(store_id, x_id)` | `store_members`, `invitations` → `roles` | Cross-tenant references |
+| Composite FK `(store_id, x_id)` | `store_members`, `invitations` → `roles`; variants, inventory | Cross-tenant references |
+| Conditional `UPDATE ... WHERE on_hand - reserved >= q` + CHECK | `inventory_items` | Oversell ([EXP-004](../experiments/EXP-004-oversell-three-ways.md)) |
+| Deterministic lock order (sort by id) | Multi-line reservations | Deadlocks (40P01) |
+| `FOR UPDATE SKIP LOCKED` batches | Reservation sweeper | Workers blocking each other / double processing |
+| `INSERT ... ON CONFLICT DO NOTHING` | Lazy inventory item creation | Duplicate rows on concurrent first use |
 
 Migration rules (from the blueprint):
 - `src/main/resources/db/migration/V{n}__snake_case_description.sql`; never edit an applied migration (checksum).

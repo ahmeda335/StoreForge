@@ -23,6 +23,13 @@ services:
       timeout: 3s
       retries: 10
 
+  # Catches all outgoing email locally. Web UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   app:
     profiles: ["app"]
     build: .
@@ -31,6 +38,7 @@ services:
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-storeforge_owner_dev}
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:-storeforge_app_dev}
       ENVIRONMENT: docker
+      MAIL_HOST: mailpit
     ports:
       - "8080:8080"
       - "127.0.0.1:8081:8081"

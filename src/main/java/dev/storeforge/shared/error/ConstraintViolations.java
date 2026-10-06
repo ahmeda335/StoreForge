@@ -11,13 +11,22 @@ import org.springframework.dao.DataIntegrityViolationException;
 public final class ConstraintViolations {
 
     private static final String UNIQUE_VIOLATION = "23505";
+    private static final String FOREIGN_KEY_VIOLATION = "23503";
 
     private ConstraintViolations() {
     }
 
     public static boolean isUniqueViolation(DataIntegrityViolationException exception, String constraintName) {
+        return matches(exception, UNIQUE_VIOLATION, constraintName);
+    }
+
+    public static boolean isForeignKeyViolation(DataIntegrityViolationException exception, String constraintName) {
+        return matches(exception, FOREIGN_KEY_VIOLATION, constraintName);
+    }
+
+    private static boolean matches(DataIntegrityViolationException exception, String sqlState, String constraintName) {
         for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
-            if (cause instanceof SQLException sql && UNIQUE_VIOLATION.equals(sql.getSQLState())) {
+            if (cause instanceof SQLException sql && sqlState.equals(sql.getSQLState())) {
                 return sql.getMessage() != null && sql.getMessage().contains(constraintName);
             }
         }

@@ -8,4 +8,9 @@
 | `bind: address already in use` on 5432 | Another PostgreSQL on the host | `POSTGRES_PORT=5433 docker compose up -d` and `DB_URL=jdbc:postgresql://localhost:5433/storeforge` |
 | `permission denied for schema storeforge` from the app | Expected for DDL: the app role cannot change the schema | Put schema changes in a Flyway migration |
 | Logs are unreadable JSON | Structured logging is on by design (same format in every environment) | Pipe through `jq`, see [local-development.md](../infrastructure/local-development.md#reading-logs) |
+| All access tokens return 401 after restarting the app | Ephemeral signing key (no `AUTH_SIGNING_JWK`): a new key per start | Log in again, or configure a persistent key (local-development.md) |
+| `403 cross_site_request_rejected` on refresh/logout | Missing `X-Requested-With: XMLHttpRequest`, or `Origin` not in `AUTH_ALLOWED_ORIGINS` | Send the header; add the origin |
+| `429 rate_limited` while testing by hand | 10 attempts/min per email, 30/min per IP | Wait (see `Retry-After`) or raise `AUTH_RATE_LIMIT_*` locally |
+| Login always `401` though the password is right | Account temporarily locked after 5 failures | Wait (1 min, doubling) or reset the password |
+| No verification email | Mailpit not running, or SMTP failure (WARN log "Identity email could not be delivered") | `docker compose up -d mailpit`; request a new link via `POST /auth/v1/email-verifications` |
 | Compile fails on a warning | `-Xlint:all -Werror` | Fix the warning, or suppress it narrowly with a justification comment |

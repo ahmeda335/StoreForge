@@ -13,6 +13,7 @@
 | Service | How | Ports | Notes |
 |---|---|---|---|
 | PostgreSQL 17 | `docker compose up -d` | 5432 (`POSTGRES_PORT` to change) | Roles created by `infra/postgres/init/01-create-roles.sh` on first start |
+| Mailpit | `docker compose up -d` | 1025 (SMTP), [8025 (web UI)](http://localhost:8025) | Catches every email the app sends |
 | App (container) | `docker compose --profile app up -d --build` | 8080, 127.0.0.1:8081 | Same image as CI builds |
 | App (host) | `./mvnw spring-boot:run` | 8080, 8081 | Fastest dev loop |
 
@@ -30,12 +31,35 @@ All have local defaults in `application.yml`; override them via the environment 
 | `LOG_FORMAT` | `ecs` | Structured log format (`ecs`, `logstash`, `gelf`) |
 | `ENVIRONMENT` | `local` | Written to every log line as `service.environment` |
 | `POSTGRES_PASSWORD` | `postgres_dev` | Superuser (Compose only) |
+| `MAIL_HOST` / `MAIL_PORT` / `MAIL_FROM` | `localhost` / `1025` / `StoreForge <no-reply@…>` | SMTP |
+| `APP_BASE_URL` | `http://localhost:4200` | Where email links point (the future SPA) |
+| `AUTH_ISSUER` | `https://storeforge.localhost` | JWT `iss` |
+| `AUTH_SIGNING_JWK` | empty → ephemeral key (WARN at startup) | Private EC P-256 JWK; set it to keep tokens valid across restarts |
+| `AUTH_PREVIOUS_PUBLIC_JWKS` | empty | JWK Set of old public keys during rotation |
+| `AUTH_ALLOW_EPHEMERAL_SIGNING_KEY` | `true` | Must be `false` outside local dev |
+| `AUTH_ALLOWED_ORIGINS` | `http://localhost:4200` | Origins allowed to call refresh/logout |
+| `AUTH_RATE_LIMIT_PER_IP` / `_PER_EMAIL` | 30 / 10 per minute | Credential endpoint limits |
 
 ## Database
 
 - Migrations run automatically at app startup (Flyway, as `storeforge_owner`).
 - Connect as the app would: `docker compose exec postgres psql -U storeforge_app -d storeforge` (password `storeforge_app_dev`; it cannot run DDL).
 - Reset everything: `docker compose down -v` (deletes the volume; the init script runs again next start).
+
+## Generating a JWT signing key
+
+```bash
+jshell --class-path "$(find ~/.m2 -name 'nimbus-jose-jwt-*.jar' | head -1)" <<'JWK'
+var key = new com.nimbusds.jose.jwk.gen.ECKeyGenerator(com.nimbusds.jose.jwk.Curve.P_256)
+    .keyUse(com.nimbusds.jose.jwk.KeyUse.SIGNATURE).keyIDFromThumbprint(true).generate();
+System.out.println(key.toJSONString());
+JWK
+```
+Put the output in `.env` as `AUTH_SIGNING_JWK='…'`. It is a private key: never commit it.
+
+## Trying the API
+
+`http/auth.http` walks through register → verify (token from Mailpit) → login → `/admin/v1/me` → refresh → logout.
 
 ## Reading logs
 

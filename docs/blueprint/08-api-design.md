@@ -91,13 +91,13 @@ Token bucket per key (see the table above). Headers: `RateLimit-Limit`, `RateLim
 
 ```text
 # Auth
-POST   /auth/v1/register
+POST   /auth/v1/registrations
 POST   /auth/v1/token                       (login)
 POST   /auth/v1/token/refresh
-POST   /auth/v1/logout
-POST   /auth/v1/email-verifications/{token}
+POST   /auth/v1/token/revocation            (logout)
+POST   /auth/v1/email-verifications/confirmation   {token}          (token never in the URL: ADR-008)
 POST   /auth/v1/password-resets            {email}
-PUT    /auth/v1/password-resets/{token}    {newPassword}
+POST   /auth/v1/password-resets/confirmation       {token, newPassword}
 
 # Merchant admin
 POST   /admin/v1/stores                                  create store (caller becomes owner)

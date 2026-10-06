@@ -2,23 +2,26 @@
 
 > This page describes what **exists in code now**. The target architecture is in [blueprint/03-architecture.md](../blueprint/03-architecture.md). Diagrams marked *planned* link to the blueprint and are redrawn here when their phase is implemented.
 
-Current phase: **P1 Foundation**.
+Current phase: **P2 Identity & authentication** (complete).
 
-## System context (P1)
+## System context (P2)
 
 ```mermaid
 flowchart LR
-    Client[HTTP client] -->|":8080 public API"| App
+    Client[HTTP client / SPA] -->|":8080 /auth/v1, /admin/v1"| App
     Ops[Operator / orchestrator / Prometheus] -->|":8081 management: health, metrics"| App
     subgraph App[StoreForge application, one process]
-        F[RequestIdFilter] --> MVC[Spring MVC] --> EH[ApiExceptionHandler]
+        F[RequestIdFilter] --> SEC[Spring Security chains<br/>auth · admin · fallback] --> MVC[Spring MVC controllers] --> EH[ApiExceptionHandler]
+        MVC --> ID[identity module]
+        ID --> NT[notifications module]
     end
     App -->|"JDBC as storeforge_app (DML)"| PG[(PostgreSQL 17<br/>schema storeforge)]
+    NT -->|SMTP| MAIL[Mailpit / email provider]
     FW[Flyway at startup] -->|"as storeforge_owner (DDL)"| PG
     App -->|"JSON logs on stdout"| Logs[(container log)]
 ```
 
-## Request flow (P1)
+## Request flow (unauthenticated request, P1)
 
 ```mermaid
 sequenceDiagram
@@ -36,11 +39,23 @@ sequenceDiagram
 
 ## Layers inside a module
 
-Defined in [blueprint/03-architecture.md](../blueprint/03-architecture.md#layers-inside-a-module): `web → application → domain ← persistence`, with ports only at external boundaries. In P1 only the `shared` module exists:
+Defined in [blueprint/03-architecture.md](../blueprint/03-architecture.md#layers-inside-a-module): `web → application → domain ← persistence`, with ports only at external boundaries. Modules so far:
 
 | Module | Type | Contents | Allowed dependents |
 |---|---|---|---|
-| `shared` | OPEN (all sub-packages usable) | `shared.web`: `RequestIds`, `RequestIdFilter`, `ApiExceptionHandler` | All modules |
+| `shared` | OPEN (all sub-packages usable) | `web` (request IDs, problem details), `error` (`StoreForgeException`, `ConstraintViolations`), `ids` (UUIDv7), `ratelimit`, `time` (`Clock`) | All modules |
+| `notifications` | Closed | API: `EmailSender`, `EmailMessage`; internal SMTP adapter | identity (later: outbox jobs) |
+| `identity` | Closed | API: `UserPrincipal`; internal web/application/domain/persistence/security | Any module's controllers (via `@AuthenticationPrincipal`) |
+
+### Security filter chains (P2)
+
+| Order | Matcher | Rules |
+|---|---|---|
+| 1 | `/auth/**` | permitAll; stateless; endpoints protect themselves (rate limits, CSRF checks on cookie endpoints) |
+| 2 | `/admin/**` | Bearer JWT required (`NimbusJwtDecoder` ES256 + RFC 9068 validators → `UserTokenConverter`); problem-details 401/403 |
+| last | everything else | permitAll (unknown paths → 404; actuator lives on the private management port) |
+
+Authentication and authorization flows: see [domains/identity.md](../domains/identity.md#flows).
 
 Boundaries are verified by `ModularityTest` (Spring Modulith). See [ADR-001](../decisions/ADR-001-modular-monolith.md).
 
@@ -60,7 +75,7 @@ flowchart TB
 
 | Flow | Phase | Blueprint diagram |
 |---|---|---|
-| Authentication / token refresh | P2 | [07](../blueprint/07-authentication-authorization.md) |
+| Authentication / token refresh | P2 ✅ | [domains/identity.md](../domains/identity.md#flows) |
 | Tenant resolution and RLS | P3 | [04](../blueprint/04-multi-tenancy.md#request-context) |
 | Inventory reservation | P5 | [06](../blueprint/06-database.md#inventory-preventing-oversell) |
 | Checkout → order | P7–P8 | [06](../blueprint/06-database.md#transactions-and-isolation) |

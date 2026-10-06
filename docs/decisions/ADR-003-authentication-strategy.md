@@ -1,6 +1,6 @@
 # ADR-003: JWT access tokens + rotating opaque refresh tokens (self-issued)
 
-- **Status:** Accepted
+- **Status:** Accepted, refined by [ADR-008](ADR-008-token-details-and-revocation.md) (security stamp instead of `tokens_valid_after`)
 - **Date:** 2026-10-06
 - **Phase:** P0 (implementation in P2)
 

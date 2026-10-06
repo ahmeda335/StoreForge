@@ -5,3 +5,4 @@ Runbooks describe how to diagnose and act on a symptom. Every alert (P15/P16) li
 | Runbook | Symptom |
 |---|---|
 | [database-unavailable](runbooks/database-unavailable.md) | Readiness DOWN with `db` component DOWN; 503s; Hikari timeouts |
+| [auth-anomalies](runbooks/auth-anomalies.md) | Refresh-token reuse detected; spikes in failed logins or rate limiting; email delivery failures |

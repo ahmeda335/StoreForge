@@ -14,17 +14,27 @@ Design and target stack: [blueprint/15-observability-monitoring.md](../blueprint
 | `http_server_requests_seconds_*` (histogram) | RED metrics: rate, errors (`status`/`outcome` labels), duration percentiles | Spring MVC observation | `:8081/actuator/prometheus` |
 | `hikaricp_connections_{active,idle,pending}`, `_timeout_total` | Pool saturation is the earliest sign of DB trouble or long transactions | Hikari | same |
 | `jvm_*`, `process_*` | Memory, GC, threads, CPU | Micrometer binders | same |
+| `userId` log field | Who made the request (an ID, never the email) | `UserMdcFilter` after bearer authentication | Log lines of authenticated `/admin/**` requests |
+| `storeforge_auth_logins_total{outcome}` | Login outcomes: `success`, `invalid_credentials`, `locked`, `disabled`, `email_not_verified`. The client sees one generic answer; we keep the real reason here | `LoginService` | `/actuator/prometheus` |
+| `storeforge_auth_token_refreshes_total{outcome}` | `rotated`, `reuse_detected` (possible token theft), `invalid` | `TokenService` | same |
+| `storeforge_auth_registrations_total` | Signups | `RegistrationService` | same |
+| `storeforge_ratelimit_rejected_total{limiter}` | 429s per limiter (`auth-ip`, `auth-email`): attack or misbehaving client | `RateLimiter` | same |
+| `storeforge_notifications_emails_total{outcome}` | `sent` / `failed` | `SmtpEmailSender` | same |
 | `application="storeforge"` common tag | Distinguish services once there are several | `management.metrics.tags` | all metrics |
 
 Log levels ([blueprint conventions](../blueprint/15-observability-monitoring.md#logs)): ERROR = unexpected, needs a human (currently only `ApiExceptionHandler`); WARN = handled degradation; INFO = business-significant state changes; DEBUG off by default.
 
-## How to investigate a failure (P1)
+## How to investigate a failure
 
 1. Get the `requestId` from the client (response header `X-Request-Id` or the `requestId` field of the problem body).
 2. Find all log lines for it: `docker compose logs app --no-log-prefix | jq 'select(.requestId=="<id>")'`.
 3. The ERROR line contains `error.type`, `error.message`, `error.stack_trace`. The client got an opaque 500.
 4. If many requests fail: check readiness (`db` component) and `hikaricp_connections_pending` / `_timeout_total`.
 
+## Security signals worth watching
+- `reuse_detected` > 0: a refresh token was replayed. Investigate the WARN log (`userId`, `familyId`). See the [auth anomalies runbook](../operations/runbooks/auth-anomalies.md).
+- `invalid_credentials` and `locked` rising together with `auth-ip` rejections: credential stuffing.
+
 ## Sensitive data
 
-The 500 response never contains exception details; the server log does. Logging conventions forbid secrets and credentials in messages. A log-scan test is added in P2 when credentials first exist.
+The 500 response never contains exception details; the server log does. Credentials, tokens and email links never appear in output; `SensitiveDataLoggingIT` asserts this over the auth flows.

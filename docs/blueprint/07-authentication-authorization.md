@@ -11,18 +11,18 @@ A valid token proves identity. It never proves permission.
 
 | Topic | Design |
 |---|---|
-| Registration | `POST /auth/v1/register` {email, password}. Normalize email; validate password (length ≥ 12, check a breached-password list later); hash; create user `UNVERIFIED`; enqueue verification email. Response is the same for an existing email ("check your inbox") to prevent account enumeration |
+| Registration | `POST /auth/v1/registrations` {email, password}. Normalize email; validate password (length ≥ 12, check a breached-password list later); hash; create user `UNVERIFIED`; enqueue verification email. Response is the same for an existing email ("check your inbox") to prevent account enumeration |
 | Password hashing | **Argon2id** (Spring Security `Argon2PasswordEncoder`) or BCrypt cost ≥ 12. Use the delegating encoder (`{argon2}` prefix) so the algorithm can be upgraded and rehashed on login |
 | Email verification | Random 32-byte token; store **SHA-256 hash** only; expiry 24h; single use (`used_at`) |
 | Password reset | Same token mechanism, 30 min expiry. On success: **revoke all refresh tokens** for that user. Same response whether the email exists or not |
-| Login | `POST /auth/v1/token` {email, password} → access token (JWT, 15 min) in the body + refresh token (opaque, 30 days sliding) in an `HttpOnly; Secure; SameSite=Strict; Path=/auth/v1` cookie |
+| Login | `POST /auth/v1/token` {email, password} → access token (JWT, 15 min, RFC 9068 `typ: at+jwt`) in the body + refresh token (opaque, 30 days sliding) in an `HttpOnly; Secure; SameSite=Strict; Path=/auth/v1/token` cookie |
 | Access tokens | JWT signed with **ES256**; claims `sub`, `iss`, `aud=merchant`, `exp`, `iat`, `jti`. **No permissions in the token**: they change when roles change, and the token would be stale for 15 min. Membership is looked up (and cached briefly) per request |
 | Key management | Signing key pair from config/secret store with a `kid`; JWKS endpoint lists current + previous key for rotation |
 | Refresh tokens | Opaque random string; DB stores the hash, `family_id`, `user_id`, `expires_at`, `used_at`, `revoked_at` |
 | Rotation | Each refresh returns a **new** refresh token and marks the old one used. **Reuse detection:** presenting an already-used token means it was stolen, so revoke the entire family |
 | Logout | Revoke the current refresh token family; clear the cookie. Access token expires naturally (≤15 min). That window is the accepted trade-off of stateless JWTs |
-| Revocation | Refresh: DB. Access: short TTL; for emergencies (user disabled), a per-user `tokens_valid_after` timestamp checked against `iat` (cheap, cached) |
-| Lockout / rate limiting | Per-account: after 10 failures, exponential delay (`locked_until`). Per-IP and per-email limits on `/auth/*` (Redis token bucket later, in-memory in Phase 2). No permanent lockout: that lets attackers lock out victims (DoS) |
+| Revocation | Refresh: DB. Access: short TTL + per-user **security stamp** (`sstamp` claim must equal the user's current stamp; incremented on password reset) and an ACTIVE-status check on each request ([ADR-008](../decisions/ADR-008-token-details-and-revocation.md); originally planned as `tokens_valid_after`, replaced because JWT `iat` has 1-second precision) |
+| Lockout / rate limiting | Per-account: after 5 consecutive failures, exponential lock (1 min doubling to 1 h, `locked_until`). Per-IP and per-email limits on `/auth/*` (Redis token bucket later, in-memory in Phase 2). No permanent lockout: that lets attackers lock out victims (DoS) |
 | MFA (advanced) | TOTP enrolment with recovery codes; required for platform admins; step-up for sensitive actions (API key creation) |
 
 Why not server-side sessions for the SPA? Sessions are a perfectly good choice (and simpler to revoke). We choose JWT access tokens + rotating refresh tokens deliberately because the project **also** needs token-based auth for the developer platform, and learning token lifecycle (rotation, revocation, key rotation) is a stated goal. This decision is recorded with its trade-offs in [ADR-003](../decisions/ADR-003-authentication-strategy.md).

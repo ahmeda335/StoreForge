@@ -13,3 +13,8 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [health-probes](health-probes.md) | P1 | Liveness vs. readiness, graceful shutdown |
 | [structured-logging-and-correlation](structured-logging-and-correlation.md) | P1 | JSON logs, MDC, request IDs, problem details |
 | [spring-modulith](spring-modulith.md) | P1 | Enforcing module boundaries in a monolith |
+| [password-hashing](password-hashing.md) | P2 | Argon2id, salts, upgradeable hashes, timing parity |
+| [jwt-access-tokens](jwt-access-tokens.md) | P2 | JWT structure, RFC 8725 validation, RFC 9068 profile, revocation, key rotation |
+| [refresh-tokens-cookies-and-csrf](refresh-tokens-cookies-and-csrf.md) | P2 | Rotation, reuse detection, atomic consumption, cookie flags, CSRF |
+| [rate-limiting-lockout-and-enumeration](rate-limiting-lockout-and-enumeration.md) | P2 | Token buckets, lockout, account-enumeration resistance |
+| [spring-security-filter-chain](spring-security-filter-chain.md) | P2 | How requests are authenticated; multiple chains per API |

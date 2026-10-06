@@ -34,8 +34,25 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 | Version | File | Purpose |
 |---|---|---|
 | V1 | `V1__baseline_privileges.sql` | Default privileges: every future table/sequence/function created by the owner is usable by the app role |
+| V2 | `V2__identity.sql` | `citext` extension; `users`, `refresh_tokens`, `email_tokens` (see [domains/identity.md](../domains/identity.md)) |
 
-Rules (from the blueprint):
+## Access patterns: JPA vs. JdbcClient
+
+| Use | Tool | Example |
+|---|---|---|
+| Load/modify/save an aggregate | Spring Data JPA (`ddl-auto=validate`, `open-in-view=false`, `@Version`, `@DynamicUpdate`) | `User` |
+| Statements whose SQL *is* the design (atomic conditional updates, `RETURNING`, counters) | `JdbcClient` with named parameters | `RefreshTokenStore.consume`, `UserLoginCounters.recordFailure` |
+
+## Concurrency patterns in use
+
+| Pattern | Where | Prevents |
+|---|---|---|
+| Unique constraint as arbiter | `uq_users_email` | Duplicate accounts under concurrent registration (check-then-insert race) |
+| Conditional `UPDATE ... WHERE <still valid> RETURNING` | refresh tokens, email tokens | Double use of single-use tokens |
+| Atomic increment `x = x + 1` | `failed_login_count` | Lost updates of the lockout counter |
+| `@DynamicUpdate` | `User` | A stale entity overwriting columns updated by atomic SQL |
+
+Migration rules (from the blueprint):
 - `src/main/resources/db/migration/V{n}__snake_case_description.sql`; never edit an applied migration (checksum).
 - Migrations run at startup in dev/test. In production they run as a separate step before rollout (P16).
 - Expand → migrate → contract for breaking changes; `CREATE INDEX CONCURRENTLY` for large tables.

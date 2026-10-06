@@ -1,0 +1,42 @@
+# Local development dependencies. `docker compose up -d` starts what the app needs;
+# `docker compose --profile app up -d --build` also runs the app itself in a container.
+# Later phases add services (mailpit, otel-lgtm, redis...) behind their own profiles.
+name: storeforge
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: storeforge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev}
+      STOREFORGE_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-storeforge_owner_dev}
+      STOREFORGE_APP_PASSWORD: ${DB_APP_PASSWORD:-storeforge_app_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d storeforge"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    profiles: ["app"]
+    build: .
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/storeforge
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-storeforge_owner_dev}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:-storeforge_app_dev}
+      ENVIRONMENT: docker
+    ports:
+      - "8080:8080"
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

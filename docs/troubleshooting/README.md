@@ -27,4 +27,7 @@
 | App logs `ERROR ... HttpExporter Failed to export ...` | Collector unreachable (stopped/restarting); telemetry is dropped, requests are unaffected ([EXP-005](../experiments/EXP-005-collector-unavailable.md)) | Start/restart `otel-lgtm`, or run without the `otel` profile |
 | Grafana: StoreForge dashboard missing; log says `deprecatedInternalID ... already in use` | Stale provisioning state inside the container after editing the dashboard file | `docker compose --profile observability up -d --force-recreate otel-lgtm` |
 | PromQL returns nothing for `http_server_requests_seconds_*` | OTLP metrics are in milliseconds | Use `http_server_requests_milliseconds_*` in Prometheus/Grafana |
+| `404 cart_not_found` for a cart you just created | Missing/wrong `X-Cart-Token`, or a different hostname (store) | Send the token from the create response, same `X-Forwarded-Host` |
+| `409 total_changed` on completion | A price changed after the shopper loaded the checkout | Show the new total from the error detail; confirm with a **new** Idempotency-Key |
+| `422 idempotency_key_reused` | The same key was sent with a different body (or another cart token) | Use one key per completion attempt; new attempt → new key |
 | Compile fails on a warning | `-Xlint:all -Werror` | Fix the warning, or suppress it narrowly with a justification comment |

@@ -1,0 +1,39 @@
+### Shopper flow (anonymous). Replace "acme" with your store handle; variantId from the catalog.
+
+@base = http://localhost:8080
+@host = acme.storeforge.localhost
+@variantId = PASTE_VARIANT_ID
+
+### 1. Create a cart (the token is returned only once)
+POST {{base}}/storefront/v1/carts
+X-Forwarded-Host: {{host}}
+
+> {% client.global.set("cartId", response.body.cartId); client.global.set("cartToken", response.body.cartToken); %}
+
+### 2. Add an item
+POST {{base}}/storefront/v1/carts/{{cartId}}/items
+X-Forwarded-Host: {{host}}
+X-Cart-Token: {{cartToken}}
+Content-Type: application/json
+
+{"variantId": "{{variantId}}", "quantity": 2}
+
+### 3. Start checkout
+POST {{base}}/storefront/v1/checkouts
+X-Forwarded-Host: {{host}}
+X-Cart-Token: {{cartToken}}
+Content-Type: application/json
+
+{"cartId": "{{cartId}}", "email": "buyer@example.test",
+ "shippingAddress": {"name": "Ada Lovelace", "line1": "1 Main St", "city": "Paris", "postalCode": "75001", "country": "FR"}}
+
+> {% client.global.set("checkoutId", response.body.id); client.global.set("total", response.body.total.amount); %}
+
+### 4. Complete (send it twice with the same key: the second is a replay)
+POST {{base}}/storefront/v1/checkouts/{{checkoutId}}/completion
+X-Forwarded-Host: {{host}}
+X-Cart-Token: {{cartToken}}
+Idempotency-Key: 6c1a9f3e-0000-4000-8000-000000000001
+Content-Type: application/json
+
+{"expectedTotal": "{{total}}"}

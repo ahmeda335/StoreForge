@@ -17,3 +17,4 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [010](ADR-010-catalog-persistence-and-concurrency.md) | JPA aggregates for writes, SQL read models for lists, ETag/If-Match optimistic concurrency | Accepted | P4 |
 | [011](ADR-011-cross-tenant-background-work.md) | Cross-tenant background work via a store-id-only SECURITY DEFINER function | Accepted | P5 |
 | [012](ADR-012-observability-pipeline.md) | Micrometer Observation → OpenTelemetry, OTLP push, grafana/otel-lgtm locally | Accepted | P6 |
+| [013](ADR-013-checkout-and-idempotency.md) | Checkout scope (guest customers, order in P8), expectedTotal guard, transactional idempotency | Accepted | P7 |

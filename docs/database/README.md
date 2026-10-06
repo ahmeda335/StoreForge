@@ -36,6 +36,7 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | V1 | `V1__baseline_privileges.sql` | Default privileges: every future table/sequence/function created by the owner is usable by the app role |
 | V2 | `V2__identity.sql` | `citext` extension; `users`, `refresh_tokens`, `email_tokens` (see [domains/identity.md](../domains/identity.md)) |
+| V6 | `V6__customers_cart_checkout.sql` | `customers`, `carts` (hashed token), `cart_items`, `checkouts` (one OPEN per cart), `checkout_lines` (frozen snapshot, `line_total = unit × qty` CHECK), `idempotency_keys`. All RLS. See [domains/checkout.md](../domains/checkout.md) |
 | V5 | `V5__inventory.sql` | `inventory_items` (CHECK `reserved <= on_hand`), `inventory_reservations`, append-only `inventory_transactions`, RLS; `stores_with_expired_reservations()` SECURITY DEFINER ([ADR-011](../decisions/ADR-011-cross-tenant-background-work.md)) |
 | V4 | `V4__catalog.sql` | `products`, `product_variants` (RLS, composite FK, partial unique SKU, `NULLS NOT DISTINCT` option combos). See [domains/catalog.md](../domains/catalog.md) |
 | V3 | `V3__stores_tenancy.sql` | `current_store_id()`; directory tables `stores`, `store_domains`, `store_members`; RLS tables `roles`, `invitations`, `audit_log` (append-only for the app). See [domains/stores.md](../domains/stores.md) |
@@ -46,7 +47,7 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | Platform | `users`, `refresh_tokens`, `email_tokens` | Not tenant data |
 | Tenant directory | `stores`, `store_domains`, `store_members` | Application scoping by the stores module only ([ADR-009](../decisions/ADR-009-tenant-context-and-directory-tables.md)) |
-| Tenant data | `roles`, `invitations`, `audit_log`, `products`, `product_variants`, `inventory_items`, `inventory_reservations`, `inventory_transactions` (+ every future business table) | `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy `tenant_isolation` `USING`/`WITH CHECK (store_id = current_store_id())` |
+| Tenant data | `roles`, `invitations`, `audit_log`, `products`, `product_variants`, `inventory_items`, `inventory_reservations`, `inventory_transactions`, `customers`, `carts`, `cart_items`, `checkouts`, `checkout_lines`, `idempotency_keys` (+ every future business table) | `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy `tenant_isolation` `USING`/`WITH CHECK (store_id = current_store_id())` |
 
 Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes lead with `store_id` → `UNIQUE (store_id, id)` if children reference it → composite FKs to parents → ENABLE + FORCE RLS + `tenant_isolation` policy **in the same migration**. `RowLevelSecurityIT` fails the build if the RLS part is missing.
 
@@ -72,6 +73,9 @@ Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes 
 | Deterministic lock order (sort by id) | Multi-line reservations | Deadlocks (40P01) |
 | `FOR UPDATE SKIP LOCKED` batches | Reservation sweeper | Workers blocking each other / double processing |
 | `INSERT ... ON CONFLICT DO NOTHING` | Lazy inventory item creation | Duplicate rows on concurrent first use |
+| `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` | Customer upsert, cart item increment | Check-then-insert races |
+| Uncommitted key row blocks duplicates | `idempotency_keys` | Concurrent retries running the work twice ([EXP-006](../experiments/EXP-006-duplicate-checkout-completion.md)) |
+| `FOR UPDATE OF c` on the checkout | Completion | Double completion with different keys |
 
 Migration rules (from the blueprint):
 - `src/main/resources/db/migration/V{n}__snake_case_description.sql`; never edit an applied migration (checksum).

@@ -2,9 +2,9 @@
 
 > This page describes what **exists in code now**. The target architecture is in [blueprint/03-architecture.md](../blueprint/03-architecture.md). Diagrams marked *planned* link to the blueprint and are redrawn here when their phase is implemented.
 
-Current phase: **P6 Observability stack & tracing** (complete). Telemetry pipeline: [observability/README.md](../observability/README.md#pipeline).
+Current phase: **P7 Customers, cart & checkout** (complete). Telemetry pipeline: [observability/README.md](../observability/README.md#pipeline).
 
-## System context (P6)
+## System context (P7)
 
 ```mermaid
 flowchart LR
@@ -21,6 +21,10 @@ flowchart LR
         CA --> IN[inventory module]
         MVC --> IN
         SW[ReservationSweeper @Scheduled] --> IN
+        MVC --> CK[checkout module]
+        CK --> CA
+        CK --> IN
+        CK --> CU[customers module]
         ST --> ID
         ST --> AU[audit module]
         ST --> NT
@@ -60,10 +64,12 @@ Defined in [blueprint/03-architecture.md](../blueprint/03-architecture.md#layers
 | `identity` | Closed | API: `UserPrincipal`, `UserDirectory`; internal web/application/domain/persistence/security | Any module's controllers (via `@AuthenticationPrincipal`); stores |
 | `audit` | Closed | API: `AuditLog`, `AuditEntry`; internal JDBC implementation | stores (and every future tenant module) |
 | `stores` | Closed | API: `StoreAccess`, `StoreMember`, `Permission`, `StoreDirectory`, `StoreInfo`, `@CurrentStorefront`, exceptions | Every tenant-scoped module |
-| `catalog` | Closed | No public API yet; internal domain (Product aggregate), persistence (JPA + SQL read models), admin + storefront controllers | — |
+| `catalog` | Closed | API: `VariantLookup`, `SellableVariant`; internal domain (Product aggregate), persistence (JPA + SQL read models), admin + storefront controllers | checkout |
+| `customers` | Closed | API: `Customers.findOrCreate`; internal JDBC store + admin controller | checkout |
+| `checkout` | Closed | No public API (storefront entry point): carts, checkouts, pricing, completion | — |
 | `inventory` | Closed | API: `Inventory` (reserve/commit/release/availability, `MANDATORY` transactions), `ReservationLine`, `InsufficientStockException`; internal SQL store, admin controller, sweeper | catalog (availability); checkout/orders (P7/P8) |
 
-Shared kernel additions in P3: `tenancy` (`StoreId`, `TenantTransactions`), `pagination` (`Cursor`, `Page`), `crypto` (`SecretTokens`), `email` (`EmailAddress`).
+Shared kernel additions in P7: `idempotency` (`Idempotency`). Additions in P3: `tenancy` (`StoreId`, `TenantTransactions`), `pagination` (`Cursor`, `Page`), `crypto` (`SecretTokens`), `email` (`EmailAddress`).
 
 ### Tenant isolation layers (P3)
 
@@ -113,7 +119,8 @@ flowchart TB
 | Storefront host → store resolution | P4 ✅ | [domains/catalog.md](../domains/catalog.md#flows) |
 | Product edit with optimistic concurrency | P4 ✅ | [domains/catalog.md](../domains/catalog.md#flows) |
 | Inventory reservation & expiry | P5 ✅ | [domains/inventory.md](../domains/inventory.md#expiry-sweeper-adr-011) |
-| Checkout → order | P7–P8 | [06](../blueprint/06-database.md#transactions-and-isolation) |
+| Cart → checkout → completion (reservation, snapshot) | P7 ✅ | [domains/checkout.md](../domains/checkout.md#completion-transaction) |
+| Completion → order | P8 | [06](../blueprint/06-database.md#transactions-and-isolation) |
 | Outbox → jobs → handlers | P9 | [09](../blueprint/09-events-async.md#transactional-outbox) |
 | Payment | P10 | [10](../blueprint/10-payments.md#lifecycle-and-state-machine) |
 | Webhook delivery | P11 | [11](../blueprint/11-webhooks.md) |

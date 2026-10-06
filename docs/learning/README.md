@@ -28,4 +28,5 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [postgresql-locking-and-conditional-updates](postgresql-locking-and-conditional-updates.md) | P5 | MVCC, EvalPlanQual, deadlocks and lock ordering, SKIP LOCKED, pool size as race width |
 | [security-definer-functions](security-definer-functions.md) | P5 | Controlled privilege escalation, search_path hijacking, least privilege |
 | [opentelemetry-and-distributed-tracing](opentelemetry-and-distributed-tracing.md) | P6 | Traces, spans, context propagation, Observation API, sampling, OTLP/Collector, log correlation |
+| [idempotency](idempotency.md) | P7 | Idempotency keys, fingerprints, effect vs. response idempotency, concurrency of duplicates |
 | [metrics-types-and-cardinality](metrics-types-and-cardinality.md) | P6 | Counters/gauges/histograms, `rate()`, `histogram_quantile`, RED, cardinality |

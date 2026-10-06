@@ -1,0 +1,157 @@
+- the infrastructure/software behind an online store.
+🛍️ Online store — product pages, categories, search, cart, checkout.
+📦 Products & inventory — products, prices, stock, variants, etc.
+👥 Customers — customer accounts, orders, addresses, history.
+💳 Payments — integrate payment providers and process payments.
+🚚 Orders & shipping — order management, fulfillment, shipping rates.
+🧾 Discounts & taxes — discount codes, tax calculations/configuration.
+📊 Reports & analytics — sales, revenue, customers, products, etc.
+🎨 Store customization — themes and customization of the storefront.
+🔌 Apps/integrations — connect Shopify to external services for things Shopify doesn't provide natively.
+🏪 Physical stores — Shopify also has POS functionality for businesses selling in physical locations.
+
+
+- Authentication, Tenant isolation, Store configurations, APIs.
+- Multitenancy and Saas arch (Learn tenant identification, authorization, tenant-aware database queries, isolation testing, and custom store domains.)
+- Event-driven arch (An order is placed; inventory is updated, a confirmation email is sent, and analytics are recorded. Learn asynchronous processing, message delivery, retries, idempotency, the transactional outbox pattern, and eventual consistency.)
+- Platform APIs and extensibility (Other developers should be able to integrate with your platform. Build versioned REST APIs, API keys or OAuth, permissions/scopes, rate limiting, webhooks, and an API for external apps. Ref: https://shopify.dev/docs/api)
+- Infrastructure and deployment (Package your services, run them reliably, manage configuration and secrets, automate deployments, and monitor failures. Learn Docker, Linux, CI/CD, reverse proxies, cloud deployment, logs, metrics, and distributed tracing.)
+- Performance and reliability (Simulate hundreds of stores and concurrent customers. Measure latency, find slow queries, add caching, handle traffic spikes, isolate noisy tenants, and test recovery from service failures.)
+
+- This is an IDOR (Insecure Direct Object Reference) crossing tenant boundaries, and it is the most common real-world multi-tenancy bug.
+
+
+--------------------------- Multitenancy ------------------------------
+----- Recommendations:
+
+- Use the pool model (shared tables + store_id). It's what fits a platform with many small stores, and it's the simplest to build and reason about.
+- Every tenant-owned table gets a non-null store_id, including child tables like line items, even though you could reach the store through the parent order. This seems redundant, but it lets every query filter directly, and it keeps a store's data self-contained. That self-containment is what lets you later move a store to a different database (the Shopify scaling path) by copying "all rows where store_id = 42."
+- Never join or link across tenants. No foreign key from Store A's data to Store B's. This keeps the scale-out path open.
+- Most indexes start with store_id, e.g. (store_id, created_at) on orders, because nearly every query filters by store first.
+- Separate internal IDs from user-facing numbers. Shopify shows orders as #1001, #1002… per store. If you expose a global auto-increment ID, every merchant can work out how many orders the whole platform processes. Use an internal ID plus a per-store order number.
+- Two resolution paths: hostname lookup for the storefront, authenticated token/session plus membership check for the admin.
+
+----- Notes:
+- Don't trust a client-supplied tenant ID. The tenant must come from the domain or the authenticated identity, never from the request body.
+- Logs and metrics with store_id. When something breaks, the first question is always "which store?" and you can't answer it.
+- Use 404 instead of 403.
+
+------------------------------------------------------------------------
+
+-------------------------- Data Modeling -------------------------------
+- So the model has to support a catalog that's always changing and orders that never change.
+- The rule: money is never stored as a float.There are two correct options:
+-- Integer minor units. Store the smallest unit as an integer: 199.99 EGP becomes 19999. Integer math is exact.
+-- Exact decimal type. Use NUMERIC(19,4) in the database, BigDecimal in Java, or Decimal in Python. Both the database and your code then use exact base-10 arithmetic.
+
+- Products, options, and variants.
+-- A shopper sees one product, "Classic Tee," and picks a size and a color. But each combination is a separate thing you can sell, with its own SKU, possibly its own price, and its own stock.
+-- The key idea: the variant is the sellable unit. Carts, orders, prices, and inventory all reference the variant, not the product. A product with no options still has exactly one variant (the "default variant").
+
+- Carts, checkouts, and orders are different things.
+-- CART: mutable, most are abandoned references live products.
+-- CHECKOUTS: prices, and total computed shipping, tax, discounts. Applied, and locked. Short lived.
+-- ORDERS: immutable, financial record created only when payment. Kept for years, copies each thing it needs.
+- Most carts never become orders. If every "add to cart" created an order row, the orders table would fill with junk, and every report would need to filter it out. So the order is created only at the moment of successful checkout. It's the record of a completed sale, not a draft of one.
+- Orders are snapshots, not references.
+
+- The beginner version is one status column with values like pending, paid, shipped, delivered, refunded. Then real cases appear: paid but only half shipped, shipped and then partially refunded, authorized but not yet captured. A single enum would need a value for every combination (paid_partially_fulfilled_partially_refunded...).
+
+The fix is to see that these are independent questions, each with its own state:
+
+financial_status:    pending → authorized → paid → partially_refunded → refunded
+                                           ↘ voided
+fulfillment_status:  unfulfilled → partially_fulfilled → fulfilled
+lifecycle:           open → closed  |  cancelled_at (timestamp)
+An order can be paid + partially_fulfilled + open at the same time. Shopify's orders model separate financial and fulfillment statuses in a similar way.
+
+- Fixed columns vs. flexible attributes for product data. Core fields (title, price, SKU) belong in real columns. For merchant-defined extra data ("fabric," "care instructions"), a JSON column (JSONB in PostgreSQL) or a key-value side table is reasonable. Shopify calls this concept metafields. Avoid a full EAV (entity-attribute-value) design for core data: it makes every query a complex self-join and loses type safety.
+
+------------------------------------------------------------------------
+
+
+-------------- Transactions and Concurrency ----------------------------
+- Flash sales are the extreme case. A limited sneaker drop can bring thousands of shoppers to checkout for a few hundred units within seconds. Every one of those checkouts touches the same few inventory rows. If the system oversells, the merchant has to cancel orders and refund angry customers. If it's too cautious (heavy locking), checkouts slow down or time out, and the sale fails a different way.
+So Shopify-like platforms need correctness under heavy contention, and also enough speed that correctness doesn't become a bottleneck.
+
+
+- ******* Techniquest to prevent overselling *******
+1- Atomic conditional update (check and act in one statement).
+	UPDATE inventory_levels
+	SET    committed = committed + 2
+	WHERE  id = 77
+	  AND  store_id = 42
+	  AND  on_hand - committed >= 2;
+
+2- Pessimistic locking (SELECT ... FOR UPDATE).
+	BEGIN
+	  SELECT * FROM inventory_levels WHERE id = 77 FOR UPDATE;   ← others wait here
+	  -- check in app code, run any complex logic
+	  UPDATE inventory_levels SET committed = committed + 2 WHERE id = 77;
+	COMMIT   ← lock released
+
+3- Optimistic locking (version column). 
+	read:  id=77, committed=0, version=5
+	write: UPDATE ... SET committed = 1, version = 6 WHERE id = 77 AND version = 5;
+       0 rows affected → someone else changed it → reload and retry (or fail)
+
+4- Database constraints as the last line of defense. CHECK (committed >= 0 AND committed <= on_hand)
+
+*******************************************************
+
+- Deadlocks
+	Order X: lock 77 (Tee) ......... wants 88 (Mug) → waits for Y
+	Order Y: lock 88 (Mug) ......... wants 77 (Tee) → waits for X
+		 → each waits for the other forever
+The database detects this cycle and kills one transaction with a deadlock error. Two lessons:
+
+1- Lock in a consistent order. Sort the inventory rows by ID before updating them. If everyone locks 77 before 88, a cycle can't form.
+2- Deadlocks will still happen occasionally, so treat a deadlock error like a serialization error: roll back and retry a small number of times.
+
+- **Note: Don't put any network call in a transaction. Make a small transactions around the network call.
+
+
+---------------------------- To review ------------------------------------
+
+2. Bind Spring Security to PostgreSQL (The Spring Boot Code)
+You need to automatically inject the logged-in user's ID into the PostgreSQL connection session right when a database transaction begins. The cleanest way to do this is by overriding Hibernate's StatementInspector or using a DataSource wrapper.
+The industry standard for Spring Boot 3 / Hibernate 6 is implementing a custom Hibernate TenantConnectionProvider or a Spring Repository Aspect. Below is a clean, lightweight AOP (Aspect-Oriented Programming) approach that intercepts your repository calls.
+Step A: Create an Aspect to Set the Session Variable
+This aspect intercepts database interactions, grabs the user ID from Spring Security's context, and runs a quick SET LOCAL command right before your code executes.
+java
+@Aspect
+@Component
+public class ResourceContextAspect {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Before("execution(* com.example.repository..*.*(..))")
+    public void setPostgresSqlSessionVariable() {
+        // 1. Extract the user ID from Spring Security
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            String userId = auth.getName(); // Or custom logic to get internal user ID
+
+            // 2. Set the scoped session variable inside the current transaction
+            entityManager
+                .createNativeQuery("SET LOCAL app.current_user_id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+        }
+    }
+}
+Use code with caution.
+Note: Using SET LOCAL ensures that the variable is automatically wiped out as soon as the transaction completes or rolls back. This prevents your connection pool from leaking one user's identity to a completely different user's web request.
+Step B: Keep Your Repositories Standard
+Because the database handles the filtering under the hood, your Spring Data JPA repositories stay completely clean. You don't need to add explicit user_id parameters to your methods.
+java
+@Repository
+public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
+    // This will AUTOMATICALLY filter and only return invoices belonging to the active Spring Security user
+    List<Invoice> findAll(); 
+}
+
+
+---------------
+

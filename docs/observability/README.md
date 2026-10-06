@@ -43,6 +43,9 @@ flowchart LR
 | `storeforge_ratelimit_rejected_total{limiter}` | 429s per limiter | `RateLimiter` | Dashboard |
 | `storeforge_inventory_reservations_total{outcome}`, `…_expired_total` | Demand vs. stock-outs; abandoned checkouts | inventory | Dashboard |
 | `storeforge_notifications_emails_total{outcome}` | Email delivery | notifications | Prometheus |
+| `checkout.complete` span + `storeforge_checkout_complete_*` timer | Completion latency; the span parents the reservation and SQL spans | `CheckoutService` Observation | Tempo / Prometheus |
+| `storeforge_checkouts_completions_total{outcome}` | `completed` / `total_changed` (price changed during checkout) | `CheckoutService` | Prometheus |
+| `storeforge_idempotency_replays_total{scope}` | Retries answered from storage; a spike means clients are timing out | `Idempotency` | Prometheus |
 | `jvm_*`, `process_*` | Memory, GC, threads, CPU | Micrometer binders | Bundled "JVM Overview" dashboard |
 
 Log levels ([blueprint conventions](../blueprint/15-observability-monitoring.md#logs)): ERROR = unexpected, needs a human; WARN = handled degradation; INFO = business-significant state changes; DEBUG off by default.

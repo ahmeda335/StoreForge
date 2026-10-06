@@ -75,6 +75,19 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 | Telemetry endpoints not public | Compose binds Prometheus/Tempo/Loki APIs to 127.0.0.1; Grafana's default admin/admin is dev-only |
 | Telemetry failure isolation | Async batch export: a Collector outage never blocks requests ([EXP-005](../experiments/EXP-005-collector-unavailable.md)) |
 
+## P7 additions (cart & checkout)
+
+| Control | Implementation | Verified by |
+|---|---|---|
+| Anonymous ownership of carts | Random cart token, hashed at rest, required on every call, `no-store`; wrong token = unknown id (404) | `CartIT` |
+| Cross-store carts | Hostname-resolved store + RLS | `CartIT.theCartTokenIsRequiredAndCartsDoNotCrossStores` |
+| Price tampering | Prices only from the catalog; the client only confirms `expectedTotal` | `CheckoutIT` |
+| Duplicate submission | Required `Idempotency-Key`; row lock + state machine | `CheckoutIdempotencyIT` |
+| Idempotency-key leakage | Fingerprint includes the cart-token hash, so no replay to other shoppers | `CheckoutIdempotencyIT.aKeyCannotBeReusedForADifferentRequestOrByAnotherShopper` |
+| Customer PII | Store-scoped, `customers:read` permission, storefront responses never expose other customers | `TenantIsolationIT`, `CheckoutIT` |
+
+**Not yet:** storefront rate limiting (cart creation and checkout-completion abuse, card testing later) arrives with Redis in P12.
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

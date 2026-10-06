@@ -9,8 +9,9 @@
 | P4 Catalog | ✅ Done (2026-10-06) | See below |
 | P5 Inventory & concurrency | ✅ Done (2026-10-06) | See below |
 | P6 Observability stack & tracing | ✅ Done (2026-10-06) | See below |
-| P7 Customers, cart & checkout | ⏭ Next (paused here by request) | Study list below |
-| P8–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P7 Customers, cart & checkout | ✅ Done (2026-10-06) | See below |
+| P8 Orders | ⏭ Next | Study list below |
+| P9–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -127,4 +128,21 @@
 
 **Known limitations:** no alerts/SLOs yet (P15/P16); exemplars not verified; telemetry is not persisted across `otel-lgtm` restarts; OTLP exporter failures log at ERROR (noise, EXP-005); async propagation comes with jobs (P9).
 
-**Study before P7:** idempotency keys (Stripe's design: key + request fingerprint + stored response; in-flight vs. completed; scope and TTL); HTTP method semantics (safe vs. idempotent); bearer secrets for anonymous carts (why hash the cart token); price snapshotting (cart = live prices, checkout = frozen totals); money rounding for line totals; how checkout will call `Inventory.reserve` inside one transaction; customer accounts scoped per store (a separate audience from merchant tokens: blueprint 07).
+**Study before P7 (historical):** idempotency keys (Stripe's design: key + request fingerprint + stored response; in-flight vs. completed; scope and TTL); HTTP method semantics (safe vs. idempotent); bearer secrets for anonymous carts (why hash the cart token); price snapshotting (cart = live prices, checkout = frozen totals); money rounding for line totals; how checkout will call `Inventory.reserve` inside one transaction; customer accounts scoped per store (a separate audience from merchant tokens: blueprint 07).
+
+## P7: Customers, cart & checkout (as built)
+
+**What exists**
+- `checkout` module: anonymous carts (hashed bearer token, live pricing, limits), checkout sessions (email, shipping address, live totals), completion (one transaction: lock → price from catalog → `expectedTotal` guard → reserve stock → upsert customer → freeze lines/totals → close cart), `checkout.complete` Observation.
+- `customers` module: store-scoped guest customers (race-free upsert), admin list/get.
+- `catalog`: first public API `VariantLookup`.
+- Shared `Idempotency`: required `Idempotency-Key` on completion, stored responses, fingerprint incl. caller identity, `Idempotent-Replayed` header.
+- V6 migration; [ADR-013](decisions/ADR-013-checkout-and-idempotency.md); [EXP-006](experiments/EXP-006-duplicate-checkout-completion.md).
+
+**Tests: 148 total** (37 unit + 111 integration). New: `CartIT` (5), `CheckoutIT` (6), `CheckoutIdempotencyIT` (5): 20 concurrent same-key retries, cross-shopper key reuse, retry after failure. Mutation-checked.
+
+**Verified manually:** the full shopper flow over HTTP against the Compose database (V6 applied to the existing volume): cart `no-store`, checkout total 49.00, completion `200 replayed=false`, identical retry `200 replayed=true`, stock 4 with 2 reserved, one customer, zero ERROR log lines.
+
+**Known limitations:** no orders yet (P8); shipping/tax are 0 (P13); no storefront customer accounts; no cleanup of abandoned carts/idempotency keys (P9 jobs); no storefront rate limiting (P12); single-transaction idempotency must be upgraded to an IN_PROGRESS model for payments (P10).
+
+**Study before P8:** order state machines (financial vs. fulfillment status, illegal transitions); per-store human-friendly order numbers without gaps-vs-performance surprises (counter row with `UPDATE ... RETURNING` vs. sequences, why sequences can't be per tenant easily); compensation (cancel → release stock); what "PENDING_PAYMENT" means before payments exist; snapshotting addresses and lines on the order; how completion will create the order inside the same transaction; merchant order list read models.

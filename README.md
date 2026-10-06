@@ -2,7 +2,7 @@
 
 A multi-tenant commerce platform (Shopify-inspired), built as a long-term learning project in backend engineering, SaaS architecture, reliability, security, observability and production operations.
 
-> Status: **Phase 5 (Inventory & concurrency) complete.** See [docs/PROGRESS.md](docs/PROGRESS.md).
+> Status: **Phase 6 (Observability stack & tracing) complete.** Next: P7 (customers, cart & checkout). See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Quick start
 
@@ -18,6 +18,8 @@ curl -i localhost:8080/anything      # → 404 application/problem+json with a r
 ```
 
 Run the app in a container instead: `docker compose --profile app up -d --build`.
+
+Observability: `docker compose --profile observability up -d` and run the app with `SPRING_PROFILES_ACTIVE=otel`, then open Grafana at http://localhost:3000 (dashboard *StoreForge Overview*).
 
 ## Tests
 

@@ -23,4 +23,8 @@
 | Flyway fails on V5: `role "storeforge_tenant_scanner" does not exist` | Local volume provisioned before P5 (init scripts only run on an empty volume) | `docker compose down -v && docker compose up -d` (deletes local data) |
 | `409 stock_below_reserved` | Trying to reduce on-hand below units reserved by open checkouts | Wait for checkouts to complete/expire, or adjust by less |
 | Storefront shows `available: false` for a new product | Inventory never stocked (missing items count as 0) | Adjust stock (`RECEIVED`) or set `tracked: false` |
+| No data in Grafana | App not started with `SPRING_PROFILES_ACTIVE=otel`, or the observability profile isn't up | Start both; metrics arrive every 10s, logs/traces within seconds |
+| App logs `ERROR ... HttpExporter Failed to export ...` | Collector unreachable (stopped/restarting); telemetry is dropped, requests are unaffected ([EXP-005](../experiments/EXP-005-collector-unavailable.md)) | Start/restart `otel-lgtm`, or run without the `otel` profile |
+| Grafana: StoreForge dashboard missing; log says `deprecatedInternalID ... already in use` | Stale provisioning state inside the container after editing the dashboard file | `docker compose --profile observability up -d --force-recreate otel-lgtm` |
+| PromQL returns nothing for `http_server_requests_seconds_*` | OTLP metrics are in milliseconds | Use `http_server_requests_milliseconds_*` in Prometheus/Grafana |
 | Compile fails on a warning | `-Xlint:all -Werror` | Fix the warning, or suppress it narrowly with a justification comment |

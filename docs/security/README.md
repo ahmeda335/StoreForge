@@ -67,6 +67,14 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 | Narrow RLS bypass for workers | Definer function returns store ids only, pinned `search_path`, EXECUTE only for the app role; owner role NOLOGIN, not grantable to the app | [ADR-011](../decisions/ADR-011-cross-tenant-background-work.md); `SET ROLE` denied (manual check) |
 | Foreign variant ids | Composite FK `(store_id, variant_id)` → 404 | `InventoryAdminIT` |
 
+## P6 additions (observability)
+
+| Control | Implementation |
+|---|---|
+| No secrets in telemetry | JDBC spans without parameter values; log redaction rules apply to OTLP logs too (same records) |
+| Telemetry endpoints not public | Compose binds Prometheus/Tempo/Loki APIs to 127.0.0.1; Grafana's default admin/admin is dev-only |
+| Telemetry failure isolation | Async batch export: a Collector outage never blocks requests ([EXP-005](../experiments/EXP-005-collector-unavailable.md)) |
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

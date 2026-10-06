@@ -14,6 +14,7 @@
 |---|---|---|---|
 | PostgreSQL 17 | `docker compose up -d` | 5432 (`POSTGRES_PORT` to change) | Roles created by `infra/postgres/init/01-create-roles.sh` on first start |
 | Mailpit | `docker compose up -d` | 1025 (SMTP), [8025 (web UI)](http://localhost:8025) | Catches every email the app sends |
+| Observability (Collector, Prometheus, Tempo, Loki, Grafana) | `docker compose --profile observability up -d` | [3000 Grafana](http://localhost:3000) (admin/admin), 4317/4318 OTLP; 127.0.0.1:9090/3200/3100 APIs | Run the app with `SPRING_PROFILES_ACTIVE=otel` to send telemetry; data is not persisted |
 | App (container) | `docker compose --profile app up -d --build` | 8080, 127.0.0.1:8081 | Same image as CI builds |
 | App (host) | `./mvnw spring-boot:run` | 8080, 8081 | Fastest dev loop |
 
@@ -39,6 +40,11 @@ All have local defaults in `application.yml`; override them via the environment 
 | `AUTH_ALLOW_EPHEMERAL_SIGNING_KEY` | `true` | Must be `false` outside local dev |
 | `AUTH_ALLOWED_ORIGINS` | `http://localhost:4200` | Origins allowed to call refresh/logout |
 | `AUTH_RATE_LIMIT_PER_IP` / `_PER_EMAIL` | 30 / 10 per minute | Credential endpoint limits |
+| `SPRING_PROFILES_ACTIVE` | (none) | `otel` enables OTLP export of traces, metrics and logs |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | Collector base URL (OTLP/HTTP) |
+| `TRACING_SAMPLING_PROBABILITY` | `1.0` | Head sampling ratio |
+| `INVENTORY_SWEEPER_INTERVAL` | `30s` | Reservation expiry sweep interval |
+| `APP_PROFILES` (Compose) | `default` | Profiles for the containerized app, e.g. `otel` |
 
 ## Database
 
@@ -75,4 +81,4 @@ See [testing/README.md](../testing/README.md). `./mvnw verify` needs Docker runn
 
 ## Later phases add
 
-Mailpit (P2), observability stack `grafana/otel-lgtm` (P6), Redis (P12), MinIO (P13), k6 (P15). Each comes behind its own Compose profile.
+Redis (P12), MinIO (P13), k6 (P15). Each comes behind its own Compose profile.

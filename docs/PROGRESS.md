@@ -8,8 +8,9 @@
 | P3 Stores, tenancy & authorization | ✅ Done (2026-10-06) | See below |
 | P4 Catalog | ✅ Done (2026-10-06) | See below |
 | P5 Inventory & concurrency | ✅ Done (2026-10-06) | See below |
-| P6 Observability stack & tracing | ⏭ Next | Study list below |
-| P7–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P6 Observability stack & tracing | ✅ Done (2026-10-06) | See below |
+| P7 Customers, cart & checkout | ⏭ Next (paused here by request) | Study list below |
+| P8–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -109,4 +110,21 @@
 
 **Known limitations:** no HTTP reservation path until checkout (P7); single location; hot-item throughput unmeasured (P15). **Existing local volumes must be re-created** (`docker compose down -v`) for the new role.
 
-**Study before P6:** the three signals and when each answers a question; OpenTelemetry concepts (API vs. SDK, resource, span, context propagation, OTLP, Collector); W3C `traceparent`; Micrometer Observation API and how Spring Boot 4 bridges it to OTel; Prometheus data model (labels, cardinality), counters vs. gauges vs. histograms and `rate()`/`histogram_quantile()`; exemplars (metric → trace links); head vs. tail sampling.
+**Study before P6 (historical):** the three signals and when each answers a question; OpenTelemetry concepts (API vs. SDK, resource, span, context propagation, OTLP, Collector); W3C `traceparent`; Micrometer Observation API and how Spring Boot 4 bridges it to OTel; Prometheus data model (labels, cardinality), counters vs. gauges vs. histograms and `rate()`/`histogram_quantile()`; exemplars (metric → trace links); head vs. tail sampling.
+
+## P6: Observability stack & tracing (as built)
+
+**What exists**
+- OpenTelemetry via `spring-boot-starter-opentelemetry`: traces (HTTP, Spring Security, JDBC via `datasource-micrometer`, scheduled tasks), OTLP metrics (10s), OTLP logs via the logback appender. All export is off unless `SPRING_PROFILES_ACTIVE=otel`.
+- Correlation: `X-Trace-Id` response header, `traceId` in problem details, `traceId`/`spanId` in JSON logs, `storeforge.store_id` span attribute, MDC ids as Loki structured metadata.
+- Custom Observation `inventory.reserve` (low- vs. high-cardinality key values).
+- Compose profile `observability` (`grafana/otel-lgtm:0.35.0`) with the provisioned **StoreForge Overview** dashboard (RED, pool, business counters, warn/error logs).
+- [ADR-012](decisions/ADR-012-observability-pipeline.md).
+
+**Tests: 132 total** (37 unit + 95 integration). New: `TracingIT` (span tree, JDBC children, tenant attribute, business observation parenting SQL); `ErrorResponseIT` checks problem `traceId` = header = log line.
+
+**Verified manually against the running stack:** an inventory adjustment produced one 18-span trace in Tempo (`http post …` → security spans → `connection`/`query`); TraceQL `{ span.storeforge.store_id = "…" }` found the store's 20 traces; Prometheus received `http_server_requests_milliseconds_*`, Hikari and `storeforge_*` series, with p95 per route (login ≈ 89 ms, from Argon2, as expected); Loki received logs whose `trace_id` matched the 404 response's `X-Trace-Id`; the dashboard was provisioned with 12 panels. [EXP-005](experiments/EXP-005-collector-unavailable.md) recorded a Collector restart during export.
+
+**Known limitations:** no alerts/SLOs yet (P15/P16); exemplars not verified; telemetry is not persisted across `otel-lgtm` restarts; OTLP exporter failures log at ERROR (noise, EXP-005); async propagation comes with jobs (P9).
+
+**Study before P7:** idempotency keys (Stripe's design: key + request fingerprint + stored response; in-flight vs. completed; scope and TTL); HTTP method semantics (safe vs. idempotent); bearer secrets for anonymous carts (why hash the cart token); price snapshotting (cart = live prices, checkout = frozen totals); money rounding for line totals; how checkout will call `Inventory.reserve` inside one transaction; customer accounts scoped per store (a separate audience from merchant tokens: blueprint 07).

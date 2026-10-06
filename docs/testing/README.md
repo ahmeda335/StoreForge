@@ -22,17 +22,18 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - Each test uses unique emails (`uniqueEmail()`) and stores (`StoreFlows.uniqueHandle()`), because the context, database and rate-limiter buckets are shared across test classes.
 - `StoreFlows` creates owners with stores, roles and invited members over HTTP; `CatalogFlows` creates products.
 - Scheduling is **off** in tests (`storeforge.scheduling.enabled=false`); tests call background work (e.g. `ReservationSweeper.sweepOnce()`) explicitly.
+- Spans are captured by an `InMemorySpanExporter` bean (all ITs); call `SdkTracerProvider.forceFlush()` before asserting. No OTLP export happens in tests (the `otel` profile is off).
 - `QueryCounter` (test-only `BeanPostProcessor`) wraps the `DataSource` and counts prepared statements: use it to assert constant query counts for list endpoints.
 - Concurrency tests start N threads on a `CountDownLatch` and assert **invariants** (exactly one user, exactly one successful rotation), not just "no exception".
 
-## Current suite (P1–P5)
+## Current suite (P1–P6)
 
 | Test | Level | Protects |
 |---|---|---|
 | `RequestIdsTest` | Unit | Header validation incl. log-forging inputs; generated ID format |
 | `ModularityTest` | Architecture | Module boundaries, no cycles (Spring Modulith) |
 | `DatabaseRolesIT` | Integration | Runtime role is non-owner, cannot DDL (42501), migrations applied by owner, DB-side timeouts present |
-| `ErrorResponseIT` | API | Problem Details format, `code`, `requestId`; request-ID propagation/replacement; opaque 500 logged as JSON with the request ID |
+| `ErrorResponseIT` | API | Problem Details format, `code`, `requestId`, `traceId`; request-ID propagation/replacement; opaque 500 logged as JSON with request and trace ids |
 | `OperationalEndpointsIT` | API | Liveness excludes DB; readiness includes DB; Prometheus metrics present; actuator not on the public port |
 | `IdsTest`, `RateLimiterTest`, `EmailAddressTest` | Unit | UUIDv7 layout/order; token bucket + Retry-After; email normalization/validation |
 | `RegistrationIT` | API + concurrency | Verify-before-login, single-use links, enumeration-identical responses, normalization, **8 concurrent registrations → 1 user**, 422 field errors, unknown properties → 400 |
@@ -52,6 +53,7 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 | `InventoryReservationIT` | Integration + concurrency | Commit/release semantics, all-or-nothing, idempotency, **3 concurrent sweepers expire each reservation once** |
 | `InventoryConcurrencyIT` | Concurrency | **100 buyers / 1 unit (×3)**, 80 / 50, opposite lock orders (no deadlock), ledger == levels |
 | `OversellExperimentIT` | Experiment | EXP-004: naive oversells (10/50), SERIALIZABLE aborts, conditional update exactly 1 |
+| `TracingIT` | Observability | One trace per request with JDBC `query` spans and the `storeforge.store_id` attribute; `inventory.reserve` parents its SQL spans (in-memory span exporter) |
 | `StorefrontCatalogIT` | API + performance | Hostname → store, only ACTIVE, no internal fields, per-store handles, unknown host, **N+1 detector** (`QueryCounter`) |
 
 **Mutation testing by hand:** removing the store row lock makes the write-skew test fail 5/5 ([EXP-003](../experiments/EXP-003-write-skew-last-owner.md)). Do this whenever a test guards a concurrency mechanism: a test that passes without the mechanism proves nothing.

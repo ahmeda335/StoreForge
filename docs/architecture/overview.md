@@ -2,9 +2,9 @@
 
 > This page describes what **exists in code now**. The target architecture is in [blueprint/03-architecture.md](../blueprint/03-architecture.md). Diagrams marked *planned* link to the blueprint and are redrawn here when their phase is implemented.
 
-Current phase: **P5 Inventory & concurrency** (complete).
+Current phase: **P6 Observability stack & tracing** (complete). Telemetry pipeline: [observability/README.md](../observability/README.md#pipeline).
 
-## System context (P5)
+## System context (P6)
 
 ```mermaid
 flowchart LR
@@ -30,6 +30,7 @@ flowchart LR
     NT -->|SMTP| MAIL[Mailpit / email provider]
     FW[Flyway at startup] -->|"as storeforge_owner (DDL)"| PG
     App -->|"JSON logs on stdout"| Logs[(container log)]
+    App -.->|"OTLP traces/metrics/logs (profile otel)"| LGTM["otel-lgtm: Collector → Tempo/Prometheus/Loki → Grafana"]
 ```
 
 ## Request flow (unauthenticated request, P1)

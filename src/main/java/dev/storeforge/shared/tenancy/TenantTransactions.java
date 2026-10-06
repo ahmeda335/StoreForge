@@ -1,5 +1,7 @@
 package dev.storeforge.shared.tenancy;
 
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import java.util.function.Supplier;
 import org.slf4j.MDC;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -31,17 +33,28 @@ public class TenantTransactions {
 
     public static final String MDC_KEY = "storeId";
 
+    /** Span attribute: lets Tempo answer "show me the slow requests of store X". */
+    public static final String SPAN_TAG = "storeforge.store_id";
+
     private final TransactionTemplate transaction;
     private final JdbcClient jdbc;
+    private final Tracer tracer;
 
-    TenantTransactions(TransactionTemplate transaction, JdbcClient jdbc) {
+    TenantTransactions(TransactionTemplate transaction, JdbcClient jdbc, Tracer tracer) {
         this.transaction = transaction;
         this.jdbc = jdbc;
+        this.tracer = tracer;
     }
 
     public <T> T inStore(StoreId storeId, Supplier<T> work) {
         String previousMdc = MDC.get(MDC_KEY);
         MDC.put(MDC_KEY, storeId.toString());
+        // Store id on the current span (traces), NOT as a metric label: with thousands of stores it
+        // would multiply every time series by the number of tenants (cardinality explosion).
+        Span span = tracer.currentSpan();
+        if (span != null) {
+            span.tag(SPAN_TAG, storeId.toString());
+        }
         try {
             return transaction.execute(status -> {
                 bind(storeId);

@@ -1,6 +1,8 @@
 package dev.storeforge.shared.web;
 
 import dev.storeforge.shared.error.StoreForgeException;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +42,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
     private static final String TYPE_BASE = "https://docs.storeforge.dev/errors/";
+
+    private final Tracer tracer;
+
+    ApiExceptionHandler(Tracer tracer) {
+        this.tracer = tracer;
+    }
 
     @ExceptionHandler(StoreForgeException.class)
     ResponseEntity<Object> handleDomain(StoreForgeException exception, WebRequest request) {
@@ -98,7 +106,7 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return super.createResponseEntity(body, headers, statusCode, request);
     }
 
-    private static void enrich(ProblemDetail problem, HttpStatusCode statusCode, WebRequest request) {
+    private void enrich(ProblemDetail problem, HttpStatusCode statusCode, WebRequest request) {
         String code = codeFor(statusCode);
         if (problem.getType() == null || URI.create("about:blank").equals(problem.getType())) {
             problem.setType(URI.create(TYPE_BASE + code.replace('_', '-')));
@@ -109,6 +117,10 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         Object requestId = request.getAttribute(RequestIds.REQUEST_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
         if (requestId != null) {
             problem.setProperty("requestId", requestId);
+        }
+        Span span = tracer.currentSpan();
+        if (span != null) {
+            problem.setProperty("traceId", span.context().traceId());
         }
     }
 

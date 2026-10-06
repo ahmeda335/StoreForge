@@ -70,6 +70,12 @@ server:
     include-stacktrace: never
     include-message: never
 
+# JDBC spans (datasource-micrometer): connection acquisition and queries; never parameter values.
+jdbc:
+  includes: connection, query
+  datasource-proxy:
+    include-parameter-values: false
+
 storeforge:
   inventory:
     sweeper:
@@ -135,6 +141,24 @@ management:
   info:
     env:
       enabled: false
+  # Traces: every request is sampled locally; production lowers this (and tail-samples in the Collector).
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      otlp:
+        enabled: false        # turned on by the "otel" profile (application-otel.yml)
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  logging:
+    export:
+      otlp:
+        enabled: false
+  opentelemetry:
+    resource-attributes:
+      deployment.environment: ${ENVIRONMENT:local}
   metrics:
     tags:
       application: storeforge

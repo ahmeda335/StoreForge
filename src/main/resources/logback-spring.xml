@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spring Boot's console appender (structured JSON via logging.structured.format.console) plus the
+  OpenTelemetry appender, which forwards every log record to the OTel SDK. The SDK exports it over
+  OTLP only when the "otel" profile enables log export; otherwise records are dropped.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/structured-console-appender.xml"/>
+
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureMdcAttributes>requestId,storeId,userId</captureMdcAttributes>
+        <captureCodeAttributes>false</captureCodeAttributes>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="OTEL"/>
+    </root>
+</configuration>

@@ -1,5 +1,6 @@
 package dev.storeforge.support;
 
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +68,12 @@ public abstract class IntegrationTest {
         @Bean
         static QueryCounter queryCounter() {
             return new QueryCounter();
+        }
+
+        /** Captures finished spans in memory so tests can assert on trace structure. */
+        @Bean
+        InMemorySpanExporter inMemorySpanExporter() {
+            return InMemorySpanExporter.create();
         }
     }
 }

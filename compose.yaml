@@ -30,6 +30,22 @@ services:
       - "1025:1025"
       - "8025:8025"
 
+  # OpenTelemetry Collector + Prometheus + Tempo + Loki + Grafana in one container (dev only).
+  # Grafana: http://localhost:3000 (admin/admin). The app ships OTLP to 4318 with SPRING_PROFILES_ACTIVE=otel.
+  otel-lgtm:
+    profiles: ["observability"]
+    image: grafana/otel-lgtm:0.35.0
+    ports:
+      - "3000:3000"                # Grafana
+      - "4317:4317"                # OTLP gRPC
+      - "4318:4318"                # OTLP HTTP
+      - "127.0.0.1:9090:9090"      # Prometheus API (debugging queries)
+      - "127.0.0.1:3200:3200"      # Tempo API
+      - "127.0.0.1:3100:3100"      # Loki API
+    volumes:
+      - ./infra/grafana/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/storeforge.yaml:ro
+      - ./infra/grafana/dashboards:/otel-lgtm/storeforge-dashboards:ro
+
   app:
     profiles: ["app"]
     build: .
@@ -39,6 +55,9 @@ services:
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:-storeforge_app_dev}
       ENVIRONMENT: docker
       MAIL_HOST: mailpit
+      # With "--profile observability" too, telemetry goes to the otel-lgtm container.
+      SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-default}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4318
     ports:
       - "8080:8080"
       - "127.0.0.1:8081:8081"

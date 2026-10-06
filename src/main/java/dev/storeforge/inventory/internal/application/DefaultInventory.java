@@ -9,6 +9,8 @@ import dev.storeforge.inventory.internal.persistence.InventoryStore.ReservationR
 import dev.storeforge.shared.error.ConstraintViolations;
 import dev.storeforge.shared.tenancy.StoreId;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,11 +30,13 @@ class DefaultInventory implements Inventory {
 
     private final InventoryStore store;
     private final MeterRegistry meterRegistry;
+    private final ObservationRegistry observations;
     private final Clock clock;
 
-    DefaultInventory(InventoryStore store, MeterRegistry meterRegistry, Clock clock) {
+    DefaultInventory(InventoryStore store, MeterRegistry meterRegistry, ObservationRegistry observations, Clock clock) {
         this.store = store;
         this.meterRegistry = meterRegistry;
+        this.observations = observations;
         this.clock = clock;
     }
 
@@ -44,6 +48,16 @@ class DefaultInventory implements Inventory {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void reserve(StoreId storeId, UUID checkoutId, List<ReservationLine> lines, Duration ttl) {
+        // One Observation = a timer metric (low-cardinality tags only) AND a span (may also carry
+        // high-cardinality attributes such as ids, which never become metric labels).
+        Observation.createNotStarted("storeforge.inventory.reserve", observations)
+                .contextualName("inventory.reserve")
+                .lowCardinalityKeyValue("lines", lines.size() == 1 ? "single" : "multiple")
+                .highCardinalityKeyValue("storeforge.checkout_id", checkoutId.toString())
+                .observe(() -> doReserve(storeId, checkoutId, lines, ttl));
+    }
+
+    private void doReserve(StoreId storeId, UUID checkoutId, List<ReservationLine> lines, Duration ttl) {
         Instant now = clock.instant();
         Map<UUID, Integer> quantities = new TreeMap<>(Comparator.naturalOrder());
         lines.forEach(line -> quantities.merge(line.variantId(), line.quantity(), Integer::sum));

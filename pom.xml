@@ -22,6 +22,9 @@
         <spring-modulith.version>2.0.8</spring-modulith.version>
         <bucket4j.version>8.21.0</bucket4j.version>
         <bouncycastle.version>1.86</bouncycastle.version>
+        <datasource-micrometer.version>2.3.0</datasource-micrometer.version>
+        <!-- Must match the OpenTelemetry SDK managed by Spring Boot (1.55.x) -->
+        <otel-instrumentation.version>2.21.0-alpha</otel-instrumentation.version>
     </properties>
 
     <dependencyManagement>
@@ -103,6 +106,24 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- Telemetry: Micrometer Observation → OpenTelemetry (traces + metrics over OTLP) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-opentelemetry</artifactId>
+        </dependency>
+        <!-- Ships log records over OTLP (to Loki), carrying trace/span ids -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+            <version>${otel-instrumentation.version}</version>
+        </dependency>
+        <!-- One span per JDBC connection acquisition / query, so traces show the database work -->
+        <dependency>
+            <groupId>net.ttddyy.observation</groupId>
+            <artifactId>datasource-micrometer-spring-boot</artifactId>
+            <version>${datasource-micrometer.version}</version>
+        </dependency>
+
         <!-- Module boundaries (@ApplicationModule annotations) -->
         <dependency>
             <groupId>org.springframework.modulith</groupId>
@@ -123,6 +144,11 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-testing</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

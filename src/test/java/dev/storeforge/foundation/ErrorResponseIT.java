@@ -60,6 +60,11 @@ class ErrorResponseIT extends IntegrationTest {
                 .doesNotContain("at dev.storeforge");
 
         String requestId = response.headers().firstValue(RequestIds.HEADER).orElseThrow();
+        String traceId = response.headers().firstValue("X-Trace-Id").orElseThrow();
+        assertThat(response.body()).contains("\"traceId\":\"" + traceId + "\"");
+        assertThat(output.getOut())
+                .as("the log line carries the trace id, linking logs and traces")
+                .contains("\"traceId\":\"" + traceId + "\"");
         assertThat(output.getOut())
                 .as("the ERROR log line is JSON and carries the request id")
                 .contains("\"requestId\":\"" + requestId + "\"")

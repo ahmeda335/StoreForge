@@ -2,7 +2,8 @@
  * Catalog: products, their options and variants (prices, SKUs), for the merchant admin API and the
  * public storefront API.
  *
- * <p>No public API for other modules yet; checkout (P7) will get a {@code VariantLookup}.
+ * <p>Public API: {@link dev.storeforge.catalog.VariantLookup} (current price and sellability of
+ * variants, used by checkout).
  */
 @ApplicationModule(displayName = "Catalog")
 package dev.storeforge.catalog;

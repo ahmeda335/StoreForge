@@ -1,0 +1,13 @@
+# Domain Modules
+
+One page per business module, written when the module is implemented: responsibility, aggregates and invariants, tables, public API, events published/consumed, security notes, and tests that protect it.
+
+| Module | Phase | Page |
+|---|---|---|
+| `shared` (kernel) | P1 | No business logic. See [architecture overview](../architecture/overview.md) |
+| `identity` | P2 | — |
+| `stores` | P3 | — |
+| `catalog` | P4 | — |
+| `inventory` | P5 | — |
+
+Target design for all modules: [blueprint/03-architecture.md](../blueprint/03-architecture.md) and [blueprint/05-domain-model.md](../blueprint/05-domain-model.md).

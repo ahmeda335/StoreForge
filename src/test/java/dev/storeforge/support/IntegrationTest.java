@@ -61,5 +61,10 @@ public abstract class IntegrationTest {
         RecordingEmailSender recordingEmailSender() {
             return new RecordingEmailSender();
         }
+
+        @Bean
+        static QueryCounter queryCounter() {
+            return new QueryCounter();
+        }
     }
 }

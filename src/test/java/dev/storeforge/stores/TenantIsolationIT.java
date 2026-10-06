@@ -33,7 +33,12 @@ class TenantIsolationIT extends IntegrationTest {
             "POST /admin/v1/stores/{storeId}/roles", "{\"name\":\"x\",\"permissions\":[]}",
             "POST /admin/v1/stores/{storeId}/invitations", "{\"email\":\"x@example.test\",\"roleId\":\"" + UUID.randomUUID() + "\"}",
             "POST /admin/v1/stores/{storeId}/invitations/acceptance", "{\"token\":\"not-a-real-token\"}",
-            "PATCH /admin/v1/stores/{storeId}/members/{userId}", "{\"roleId\":\"" + UUID.randomUUID() + "\"}");
+            "PATCH /admin/v1/stores/{storeId}/members/{userId}", "{\"roleId\":\"" + UUID.randomUUID() + "\"}",
+            "POST /admin/v1/stores/{storeId}/products",
+            "{\"title\":\"Injected\",\"options\":[],\"variants\":[{\"price\":\"1.00\",\"options\":[]}]}",
+            "PATCH /admin/v1/stores/{storeId}/products/{productId}", "{\"title\":\"Hijacked\"}",
+            "POST /admin/v1/stores/{storeId}/products/{productId}/variants", "{\"price\":\"1.00\",\"options\":[]}",
+            "PATCH /admin/v1/stores/{storeId}/products/{productId}/variants/{variantId}", "{\"price\":\"1.00\"}");
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")

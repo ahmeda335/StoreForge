@@ -31,6 +31,12 @@ spring:
 
   jpa:
     open-in-view: false          # no lazy loading during view rendering; transactions end in the service layer
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50         # insert a product's variants in batches, not one round trip each
+        order_inserts: true
+        order_updates: true
     hibernate:
       ddl-auto: validate         # Flyway owns the schema; Hibernate only checks the mapping matches it
 

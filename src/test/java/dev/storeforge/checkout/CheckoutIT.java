@@ -50,7 +50,8 @@ class CheckoutIT extends IntegrationTest {
         assertThat(body.get("status").asString()).isEqualTo("COMPLETED");
         assertThat(body.get("email").asString()).isEqualTo("ada@example.test");
         assertThat(body.get("lines").get(0).get("unitPrice").get("amount").asString()).isEqualTo("14.99");
-        assertThat(body.has("reservationExpiresAt")).isTrue();
+        assertThat(body.has("paymentDueAt")).isTrue();
+        assertThat(body.get("orderName").asString()).isEqualTo("#1001");
         assertThat(stock()).as("onHand, reserved").containsExactly(5, 2);
 
         var customers = Json.parse(api.get("/admin/v1/stores/" + shop.storeId() + "/customers", shop.auth()).body()).get("data");

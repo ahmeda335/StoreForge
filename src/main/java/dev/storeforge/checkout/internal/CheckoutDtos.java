@@ -103,14 +103,15 @@ final class CheckoutDtos {
     record CheckoutResponse(UUID id, String status, @Nullable String email, @Nullable AddressDto shippingAddress,
                             List<CheckoutLineResponse> lines, List<UUID> unavailableItems, MoneyDto subtotal, MoneyDto shipping,
                             MoneyDto tax, MoneyDto total, @Nullable UUID customerId, @Nullable Instant completedAt,
-                            @Nullable Instant reservationExpiresAt) {
+                            @Nullable Instant paymentDueAt, @Nullable UUID orderId, @Nullable String orderName) {
         static CheckoutResponse of(CheckoutView view) {
             String c = view.currency();
             return new CheckoutResponse(view.id(), view.status(), view.email(), AddressDto.of(view.shippingAddress()),
                     view.lines().stream().map(line -> CheckoutLineResponse.of(line, c)).toList(),
                     view.unavailable().stream().map(Line::variantId).toList(),
                     MoneyDto.of(view.subtotalMinor(), c), MoneyDto.of(view.shippingMinor(), c), MoneyDto.of(view.taxMinor(), c),
-                    MoneyDto.of(view.totalMinor(), c), view.customerId(), view.completedAt(), view.reservationExpiresAt());
+                    MoneyDto.of(view.totalMinor(), c), view.customerId(), view.completedAt(), view.reservationExpiresAt(),
+                    view.orderId(), view.orderNumber() == null ? null : "#" + view.orderNumber());
         }
     }
 }

@@ -28,7 +28,7 @@ class CheckoutStore {
     record Checkout(UUID id, UUID cartId, String status, @Nullable String email, @Nullable Address address,
                     @Nullable UUID customerId, String currency, @Nullable Long subtotalMinor, @Nullable Long shippingMinor,
                     @Nullable Long taxMinor, @Nullable Long totalMinor, @Nullable Instant completedAt,
-                    @Nullable Instant reservationExpiresAt) {
+                    @Nullable Instant reservationExpiresAt, @Nullable UUID orderId, @Nullable Long orderNumber) {
     }
 
     record Line(UUID variantId, String productTitle, String variantTitle, @Nullable String sku, long unitPriceMinor,
@@ -38,7 +38,8 @@ class CheckoutStore {
     private static final String COLUMNS = """
             c.id, c.cart_id, c.status, c.email, c.ship_name, c.ship_line1, c.ship_line2, c.ship_city, c.ship_region,
             c.ship_postal_code, c.ship_country, c.customer_id, c.currency, c.subtotal_minor, c.shipping_minor, c.tax_minor,
-            c.total_minor, c.completed_at, c.reservation_expires_at""";
+            c.total_minor, c.completed_at, c.reservation_expires_at, c.order_id,
+            (SELECT o.number FROM orders o WHERE o.store_id = c.store_id AND o.id = c.order_id) AS order_number""";
 
     void create(StoreId storeId, UUID checkoutId, UUID cartId, String currency, Instant now) {
         jdbc.sql("""
@@ -137,15 +138,16 @@ class CheckoutStore {
                 .list();
     }
 
-    void complete(StoreId storeId, UUID checkoutId, UUID customerId, long subtotal, long shipping, long tax, long total,
+    void complete(StoreId storeId, UUID checkoutId, UUID customerId, UUID orderId, long subtotal, long shipping, long tax, long total,
                   Instant reservationExpiresAt, Instant now) {
         jdbc.sql("""
-                UPDATE checkouts SET status = 'COMPLETED', customer_id = :customerId, subtotal_minor = :subtotal,
+                UPDATE checkouts SET status = 'COMPLETED', customer_id = :customerId, order_id = :orderId, subtotal_minor = :subtotal,
                        shipping_minor = :shipping, tax_minor = :tax, total_minor = :total, completed_at = :now,
                        reservation_expires_at = :reservationExpiresAt, updated_at = :now
                  WHERE store_id = :storeId AND id = :id AND status = 'OPEN'
                 """)
                 .param("customerId", customerId)
+                .param("orderId", orderId)
                 .param("subtotal", subtotal)
                 .param("shipping", shipping)
                 .param("tax", tax)
@@ -164,7 +166,8 @@ class CheckoutStore {
         return new Checkout(rs.getObject("id", UUID.class), rs.getObject("cart_id", UUID.class), rs.getString("status"),
                 rs.getString("email"), address, rs.getObject("customer_id", UUID.class), rs.getString("currency").trim(),
                 rs.getObject("subtotal_minor", Long.class), rs.getObject("shipping_minor", Long.class), rs.getObject("tax_minor", Long.class),
-                rs.getObject("total_minor", Long.class), instant(rs, "completed_at"), instant(rs, "reservation_expires_at"));
+                rs.getObject("total_minor", Long.class), instant(rs, "completed_at"), instant(rs, "reservation_expires_at"),
+                rs.getObject("order_id", UUID.class), rs.getObject("order_number", Long.class));
     }
 
     private static @Nullable Instant instant(ResultSet rs, String column) throws SQLException {

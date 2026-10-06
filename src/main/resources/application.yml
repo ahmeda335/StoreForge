@@ -77,6 +77,10 @@ jdbc:
     include-parameter-values: false
 
 storeforge:
+  orders:
+    payment-window: ${ORDER_PAYMENT_WINDOW:15m}
+    reservation-grace: 15m
+    expiry-interval: ${ORDER_EXPIRY_INTERVAL:30s}
   inventory:
     sweeper:
       interval: ${INVENTORY_SWEEPER_INTERVAL:30s}

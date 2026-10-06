@@ -39,7 +39,9 @@ class TenantIsolationIT extends IntegrationTest {
             Map.entry("POST /admin/v1/stores/{storeId}/products/{productId}/variants", "{\"price\":\"1.00\",\"options\":[]}"),
             Map.entry("PATCH /admin/v1/stores/{storeId}/products/{productId}/variants/{variantId}", "{\"price\":\"1.00\"}"),
             Map.entry("POST /admin/v1/stores/{storeId}/variants/{variantId}/inventory/adjustments", "{\"delta\":5,\"reason\":\"RECEIVED\"}"),
-            Map.entry("PATCH /admin/v1/stores/{storeId}/variants/{variantId}/inventory", "{\"tracked\":false}"));
+            Map.entry("PATCH /admin/v1/stores/{storeId}/variants/{variantId}/inventory", "{\"tracked\":false}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/orders/{orderId}/cancellation", "{\"reason\":\"other\"}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/orders/{orderId}/manual-payment", "{}"));
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")

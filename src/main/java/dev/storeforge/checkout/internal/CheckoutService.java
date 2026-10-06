@@ -7,6 +7,7 @@ import dev.storeforge.checkout.internal.CheckoutStore.Line;
 import dev.storeforge.customers.Customers;
 import dev.storeforge.inventory.Inventory;
 import dev.storeforge.inventory.ReservationLine;
+import dev.storeforge.orders.Orders;
 import dev.storeforge.shared.crypto.SecretTokens;
 import dev.storeforge.shared.email.EmailAddress;
 import dev.storeforge.shared.ids.Ids;
@@ -17,7 +18,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,22 +28,20 @@ import org.springframework.stereotype.Service;
 @Service
 class CheckoutService {
 
-    /** How long completed checkouts hold stock while payment happens (payments: P10). */
-    static final Duration RESERVATION_TTL = Duration.ofMinutes(15);
-
     private final CheckoutStore checkouts;
     private final CartStore carts;
     private final CartService cartService;
     private final Pricing pricing;
     private final Inventory inventory;
     private final Customers customers;
+    private final Orders orders;
     private final TenantTransactions tenant;
     private final ObservationRegistry observations;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
 
     CheckoutService(CheckoutStore checkouts, CartStore carts, CartService cartService, Pricing pricing, Inventory inventory,
-                    Customers customers, TenantTransactions tenant, ObservationRegistry observations,
+                    Customers customers, Orders orders, TenantTransactions tenant, ObservationRegistry observations,
                     MeterRegistry meterRegistry, Clock clock) {
         this.checkouts = checkouts;
         this.carts = carts;
@@ -51,6 +49,7 @@ class CheckoutService {
         this.pricing = pricing;
         this.inventory = inventory;
         this.customers = customers;
+        this.orders = orders;
         this.tenant = tenant;
         this.observations = observations;
         this.meterRegistry = meterRegistry;
@@ -60,7 +59,7 @@ class CheckoutService {
     record CheckoutView(UUID id, UUID cartId, String status, @Nullable String email, @Nullable Address shippingAddress,
                         String currency, List<Line> lines, List<Line> unavailable, long subtotalMinor, long shippingMinor,
                         long taxMinor, long totalMinor, @Nullable UUID customerId, @Nullable Instant completedAt,
-                        @Nullable Instant reservationExpiresAt) {
+                        @Nullable Instant reservationExpiresAt, @Nullable UUID orderId, @Nullable Long orderNumber) {
     }
 
     record Started(CheckoutView view, boolean created) {
@@ -104,8 +103,8 @@ class CheckoutService {
     /**
      * Completion, all in ONE transaction (joined by the idempotency record):
      * lock checkout → validate contact → price from catalog → compare with the total the customer
-     * saw → reserve stock (all-or-nothing) → record customer → freeze lines and totals → close cart.
-     * Any failure rolls back everything, including the reservations.
+     * saw → reserve stock (all-or-nothing) → record customer → freeze lines and totals → PLACE THE
+     * ORDER → close cart. Any failure rolls back everything, including the reservations and the order.
      */
     CheckoutView complete(StoreInfo store, UUID checkoutId, @Nullable String cartToken, String expectedTotal) {
         return Observation.createNotStarted("storeforge.checkout.complete", observations)
@@ -148,12 +147,19 @@ class CheckoutService {
         Instant now = clock.instant();
         inventory.reserve(store.id(), checkoutId,
                 priced.lines().stream().map(line -> new ReservationLine(line.variantId(), line.quantity())).toList(),
-                RESERVATION_TTL);
+                orders.reservationHold());
         String[] name = splitName(checkout.address().name());
         UUID customerId = customers.findOrCreate(store.id(), checkout.email(), name[0], name[1]);
         checkouts.insertLines(store.id(), checkoutId, priced.lines());
-        checkouts.complete(store.id(), checkoutId, customerId, priced.subtotal(), priced.shipping(), priced.tax(),
-                priced.total(), now.plus(RESERVATION_TTL), now);
+        Address address = checkout.address();
+        var placed = orders.place(store.id(), new Orders.OrderPlacement(checkoutId, customerId, checkout.email(), checkout.currency(),
+                new Orders.ShippingAddress(address.name(), address.line1(), address.line2(), address.city(), address.region(),
+                        address.postalCode(), address.country()),
+                priced.lines().stream().map(line -> new Orders.PlacedLine(line.variantId(), line.productTitle(), line.variantTitle(),
+                        line.sku(), line.unitPriceMinor(), line.quantity(), line.lineTotalMinor())).toList(),
+                priced.subtotal(), priced.shipping(), priced.tax(), priced.total()));
+        checkouts.complete(store.id(), checkoutId, customerId, placed.orderId(), priced.subtotal(), priced.shipping(), priced.tax(),
+                priced.total(), placed.paymentDueAt(), now);
         carts.markConverted(store.id(), checkout.cartId(), now);
         meterRegistry.counter("storeforge.checkouts.completions", "outcome", "completed").increment();
         return view(store, find(store, checkoutId, cartToken, false));
@@ -173,12 +179,12 @@ class CheckoutService {
             var priced = pricing.price(store.id(), carts.items(store.id(), checkout.cartId()));
             return new CheckoutView(checkout.id(), checkout.cartId(), checkout.status(), checkout.email(), checkout.address(),
                     checkout.currency(), priced.lines(), priced.unavailable(), priced.subtotal(), priced.shipping(), priced.tax(),
-                    priced.total(), null, null, null);
+                    priced.total(), null, null, null, null, null);
         }
         return new CheckoutView(checkout.id(), checkout.cartId(), checkout.status(), checkout.email(), checkout.address(),
                 checkout.currency(), checkouts.lines(store.id(), checkout.id()), List.of(), checkout.subtotalMinor(),
                 checkout.shippingMinor(), checkout.taxMinor(), checkout.totalMinor(), checkout.customerId(),
-                checkout.completedAt(), checkout.reservationExpiresAt());
+                checkout.completedAt(), checkout.reservationExpiresAt(), checkout.orderId(), checkout.orderNumber());
     }
 
     private static Money parse(String amount, StoreInfo store) {

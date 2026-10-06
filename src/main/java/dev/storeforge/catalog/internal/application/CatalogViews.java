@@ -40,7 +40,8 @@ public final class CatalogViews {
                                      int variantCount, Money minPrice, Money maxPrice, Instant createdAt, Instant updatedAt) {
     }
 
-    public record StorefrontVariantView(UUID id, String title, Money price, @Nullable Money compareAtPrice, List<String> optionValues) {
+    public record StorefrontVariantView(UUID id, String title, Money price, @Nullable Money compareAtPrice, List<String> optionValues,
+                                        boolean available) {
     }
 
     public record StorefrontProductView(UUID id, String handle, String title, String description, @Nullable String vendor,

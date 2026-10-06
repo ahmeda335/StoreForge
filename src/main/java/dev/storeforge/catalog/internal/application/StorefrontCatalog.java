@@ -6,6 +6,7 @@ import dev.storeforge.catalog.internal.domain.CatalogExceptions;
 import dev.storeforge.catalog.internal.persistence.ProductQueries;
 import dev.storeforge.catalog.internal.persistence.ProductQueries.ProductRow;
 import dev.storeforge.catalog.internal.persistence.ProductQueries.VariantRow;
+import dev.storeforge.inventory.Inventory;
 import dev.storeforge.shared.money.Money;
 import dev.storeforge.shared.pagination.Cursor;
 import dev.storeforge.shared.pagination.Page;
@@ -26,10 +27,12 @@ import org.springframework.stereotype.Service;
 public class StorefrontCatalog {
 
     private final ProductQueries queries;
+    private final Inventory inventory;
     private final TenantTransactions tenant;
 
-    StorefrontCatalog(ProductQueries queries, TenantTransactions tenant) {
+    StorefrontCatalog(ProductQueries queries, Inventory inventory, TenantTransactions tenant) {
         this.queries = queries;
+        this.inventory = inventory;
         this.tenant = tenant;
     }
 
@@ -38,8 +41,10 @@ public class StorefrontCatalog {
             List<ProductRow> rows = queries.activePage(store.id(), limit + 1, after);
             Page<ProductRow> page = Page.of(rows, limit, row -> new Cursor(row.createdAt(), row.id()));
             Map<UUID, List<VariantRow>> variants = queries.variantsOf(store.id(), page.data().stream().map(ProductRow::id).toList());
-            return new Page<>(page.data().stream().map(row -> view(row, variants.getOrDefault(row.id(), List.of()), store)).toList(),
-                    page.page());
+            Map<UUID, Integer> stock = inventory.availability(store.id(),
+                    variants.values().stream().flatMap(List::stream).map(VariantRow::id).toList());
+            return new Page<>(page.data().stream()
+                    .map(row -> view(row, variants.getOrDefault(row.id(), List.of()), stock, store)).toList(), page.page());
         });
     }
 
@@ -49,16 +54,23 @@ public class StorefrontCatalog {
             if (row == null) {
                 throw new CatalogExceptions.ProductNotFound();
             }
-            return view(row, queries.variantsOf(store.id(), List.of(row.id())).getOrDefault(row.id(), List.of()), store);
+            List<VariantRow> variants = queries.variantsOf(store.id(), List.of(row.id())).getOrDefault(row.id(), List.of());
+            Map<UUID, Integer> stock = inventory.availability(store.id(), variants.stream().map(VariantRow::id).toList());
+            return view(row, variants, stock, store);
         });
     }
 
-    private static StorefrontProductView view(ProductRow row, List<VariantRow> variants, StoreInfo store) {
+    /** In stock = untracked (null in the map) or at least one available unit. Never-stocked variants are unavailable. */
+    private static boolean inStock(Map<UUID, Integer> stock, UUID variantId) {
+        return stock.containsKey(variantId) ? stock.get(variantId) == null || stock.get(variantId) > 0 : false;
+    }
+
+    private static StorefrontProductView view(ProductRow row, List<VariantRow> variants, Map<UUID, Integer> stock, StoreInfo store) {
         return new StorefrontProductView(row.id(), row.handle(), row.title(), row.description(), row.vendor(), row.productType(),
                 row.optionNames(), variants.stream().map(variant -> new StorefrontVariantView(variant.id(),
                         variant.optionValues().isEmpty() ? "Default" : String.join(" / ", variant.optionValues()),
                         Money.ofMinor(variant.priceMinor(), store.currency()),
                         variant.compareAtPriceMinor() == null ? null : Money.ofMinor(variant.compareAtPriceMinor(), store.currency()),
-                        variant.optionValues())).toList());
+                        variant.optionValues(), inStock(stock, variant.id()))).toList());
     }
 }

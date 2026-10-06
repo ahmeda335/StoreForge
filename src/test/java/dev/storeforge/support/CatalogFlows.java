@@ -35,6 +35,19 @@ public final class CatalogFlows {
         return UUID.fromString(Json.parse(response.body()).get("id").asString());
     }
 
+    /** Creates an ACTIVE single-variant product and returns its variant id. */
+    public UUID createVariant(Owner owner, String title) {
+        HttpResponse<String> response = create(owner, """
+                {"title":"%s","status":"ACTIVE","options":[],"variants":[{"price":"10.00","options":[]}]}""".formatted(title));
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
+        return UUID.fromString(Json.parse(response.body()).get("variants").get(0).get("id").asString());
+    }
+
+    public HttpResponse<String> adjustStock(Owner owner, UUID variantId, int delta, String reason) {
+        return api.post("/admin/v1/stores/" + owner.storeId() + "/variants/" + variantId + "/inventory/adjustments",
+                "{\"delta\":" + delta + ",\"reason\":\"" + reason + "\"}", owner.auth());
+    }
+
     public static String products(Owner owner) {
         return "/admin/v1/stores/" + owner.storeId() + "/products";
     }

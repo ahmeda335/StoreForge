@@ -93,7 +93,8 @@ final class CatalogDtos {
         }
     }
 
-    record StorefrontVariantResponse(UUID id, String title, MoneyDto price, @Nullable MoneyDto compareAtPrice, List<String> options) {
+    record StorefrontVariantResponse(UUID id, String title, MoneyDto price, @Nullable MoneyDto compareAtPrice, List<String> options,
+                                     boolean available) {
     }
 
     record StorefrontProductResponse(UUID id, String handle, String title, String description, @Nullable String vendor,
@@ -102,7 +103,7 @@ final class CatalogDtos {
             return new StorefrontProductResponse(view.id(), view.handle(), view.title(), view.description(), view.vendor(),
                     view.productType(), view.optionNames(), view.variants().stream()
                     .map(v -> new StorefrontVariantResponse(v.id(), v.title(), MoneyDto.of(v.price()), MoneyDto.of(v.compareAtPrice()),
-                            v.optionValues())).toList());
+                            v.optionValues(), v.available())).toList());
         }
     }
 }

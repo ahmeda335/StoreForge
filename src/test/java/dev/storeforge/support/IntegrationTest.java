@@ -24,7 +24,9 @@ import org.springframework.test.context.DynamicPropertySource;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 // All test requests come from 127.0.0.1; the per-IP limit is exercised in unit tests.
-                "storeforge.auth.rate-limits.per-ip=100000"
+                "storeforge.auth.rate-limits.per-ip=100000",
+                // Background work runs only when a test triggers it explicitly (no timer races).
+                "storeforge.scheduling.enabled=false"
         })
 @Import(IntegrationTest.TestBeans.class)
 public abstract class IntegrationTest {

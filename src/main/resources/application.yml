@@ -71,6 +71,9 @@ server:
     include-message: never
 
 storeforge:
+  inventory:
+    sweeper:
+      interval: ${INVENTORY_SWEEPER_INTERVAL:30s}
   stores:
     platform-domain: ${PLATFORM_DOMAIN:storeforge.localhost}
     invitation-ttl: 7d

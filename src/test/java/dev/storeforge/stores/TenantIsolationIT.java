@@ -28,17 +28,18 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 class TenantIsolationIT extends IntegrationTest {
 
     /** Valid request bodies, so requests get past Bean Validation and actually reach the tenant check. */
-    private static final Map<String, String> SAMPLE_BODIES = Map.of(
-            "PATCH /admin/v1/stores/{storeId}", "{\"name\":\"Hijacked\"}",
-            "POST /admin/v1/stores/{storeId}/roles", "{\"name\":\"x\",\"permissions\":[]}",
-            "POST /admin/v1/stores/{storeId}/invitations", "{\"email\":\"x@example.test\",\"roleId\":\"" + UUID.randomUUID() + "\"}",
-            "POST /admin/v1/stores/{storeId}/invitations/acceptance", "{\"token\":\"not-a-real-token\"}",
-            "PATCH /admin/v1/stores/{storeId}/members/{userId}", "{\"roleId\":\"" + UUID.randomUUID() + "\"}",
-            "POST /admin/v1/stores/{storeId}/products",
-            "{\"title\":\"Injected\",\"options\":[],\"variants\":[{\"price\":\"1.00\",\"options\":[]}]}",
-            "PATCH /admin/v1/stores/{storeId}/products/{productId}", "{\"title\":\"Hijacked\"}",
-            "POST /admin/v1/stores/{storeId}/products/{productId}/variants", "{\"price\":\"1.00\",\"options\":[]}",
-            "PATCH /admin/v1/stores/{storeId}/products/{productId}/variants/{variantId}", "{\"price\":\"1.00\"}");
+    private static final Map<String, String> SAMPLE_BODIES = Map.ofEntries(
+            Map.entry("PATCH /admin/v1/stores/{storeId}", "{\"name\":\"Hijacked\"}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/roles", "{\"name\":\"x\",\"permissions\":[]}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/invitations", "{\"email\":\"x@example.test\",\"roleId\":\"" + UUID.randomUUID() + "\"}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/invitations/acceptance", "{\"token\":\"not-a-real-token\"}"),
+            Map.entry("PATCH /admin/v1/stores/{storeId}/members/{userId}", "{\"roleId\":\"" + UUID.randomUUID() + "\"}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/products", "{\"title\":\"Injected\",\"options\":[],\"variants\":[{\"price\":\"1.00\",\"options\":[]}]}"),
+            Map.entry("PATCH /admin/v1/stores/{storeId}/products/{productId}", "{\"title\":\"Hijacked\"}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/products/{productId}/variants", "{\"price\":\"1.00\",\"options\":[]}"),
+            Map.entry("PATCH /admin/v1/stores/{storeId}/products/{productId}/variants/{variantId}", "{\"price\":\"1.00\"}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/variants/{variantId}/inventory/adjustments", "{\"delta\":5,\"reason\":\"RECEIVED\"}"),
+            Map.entry("PATCH /admin/v1/stores/{storeId}/variants/{variantId}/inventory", "{\"tracked\":false}"));
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")

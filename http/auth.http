@@ -1,0 +1,43 @@
+### Manual walkthrough of the auth API (IntelliJ HTTP Client / VS Code REST Client).
+### Prereqs: docker compose up -d && ./mvnw spring-boot:run. Emails: http://localhost:8025
+
+@base = http://localhost:8080
+@email = merchant@example.test
+@password = correct horse battery staple
+
+### 1. Register (always 202)
+POST {{base}}/auth/v1/registrations
+Content-Type: application/json
+
+{"email": "{{email}}", "password": "{{password}}"}
+
+### 2. Confirm email: paste the token from the Mailpit link (after "#token=")
+POST {{base}}/auth/v1/email-verifications/confirmation
+Content-Type: application/json
+
+{"token": "PASTE_TOKEN"}
+
+### 3. Login: stores the access token; the client keeps the sf_refresh cookie
+POST {{base}}/auth/v1/token
+Content-Type: application/json
+
+{"email": "{{email}}", "password": "{{password}}"}
+
+> {% client.global.set("accessToken", response.body.access_token); %}
+
+### 4. Call a protected endpoint
+GET {{base}}/admin/v1/me
+Authorization: Bearer {{accessToken}}
+
+### 5. Rotate the refresh token (cookie sent automatically)
+POST {{base}}/auth/v1/token/refresh
+X-Requested-With: XMLHttpRequest
+
+> {% client.global.set("accessToken", response.body.access_token); %}
+
+### 6. Logout
+POST {{base}}/auth/v1/token/revocation
+X-Requested-With: XMLHttpRequest
+
+### Public keys
+GET {{base}}/auth/v1/jwks.json

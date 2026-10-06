@@ -2,27 +2,11 @@ package dev.storeforge.foundation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.storeforge.support.HttpTestClient;
 import dev.storeforge.support.IntegrationTest;
 import java.net.http.HttpResponse;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 
 class OperationalEndpointsIT extends IntegrationTest {
-
-    @Autowired
-    Environment environment;
-
-    HttpTestClient management;
-    HttpTestClient api;
-
-    @BeforeEach
-    void clients() {
-        management = new HttpTestClient("http://localhost:" + environment.getProperty("local.management.port"));
-        api = new HttpTestClient("http://localhost:" + environment.getProperty("local.server.port"));
-    }
 
     @Test
     void livenessIsUpAndDoesNotDependOnTheDatabase() {

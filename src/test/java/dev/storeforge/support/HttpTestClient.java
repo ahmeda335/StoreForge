@@ -23,7 +23,21 @@ public final class HttpTestClient {
     }
 
     public HttpResponse<String> get(String path, Map<String, String> headers) {
-        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(baseUrl + path)).GET();
+        return send(HttpRequest.newBuilder(URI.create(baseUrl + path)).GET(), headers);
+    }
+
+    public HttpResponse<String> post(String path, String jsonBody) {
+        return post(path, jsonBody, Map.of());
+    }
+
+    public HttpResponse<String> post(String path, String jsonBody, Map<String, String> headers) {
+        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody));
+        return send(request, headers);
+    }
+
+    private HttpResponse<String> send(HttpRequest.Builder request, Map<String, String> headers) {
         headers.forEach(request::header);
         try {
             return client.send(request.build(), HttpResponse.BodyHandlers.ofString());

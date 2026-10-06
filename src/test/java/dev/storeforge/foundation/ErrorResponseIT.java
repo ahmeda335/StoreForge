@@ -3,34 +3,20 @@ package dev.storeforge.foundation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.storeforge.shared.web.RequestIds;
-import dev.storeforge.support.HttpTestClient;
 import dev.storeforge.support.IntegrationTest;
 import java.net.http.HttpResponse;
 import java.util.Map;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Import(ErrorResponseIT.FailingController.class)
 @ExtendWith(OutputCaptureExtension.class)
 class ErrorResponseIT extends IntegrationTest {
-
-    @Autowired
-    Environment environment;
-
-    HttpTestClient api;
-
-    @BeforeEach
-    void client() {
-        api = new HttpTestClient("http://localhost:" + environment.getProperty("local.server.port"));
-    }
 
     @Test
     void unknownPathReturnsProblemDetailsWithCodeAndRequestId() {

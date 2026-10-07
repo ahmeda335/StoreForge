@@ -72,8 +72,9 @@ class RegistrationIT extends IntegrationTest {
 
         assertThat(second.statusCode()).isEqualTo(first.statusCode());
         assertThat(second.body()).isEqualTo(first.body());
+        // Emails go through the job queue, which does not promise ordering (retries, several workers).
         assertThat(mailbox.sentTo(email)).extracting(message -> message.subject())
-                .containsExactly("Verify your StoreForge email address", "You already have a StoreForge account");
+                .containsExactlyInAnyOrder("Verify your StoreForge email address", "You already have a StoreForge account");
     }
 
     @Test

@@ -3,10 +3,9 @@ package dev.storeforge.identity.internal.application;
 import dev.storeforge.shared.email.EmailAddress;
 
 /**
- * In-process events asking for an email to be sent AFTER the current transaction commits (an email
- * for a registration that rolled back would be a lie). They are not durable: a crash between commit
- * and sending loses the email, and the user must ask for a new link. P9 replaces this with the
- * transactional outbox. toString() is redacted because events carry single-use secrets.
+ * In-process events asking for an identity email. Published INSIDE the business transaction and
+ * handled synchronously by {@link IdentityMailer}, which queues the email durably in that same
+ * transaction. toString() is redacted because events carry single-use secrets.
  */
 sealed interface IdentityEmails {
 

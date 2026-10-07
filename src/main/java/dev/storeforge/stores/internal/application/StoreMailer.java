@@ -1,31 +1,29 @@
 package dev.storeforge.stores.internal.application;
 
-import dev.storeforge.notifications.EmailDeliveryException;
 import dev.storeforge.notifications.EmailMessage;
-import dev.storeforge.notifications.EmailSender;
+import dev.storeforge.notifications.Notifications;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
 
-/** Sends invitation emails after the inviting transaction commits (same P2 limitation: not durable until P9). */
+/**
+ * Queues invitation emails durably INSIDE the inviting transaction (synchronous listener): no
+ * invitation without its email, no email for a rolled-back invitation. The link holds a single-use
+ * token, so the body is erased once sent.
+ */
 @Component
-@Slf4j
 @RequiredArgsConstructor
 class StoreMailer {
 
-    private final EmailSender emailSender;
+    private final Notifications notifications;
 
-    @TransactionalEventListener
+    @EventListener
     void on(InvitationService.InvitationEmail invitation) {
-        try {
-            emailSender.send(new EmailMessage(invitation.to().value(),
-                    "You are invited to " + invitation.storeName() + " on StoreForge",
-                    "You have been invited to join " + invitation.storeName() + ".\n\n"
-                            + "Sign in (or create an account with this email address), then open:\n"
-                            + invitation.link()));
-        } catch (EmailDeliveryException e) {
-            log.atWarn().setCause(e).log("Invitation email could not be delivered; it can be re-sent by inviting again");
-        }
+        notifications.enqueueEmail(invitation.storeId(), new EmailMessage(invitation.to().value(),
+                        "You are invited to " + invitation.storeName() + " on StoreForge",
+                        "You have been invited to join " + invitation.storeName() + ".\n\n"
+                                + "Sign in (or create an account with this email address), then open:\n"
+                                + invitation.link()),
+                "invitation:" + invitation.invitationId(), true);
     }
 }

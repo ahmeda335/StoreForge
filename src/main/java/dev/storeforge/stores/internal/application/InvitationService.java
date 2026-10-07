@@ -72,7 +72,7 @@ public class InvitationService {
             invitations.revokePendingFor(storeId, email.value(), now);
             UUID id = invitations.insert(storeId, email.value(), role.id(), SecretTokens.hash(token), actorId, expiresAt, now);
             String storeName = stores.findById(storeId.value()).orElseThrow().name();
-            events.publishEvent(new InvitationEmail(email, storeName,
+            events.publishEvent(new InvitationEmail(storeId, id, email, storeName,
                     properties.appBaseUrl() + "/accept-invitation#store=" + storeId + "&token=" + token));
             audit.recordUserAction(storeId, actorId, "invitation.created", "invitation", id.toString(),
                     Map.of("email", email.value(), "role", role.name()));
@@ -120,7 +120,7 @@ public class InvitationService {
         });
     }
 
-    record InvitationEmail(EmailAddress to, String storeName, String link) {
+    record InvitationEmail(StoreId storeId, UUID invitationId, EmailAddress to, String storeName, String link) {
         @Override
         public String toString() {
             return "InvitationEmail[REDACTED]";

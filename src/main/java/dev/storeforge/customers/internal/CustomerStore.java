@@ -24,7 +24,8 @@ class CustomerStore implements Customers {
     private final JdbcClient jdbc;
     private final Clock clock;
 
-    record CustomerRow(UUID id, String email, @Nullable String firstName, @Nullable String lastName, Instant createdAt) {
+    record CustomerRow(UUID id, String email, @Nullable String firstName, @Nullable String lastName, int ordersCount,
+                       long totalSpentMinor, Instant createdAt) {
     }
 
     /**
@@ -59,7 +60,7 @@ class CustomerStore implements Customers {
     List<CustomerRow> page(StoreId storeId, int limitPlusOne, @Nullable Cursor after) {
         String keyset = after == null ? "" : "AND (created_at, id) < (:afterTime, :afterId)";
         var statement = jdbc.sql("""
-                SELECT id, email, first_name, last_name, created_at FROM customers
+                SELECT id, email, first_name, last_name, orders_count, total_spent_minor, created_at FROM customers
                  WHERE store_id = :storeId %s ORDER BY created_at DESC, id DESC LIMIT :limit
                 """.formatted(keyset))
                 .param("storeId", storeId.value())
@@ -71,7 +72,7 @@ class CustomerStore implements Customers {
     }
 
     Optional<CustomerRow> find(StoreId storeId, UUID customerId) {
-        return jdbc.sql("SELECT id, email, first_name, last_name, created_at FROM customers WHERE store_id = :storeId AND id = :id")
+        return jdbc.sql("SELECT id, email, first_name, last_name, orders_count, total_spent_minor, created_at FROM customers WHERE store_id = :storeId AND id = :id")
                 .param("storeId", storeId.value())
                 .param("id", customerId)
                 .query((rs, rowNum) -> row(rs))
@@ -80,6 +81,7 @@ class CustomerStore implements Customers {
 
     private static CustomerRow row(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new CustomerRow(rs.getObject("id", UUID.class), rs.getString("email"), rs.getString("first_name"),
-                rs.getString("last_name"), rs.getTimestamp("created_at").toInstant());
+                rs.getString("last_name"), rs.getInt("orders_count"), rs.getLong("total_spent_minor"),
+                rs.getTimestamp("created_at").toInstant());
     }
 }

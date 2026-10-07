@@ -67,7 +67,8 @@ public class RegistrationService {
             if (!ConstraintViolations.isUniqueViolation(e, "uq_users_email")) {
                 throw e;
             }
-            events.publishEvent(new IdentityEmails.AccountAlreadyExists(email));
+            // The losing transaction rolled back; the notice is queued in a transaction of its own.
+            transaction.executeWithoutResult(status -> events.publishEvent(new IdentityEmails.AccountAlreadyExists(email)));
         }
     }
 }

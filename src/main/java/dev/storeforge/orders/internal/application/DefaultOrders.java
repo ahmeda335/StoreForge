@@ -1,5 +1,7 @@
 package dev.storeforge.orders.internal.application;
 
+import dev.storeforge.jobs.Outbox;
+import dev.storeforge.orders.OrderEvents;
 import dev.storeforge.orders.Orders;
 import dev.storeforge.orders.internal.domain.Order;
 import dev.storeforge.orders.internal.persistence.OrderRecords;
@@ -22,6 +24,7 @@ class DefaultOrders implements Orders {
     private final OrderRepository orders;
     private final OrderRecords records;
     private final OrdersProperties properties;
+    private final Outbox outbox;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
 
@@ -45,6 +48,9 @@ class DefaultOrders implements Orders {
         records.insertItems(storeId, order.id(), placement.lines());
         records.event(storeId, order.id(), "PLACED", null,
                 Map.of("checkoutId", placement.checkoutId().toString(), "total", placement.totalMinor()), now);
+        // Same transaction as the order: the event exists iff the order does (transactional outbox).
+        outbox.append(storeId, OrderEvents.AGGREGATE, order.id().toString(), OrderEvents.PLACED, OrderEvents.VERSION,
+                new OrderEvents.Placed(order.id(), number, placement.totalMinor(), placement.currency(), placement.customerId()));
         meterRegistry.counter("storeforge.orders.created").increment();
         return new PlacedOrder(order.id(), number, paymentDueAt);
     }

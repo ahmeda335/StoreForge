@@ -2,6 +2,8 @@ package dev.storeforge.orders.internal.application;
 
 import dev.storeforge.audit.AuditLog;
 import dev.storeforge.inventory.Inventory;
+import dev.storeforge.jobs.Outbox;
+import dev.storeforge.orders.OrderEvents;
 import dev.storeforge.orders.internal.domain.Order;
 import dev.storeforge.orders.internal.domain.OrderExceptions;
 import dev.storeforge.orders.internal.persistence.OrderQueries;
@@ -43,6 +45,7 @@ public class OrderService {
     private final StoreAccess access;
     private final AuditLog audit;
     private final TenantTransactions tenant;
+    private final Outbox outbox;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
 
@@ -73,6 +76,8 @@ public class OrderService {
             records.event(storeId, order.id(), "PAID", userId, note == null ? Map.of("method", "manual")
                     : Map.of("method", "manual", "note", note), now);
             audit.recordUserAction(storeId, userId, "order.marked_paid", "order", order.id().toString(), Map.of("number", order.number()));
+            publish(storeId, order, OrderEvents.PAID, new OrderEvents.Paid(order.id(), order.number(), order.totalMinor(),
+                    order.currency(), order.customerId(), "manual"));
             meterRegistry.counter("storeforge.orders.paid", "method", "manual").increment();
         });
     }
@@ -83,6 +88,7 @@ public class OrderService {
             order.fulfill(now);
             records.event(storeId, order.id(), "FULFILLED", userId, Map.of(), now);
             audit.recordUserAction(storeId, userId, "order.fulfilled", "order", order.id().toString(), Map.of("number", order.number()));
+            publish(storeId, order, OrderEvents.FULFILLED, new OrderEvents.Fulfilled(order.id(), order.number()));
         });
     }
 
@@ -94,6 +100,7 @@ public class OrderService {
             records.event(storeId, order.id(), "CANCELLED", userId, Map.of("reason", reason, "releasedReservations", released), now);
             audit.recordUserAction(storeId, userId, "order.cancelled", "order", order.id().toString(),
                     Map.of("number", order.number(), "reason", reason));
+            publish(storeId, order, OrderEvents.CANCELLED, new OrderEvents.Cancelled(order.id(), order.number(), reason));
             meterRegistry.counter("storeforge.orders.cancelled", "reason", "merchant").increment();
         });
     }
@@ -106,6 +113,7 @@ public class OrderService {
         }
         int released = inventory.release(storeId, order.checkoutId());
         records.event(storeId, order.id(), "EXPIRED", null, Map.of("releasedReservations", released), now);
+        publish(storeId, order, OrderEvents.CANCELLED, new OrderEvents.Cancelled(order.id(), order.number(), Order.REASON_PAYMENT_TIMEOUT));
         meterRegistry.counter("storeforge.orders.cancelled", "reason", "payment_timeout").increment();
         return true;
     }
@@ -119,6 +127,10 @@ public class OrderService {
             orders.flush();
             return details(storeId, order);
         });
+    }
+
+    private void publish(StoreId storeId, Order order, String eventType, Object payload) {
+        outbox.append(storeId, OrderEvents.AGGREGATE, order.id().toString(), eventType, OrderEvents.VERSION, payload);
     }
 
     private OrderDetails details(StoreId storeId, Order order) {

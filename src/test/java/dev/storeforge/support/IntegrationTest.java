@@ -1,8 +1,10 @@
 package dev.storeforge.support;
 
+import dev.storeforge.jobs.internal.JobWorker;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -61,13 +63,18 @@ public abstract class IntegrationTest {
 
         @Bean
         @Primary
-        RecordingEmailSender recordingEmailSender() {
-            return new RecordingEmailSender();
+        RecordingEmailSender recordingEmailSender(ObjectProvider<JobWorker> jobWorker) {
+            return new RecordingEmailSender(() -> jobWorker.getObject().drain());
         }
 
         @Bean
         static QueryCounter queryCounter() {
             return new QueryCounter();
+        }
+
+        @Bean
+        TestJobHandlers.Recording recordingJobHandler() {
+            return new TestJobHandlers.Recording();
         }
 
         /** Captures finished spans in memory so tests can assert on trace structure. */

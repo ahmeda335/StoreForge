@@ -29,8 +29,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 class RowLevelSecurityIT extends IntegrationTest {
 
-    /** Tenant-directory tables carry store_id but are deliberately not under RLS (ADR-009). Keep this list tiny. */
-    private static final Set<String> DIRECTORY_TABLES = Set.of("store_domains", "store_members");
+    /**
+     * Tables that carry store_id but are deliberately not under RLS. Keep this list tiny:
+     * tenant directory (ADR-009) and cross-tenant job infrastructure (ADR-016).
+     */
+    private static final Set<String> DIRECTORY_TABLES = Set.of("store_domains", "store_members",
+            "outbox_events", "jobs", "email_messages");
 
     @Autowired
     JdbcClient jdbc;

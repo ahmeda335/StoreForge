@@ -10,6 +10,7 @@ import dev.storeforge.shared.tenancy.TenantTransactions;
 import dev.storeforge.stores.Permission;
 import dev.storeforge.stores.StoreAccess;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,17 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 /** Merchant view of the store's customers. Customer data is PII: requires customers:read. */
 @RestController
 @RequestMapping("/admin/v1/stores/{storeId}/customers")
+@RequiredArgsConstructor
 class CustomersController {
 
     private final CustomerStore customers;
     private final StoreAccess access;
     private final TenantTransactions tenant;
-
-    CustomersController(CustomerStore customers, StoreAccess access, TenantTransactions tenant) {
-        this.customers = customers;
-        this.access = access;
-        this.tenant = tenant;
-    }
 
     @GetMapping
     Page<CustomerRow> list(@AuthenticationPrincipal UserPrincipal user, @PathVariable UUID storeId,

@@ -4,18 +4,16 @@ import dev.storeforge.shared.ids.Ids;
 import dev.storeforge.shared.tenancy.StoreId;
 import java.sql.Timestamp;
 import java.time.Instant;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /** Hostnames → store (tenant directory). Resolution for the storefront arrives in P4. */
 @Repository
+@RequiredArgsConstructor
 public class DomainStore {
 
     private final JdbcClient jdbc;
-
-    DomainStore(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     /** Platform subdomains are verified by construction (we own the parent domain). */
     public void insertPlatformDomain(StoreId storeId, String hostname, Instant now) {

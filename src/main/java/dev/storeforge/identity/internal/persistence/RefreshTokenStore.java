@@ -5,6 +5,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -18,13 +19,10 @@ import org.springframework.stereotype.Repository;
  * revoked.
  */
 @Repository
+@RequiredArgsConstructor
 public class RefreshTokenStore {
 
     private final JdbcClient jdbc;
-
-    RefreshTokenStore(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     public record ConsumedToken(UUID userId, UUID familyId) {
     }

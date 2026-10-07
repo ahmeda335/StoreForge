@@ -1,5 +1,6 @@
 package dev.storeforge.shared.error;
 
+import lombok.Getter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 
@@ -10,21 +11,15 @@ import org.springframework.http.HttpStatus;
  */
 public abstract class StoreForgeException extends RuntimeException {
 
+    @Getter
     private final HttpStatus status;
+    @Getter
     private final String code;
 
     protected StoreForgeException(HttpStatus status, String code, String message) {
         super(message);
         this.status = status;
         this.code = code;
-    }
-
-    public HttpStatus status() {
-        return status;
-    }
-
-    public String code() {
-        return code;
     }
 
     /** Extra response headers (e.g. {@code Retry-After}). */

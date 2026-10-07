@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
@@ -38,31 +41,40 @@ import org.jspecify.annotations.Nullable;
  */
 @Entity
 @Table(name = "products")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product {
 
     static final int MAX_VARIANTS = 100;
 
     @Id
+    @Getter
     private UUID id;
 
     @Column(nullable = false)
+    @Getter
     private UUID storeId;
 
     @Column(columnDefinition = "citext", nullable = false)
+    @Getter
     private String handle;
 
     @Column(nullable = false)
+    @Getter
     private String title;
 
     @Column(nullable = false)
+    @Getter
     private String description;
 
+    @Getter
     private String vendor;
 
+    @Getter
     private String productType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Getter
     private ProductStatus status;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
@@ -74,17 +86,15 @@ public class Product {
     private List<Variant> variants = new ArrayList<>();
 
     @Column(nullable = false)
+    @Getter
     private Instant createdAt;
 
     @Column(nullable = false)
+    @Getter
     private Instant updatedAt;
 
     @Version
     private Long version;
-
-    protected Product() {
-        // for JPA
-    }
 
     public static Product create(StoreId storeId, String handle, String title, @Nullable String description,
                                  @Nullable String vendor, @Nullable String productType, ProductStatus status,
@@ -211,38 +221,6 @@ public class Product {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    public UUID id() {
-        return id;
-    }
-
-    public UUID storeId() {
-        return storeId;
-    }
-
-    public String handle() {
-        return handle;
-    }
-
-    public String title() {
-        return title;
-    }
-
-    public String description() {
-        return description;
-    }
-
-    public @Nullable String vendor() {
-        return vendor;
-    }
-
-    public @Nullable String productType() {
-        return productType;
-    }
-
-    public ProductStatus status() {
-        return status;
-    }
-
     public List<String> optionNames() {
         return List.of(optionNames);
     }
@@ -253,13 +231,5 @@ public class Product {
 
     public long version() {
         return version == null ? 0 : version;
-    }
-
-    public Instant createdAt() {
-        return createdAt;
-    }
-
-    public Instant updatedAt() {
-        return updatedAt;
     }
 }

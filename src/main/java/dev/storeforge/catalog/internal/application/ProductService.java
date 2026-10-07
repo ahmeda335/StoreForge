@@ -33,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ import org.springframework.stereotype.Service;
  * surface here and map to precise errors) → audit → return a view built inside the transaction.
  */
 @Service
+@RequiredArgsConstructor
 public class ProductService {
 
     private final ProductRepository products;
@@ -52,17 +54,6 @@ public class ProductService {
     private final AuditLog audit;
     private final TenantTransactions tenant;
     private final Clock clock;
-
-    ProductService(ProductRepository products, ProductQueries queries, StoreAccess access, StoreDirectory storeDirectory,
-                   AuditLog audit, TenantTransactions tenant, Clock clock) {
-        this.products = products;
-        this.queries = queries;
-        this.access = access;
-        this.storeDirectory = storeDirectory;
-        this.audit = audit;
-        this.tenant = tenant;
-        this.clock = clock;
-    }
 
     public ProductView create(UUID userId, StoreId storeId, NewProduct command) {
         return translatingConstraints(() -> tenant.inStore(storeId, () -> {

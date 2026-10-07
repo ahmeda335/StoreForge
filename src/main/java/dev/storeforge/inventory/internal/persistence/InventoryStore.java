@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -20,13 +21,10 @@ import org.springframework.stereotype.Repository;
  * hidden behind an ORM: read the WHERE clauses of {@link #tryReserve} and {@link #adjustOnHand}.
  */
 @Repository
+@RequiredArgsConstructor
 public class InventoryStore {
 
     private final JdbcClient jdbc;
-
-    InventoryStore(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     public record Item(UUID id, UUID variantId, int onHand, int reserved, boolean tracked, Instant updatedAt) {
         public int available() {

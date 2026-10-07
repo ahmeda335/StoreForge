@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +31,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * the work real code does there (validation, a remote call...). That makes the race window
  * deterministic instead of lucky.
  */
+@Slf4j
 class OversellExperimentIT extends IntegrationTest {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OversellExperimentIT.class);
     static final int BUYERS = 50;
 
     @Autowired

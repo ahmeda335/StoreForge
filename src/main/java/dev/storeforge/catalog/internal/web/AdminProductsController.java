@@ -25,6 +25,7 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -47,13 +48,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/admin/v1/stores/{storeId}/products")
+@RequiredArgsConstructor
 class AdminProductsController {
 
     private final ProductService products;
-
-    AdminProductsController(ProductService products) {
-        this.products = products;
-    }
 
     @PostMapping
     ResponseEntity<ProductResponse> create(@AuthenticationPrincipal UserPrincipal user, @PathVariable UUID storeId,

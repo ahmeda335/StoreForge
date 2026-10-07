@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -34,6 +35,7 @@ import tools.jackson.databind.json.JsonMapper;
  * P10), an explicit IN_PROGRESS state committed up front is needed instead.
  */
 @Component
+@RequiredArgsConstructor
 public class Idempotency {
 
     private static final Pattern KEY_FORMAT = Pattern.compile("[\\x21-\\x7E]{1,255}");
@@ -43,14 +45,6 @@ public class Idempotency {
     private final JsonMapper jsonMapper;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
-
-    Idempotency(JdbcClient jdbc, TenantTransactions tenant, JsonMapper jsonMapper, MeterRegistry meterRegistry, Clock clock) {
-        this.jdbc = jdbc;
-        this.tenant = tenant;
-        this.jsonMapper = jsonMapper;
-        this.meterRegistry = meterRegistry;
-        this.clock = clock;
-    }
 
     /** The response to send: either produced now, or replayed from the first request with this key. */
     public record Result(int status, String jsonBody, boolean replayed) {

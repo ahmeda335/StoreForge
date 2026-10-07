@@ -15,6 +15,7 @@ import dev.storeforge.stores.StoreInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
@@ -24,17 +25,12 @@ import org.springframework.stereotype.Service;
  * tenant transaction, so RLS applies to storefront reads as well.
  */
 @Service
+@RequiredArgsConstructor
 public class StorefrontCatalog {
 
     private final ProductQueries queries;
     private final Inventory inventory;
     private final TenantTransactions tenant;
-
-    StorefrontCatalog(ProductQueries queries, Inventory inventory, TenantTransactions tenant) {
-        this.queries = queries;
-        this.inventory = inventory;
-        this.tenant = tenant;
-    }
 
     public Page<StorefrontProductView> list(StoreInfo store, int limit, @Nullable Cursor after) {
         return tenant.inStore(store.id(), () -> {

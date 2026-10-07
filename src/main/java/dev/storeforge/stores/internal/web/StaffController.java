@@ -17,6 +17,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,17 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 /** Members, roles and invitations of one store. Every endpoint is tenant-scoped by {storeId}. */
 @RestController
 @RequestMapping("/admin/v1/stores/{storeId}")
+@RequiredArgsConstructor
 class StaffController {
 
     private final MemberService members;
     private final RoleService roles;
     private final InvitationService invitations;
-
-    StaffController(MemberService members, RoleService roles, InvitationService invitations) {
-        this.members = members;
-        this.roles = roles;
-        this.invitations = invitations;
-    }
 
     @GetMapping("/members")
     Map<String, List<MemberResponse>> members(@AuthenticationPrincipal UserPrincipal user, @PathVariable UUID storeId) {

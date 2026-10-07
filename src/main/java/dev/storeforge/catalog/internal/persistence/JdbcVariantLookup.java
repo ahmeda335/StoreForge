@@ -9,19 +9,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 class JdbcVariantLookup implements VariantLookup {
 
     private final JdbcClient jdbc;
-
-    JdbcVariantLookup(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     /** One query for any number of variants (callers price whole carts). */
     @Override

@@ -22,10 +22,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 class CheckoutService {
 
     private final CheckoutStore checkouts;
@@ -39,22 +41,6 @@ class CheckoutService {
     private final ObservationRegistry observations;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
-
-    CheckoutService(CheckoutStore checkouts, CartStore carts, CartService cartService, Pricing pricing, Inventory inventory,
-                    Customers customers, Orders orders, TenantTransactions tenant, ObservationRegistry observations,
-                    MeterRegistry meterRegistry, Clock clock) {
-        this.checkouts = checkouts;
-        this.carts = carts;
-        this.cartService = cartService;
-        this.pricing = pricing;
-        this.inventory = inventory;
-        this.customers = customers;
-        this.orders = orders;
-        this.tenant = tenant;
-        this.observations = observations;
-        this.meterRegistry = meterRegistry;
-        this.clock = clock;
-    }
 
     record CheckoutView(UUID id, UUID cartId, String status, @Nullable String email, @Nullable Address shippingAddress,
                         String currency, List<Line> lines, List<Line> unavailable, long subtotalMinor, long shippingMinor,

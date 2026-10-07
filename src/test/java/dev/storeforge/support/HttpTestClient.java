@@ -7,16 +7,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 /** Minimal black-box HTTP client: tests talk to the app exactly as a real client would. */
+@RequiredArgsConstructor
 public final class HttpTestClient {
 
     private final HttpClient client = HttpClient.newHttpClient();
     private final String baseUrl;
-
-    public HttpTestClient(String baseUrl) {
-        this.baseUrl = baseUrl;
-    }
 
     public HttpResponse<String> get(String path) {
         return get(path, Map.of());

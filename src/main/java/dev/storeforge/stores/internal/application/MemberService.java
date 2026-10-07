@@ -17,9 +17,11 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class MemberService {
 
     private final MemberStore members;
@@ -29,17 +31,6 @@ public class MemberService {
     private final AuditLog audit;
     private final TenantTransactions tenant;
     private final Clock clock;
-
-    MemberService(MemberStore members, RoleRepository roles, StoreAccess access, UserDirectory users,
-                  AuditLog audit, TenantTransactions tenant, Clock clock) {
-        this.members = members;
-        this.roles = roles;
-        this.access = access;
-        this.users = users;
-        this.audit = audit;
-        this.tenant = tenant;
-        this.clock = clock;
-    }
 
     public record MemberDetails(MemberView member, String email) {
     }

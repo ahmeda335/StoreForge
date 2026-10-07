@@ -17,10 +17,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class RoleService {
 
     private final RoleRepository roles;
@@ -28,14 +30,6 @@ public class RoleService {
     private final AuditLog audit;
     private final TenantTransactions tenant;
     private final Clock clock;
-
-    RoleService(RoleRepository roles, StoreAccess access, AuditLog audit, TenantTransactions tenant, Clock clock) {
-        this.roles = roles;
-        this.access = access;
-        this.audit = audit;
-        this.tenant = tenant;
-        this.clock = clock;
-    }
 
     public List<Role> list(UUID userId, StoreId storeId) {
         return tenant.inStore(storeId, () -> {

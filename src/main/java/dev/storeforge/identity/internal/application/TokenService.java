@@ -1,8 +1,8 @@
 package dev.storeforge.identity.internal.application;
 
 import dev.storeforge.identity.internal.domain.User;
-import dev.storeforge.identity.internal.persistence.RefreshTokenStore.ConsumedToken;
 import dev.storeforge.identity.internal.persistence.RefreshTokenStore;
+import dev.storeforge.identity.internal.persistence.RefreshTokenStore.ConsumedToken;
 import dev.storeforge.identity.internal.persistence.UserRepository;
 import dev.storeforge.identity.internal.security.AccessTokenIssuer;
 import dev.storeforge.identity.internal.security.AuthProperties;
@@ -13,8 +13,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -27,9 +27,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * {@code @Transactional}, throwing the 401 would roll the revocation back.
  */
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class TokenService {
-
-    private static final Logger log = LoggerFactory.getLogger(TokenService.class);
 
     private final RefreshTokenStore refreshTokens;
     private final UserRepository users;
@@ -38,17 +38,6 @@ public class TokenService {
     private final TransactionTemplate transaction;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
-
-    TokenService(RefreshTokenStore refreshTokens, UserRepository users, AccessTokenIssuer accessTokens,
-                 AuthProperties properties, TransactionTemplate transaction, MeterRegistry meterRegistry, Clock clock) {
-        this.refreshTokens = refreshTokens;
-        this.users = users;
-        this.accessTokens = accessTokens;
-        this.properties = properties;
-        this.transaction = transaction;
-        this.meterRegistry = meterRegistry;
-        this.clock = clock;
-    }
 
     /** New login: a new refresh-token family. */
     IssuedTokens issueNewSession(User user) {

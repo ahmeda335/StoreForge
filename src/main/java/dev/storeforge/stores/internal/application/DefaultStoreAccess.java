@@ -9,18 +9,16 @@ import dev.storeforge.stores.StoreNotFoundException;
 import dev.storeforge.stores.internal.domain.StoreStatus;
 import dev.storeforge.stores.internal.persistence.MemberStore;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 class DefaultStoreAccess implements StoreAccess {
 
     private final MemberStore members;
-
-    DefaultStoreAccess(MemberStore members) {
-        this.members = members;
-    }
 
     /** MANDATORY: the caller's tenant transaction must already be open (roles are behind RLS). */
     @Override

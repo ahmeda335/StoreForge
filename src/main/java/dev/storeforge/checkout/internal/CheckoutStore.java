@@ -8,18 +8,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@RequiredArgsConstructor
 class CheckoutStore {
 
     private final JdbcClient jdbc;
-
-    CheckoutStore(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     record Address(String name, String line1, @Nullable String line2, String city, @Nullable String region,
                    String postalCode, String country) {

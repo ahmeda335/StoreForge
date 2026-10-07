@@ -20,25 +20,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 class DefaultInventory implements Inventory {
 
     private final InventoryStore store;
     private final MeterRegistry meterRegistry;
     private final ObservationRegistry observations;
     private final Clock clock;
-
-    DefaultInventory(InventoryStore store, MeterRegistry meterRegistry, ObservationRegistry observations, Clock clock) {
-        this.store = store;
-        this.meterRegistry = meterRegistry;
-        this.observations = observations;
-        this.clock = clock;
-    }
 
     /**
      * Lines are merged per variant and processed in ascending variant order. Two checkouts reserving

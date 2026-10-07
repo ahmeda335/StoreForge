@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -21,13 +22,10 @@ import org.springframework.stereotype.Repository;
  * return rows inside a tenant transaction for the same store: RLS hides other tenants' roles.
  */
 @Repository
+@RequiredArgsConstructor
 public class MemberStore {
 
     private final JdbcClient jdbc;
-
-    MemberStore(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     public record MemberView(UUID userId, UUID roleId, String roleName, boolean owner, Instant joinedAt) {
     }

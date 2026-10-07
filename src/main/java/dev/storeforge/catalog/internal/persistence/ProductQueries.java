@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -24,13 +25,10 @@ import org.springframework.stereotype.Repository;
  * Either way, the number of queries does not grow with the page size.
  */
 @Repository
+@RequiredArgsConstructor
 public class ProductQueries {
 
     private final JdbcClient jdbc;
-
-    ProductQueries(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     public record AdminFilter(@Nullable String status, @Nullable String vendor, @Nullable String titleContains, boolean ascending) {
     }

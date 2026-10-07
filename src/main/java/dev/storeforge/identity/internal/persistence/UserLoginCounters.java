@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -18,13 +19,10 @@ import org.springframework.stereotype.Repository;
  * row lock, so every failure is counted.
  */
 @Repository
+@RequiredArgsConstructor
 public class UserLoginCounters {
 
     private final JdbcClient jdbc;
-
-    UserLoginCounters(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     public Optional<Instant> lockedUntil(UUID userId) {
         return jdbc.sql("SELECT locked_until FROM users WHERE id = :id AND locked_until IS NOT NULL")

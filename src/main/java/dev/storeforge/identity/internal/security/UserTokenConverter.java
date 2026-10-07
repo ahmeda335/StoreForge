@@ -5,6 +5,7 @@ import dev.storeforge.identity.internal.domain.User;
 import dev.storeforge.identity.internal.persistence.UserRepository;
 import java.util.Objects;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -25,13 +26,10 @@ import org.springframework.stereotype.Component;
  * stateless JWTs; P3 adds a short-lived local cache if measurements show it matters.
  */
 @Component
+@RequiredArgsConstructor
 class UserTokenConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private final UserRepository users;
-
-    UserTokenConverter(UserRepository users) {
-        this.users = users;
-    }
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {

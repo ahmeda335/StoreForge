@@ -10,6 +10,7 @@ import java.util.Currency;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Component;
  * hostnames would bypass the cache and hit the database on every request.
  */
 @Component
+@RequiredArgsConstructor
 class CachingStoreDirectory implements StoreDirectory {
 
     private final JdbcClient jdbc;
@@ -29,10 +31,6 @@ class CachingStoreDirectory implements StoreDirectory {
             .maximumSize(10_000).expireAfterWrite(Duration.ofSeconds(60)).build();
     private final Cache<String, Optional<StoreInfo>> byHost = Caffeine.newBuilder()
             .maximumSize(10_000).expireAfterWrite(Duration.ofSeconds(60)).build();
-
-    CachingStoreDirectory(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     @Override
     public Optional<StoreInfo> find(StoreId storeId) {

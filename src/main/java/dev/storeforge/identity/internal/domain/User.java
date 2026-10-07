@@ -11,6 +11,9 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.DynamicUpdate;
 
 /**
@@ -27,15 +30,18 @@ import org.hibernate.annotations.DynamicUpdate;
 @Entity
 @Table(name = "users")
 @DynamicUpdate
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
 
     @Id
+    @Getter
     private UUID id;
 
     @Column(columnDefinition = "citext", nullable = false)
     private String email;
 
     @Column(nullable = false)
+    @Getter
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
@@ -45,9 +51,11 @@ public class User {
     private Instant emailVerifiedAt;
 
     @Column(nullable = false)
+    @Getter
     private int securityStamp;
 
     @Column(nullable = false)
+    @Getter
     private Instant createdAt;
 
     @Column(nullable = false)
@@ -55,10 +63,6 @@ public class User {
 
     @Version
     private Long version;
-
-    protected User() {
-        // for JPA
-    }
 
     private User(EmailAddress email, String passwordHash, Instant now) {
         this.id = Ids.newId();
@@ -98,28 +102,12 @@ public class User {
         return status == UserStatus.ACTIVE;
     }
 
-    public UUID id() {
-        return id;
-    }
-
     public EmailAddress email() {
         return EmailAddress.of(email);
     }
 
-    public String passwordHash() {
-        return passwordHash;
-    }
-
     public boolean emailVerified() {
         return emailVerifiedAt != null;
-    }
-
-    public int securityStamp() {
-        return securityStamp;
-    }
-
-    public Instant createdAt() {
-        return createdAt;
     }
 
     @Override

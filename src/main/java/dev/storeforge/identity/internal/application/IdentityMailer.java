@@ -4,8 +4,8 @@ import dev.storeforge.identity.internal.security.AuthProperties;
 import dev.storeforge.notifications.EmailDeliveryException;
 import dev.storeforge.notifications.EmailMessage;
 import dev.storeforge.notifications.EmailSender;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -16,17 +16,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * up in proxy or access logs. The frontend reads it and POSTs it to the API.
  */
 @Component
+@Slf4j
+@RequiredArgsConstructor
 class IdentityMailer {
-
-    private static final Logger log = LoggerFactory.getLogger(IdentityMailer.class);
 
     private final EmailSender emailSender;
     private final AuthProperties properties;
-
-    IdentityMailer(EmailSender emailSender, AuthProperties properties) {
-        this.emailSender = emailSender;
-        this.properties = properties;
-    }
 
     @TransactionalEventListener(fallbackExecution = true)
     void on(IdentityEmails email) {

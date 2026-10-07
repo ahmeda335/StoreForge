@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,13 +37,10 @@ import org.springframework.web.bind.annotation.RestController;
 /** Merchant orders: list, detail with timeline, and state transitions as sub-resources (blueprint 08). */
 @RestController
 @RequestMapping("/admin/v1/stores/{storeId}/orders")
+@RequiredArgsConstructor
 class AdminOrdersController {
 
     private final OrderService orders;
-
-    AdminOrdersController(OrderService orders) {
-        this.orders = orders;
-    }
 
     record MoneyDto(String amount, String currency) {
         static MoneyDto of(long minor, String currency) {

@@ -9,17 +9,15 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 class JpaUserDirectory implements UserDirectory {
 
     private final UserRepository users;
-
-    JpaUserDirectory(UserRepository users) {
-        this.users = users;
-    }
 
     @Override
     @Transactional(readOnly = true)

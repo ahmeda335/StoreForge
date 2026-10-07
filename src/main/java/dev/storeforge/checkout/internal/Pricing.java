@@ -8,6 +8,7 @@ import dev.storeforge.shared.tenancy.StoreId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,13 +19,10 @@ import org.springframework.stereotype.Component;
  * the API and the frozen snapshot don't change shape later.
  */
 @Component
+@RequiredArgsConstructor
 class Pricing {
 
     private final VariantLookup variants;
-
-    Pricing(VariantLookup variants) {
-        this.variants = variants;
-    }
 
     record PricedCart(List<Line> lines, List<Line> unavailable, long subtotal, long shipping, long tax) {
         long total() {

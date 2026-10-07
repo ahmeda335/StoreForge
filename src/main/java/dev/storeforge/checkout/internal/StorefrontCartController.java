@@ -9,6 +9,7 @@ import dev.storeforge.stores.StoreInfo;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -25,15 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 /** Anonymous carts on the storefront. Store from the hostname; cart access by {@code X-Cart-Token}. */
 @RestController
 @RequestMapping("/storefront/v1/carts")
+@RequiredArgsConstructor
 class StorefrontCartController {
 
     static final String CART_TOKEN = "X-Cart-Token";
 
     private final CartService carts;
-
-    StorefrontCartController(CartService carts) {
-        this.carts = carts;
-    }
 
     @PostMapping
     ResponseEntity<CreatedCartResponse> create(@CurrentStorefront StoreInfo store) {

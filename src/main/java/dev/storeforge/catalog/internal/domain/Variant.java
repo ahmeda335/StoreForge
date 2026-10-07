@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -22,9 +25,11 @@ import org.jspecify.annotations.Nullable;
  */
 @Entity
 @Table(name = "product_variants")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Variant {
 
     @Id
+    @Getter
     private UUID id;
 
     @Column(nullable = false)
@@ -34,6 +39,7 @@ public class Variant {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+    @Getter
     private String sku;
 
     @Column(nullable = false)
@@ -46,8 +52,10 @@ public class Variant {
     private String option3;
 
     @Column(nullable = false)
+    @Getter
     private int position;
 
+    @Getter
     private Integer weightGrams;
 
     @Column(nullable = false)
@@ -55,10 +63,6 @@ public class Variant {
 
     @Column(nullable = false)
     private Instant updatedAt;
-
-    protected Variant() {
-        // for JPA
-    }
 
     Variant(Product product, VariantSpec spec, int position, Instant now) {
         this.id = Ids.newId();
@@ -79,14 +83,6 @@ public class Variant {
         this.option3 = values.size() > 2 ? values.get(2) : null;
         this.weightGrams = spec.weightGrams();
         this.updatedAt = now;
-    }
-
-    public UUID id() {
-        return id;
-    }
-
-    public @Nullable String sku() {
-        return sku;
     }
 
     public Money price(Currency currency) {
@@ -110,13 +106,5 @@ public class Variant {
     public String title() {
         List<String> values = optionValues();
         return values.isEmpty() ? "Default" : String.join(" / ", values);
-    }
-
-    public int position() {
-        return position;
-    }
-
-    public @Nullable Integer weightGrams() {
-        return weightGrams;
     }
 }

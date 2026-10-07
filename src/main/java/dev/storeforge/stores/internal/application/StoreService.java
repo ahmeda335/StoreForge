@@ -21,11 +21,13 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class StoreService {
 
     private final StoreRepository stores;
@@ -37,19 +39,6 @@ public class StoreService {
     private final TenantTransactions tenant;
     private final StoresProperties properties;
     private final Clock clock;
-
-    StoreService(StoreRepository stores, RoleRepository roles, MemberStore members, DomainStore domains,
-                 StoreAccess access, AuditLog audit, TenantTransactions tenant, StoresProperties properties, Clock clock) {
-        this.stores = stores;
-        this.roles = roles;
-        this.members = members;
-        this.domains = domains;
-        this.access = access;
-        this.audit = audit;
-        this.tenant = tenant;
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     /**
      * Provisions a tenant in ONE transaction: store row, platform domain, owner and default staff

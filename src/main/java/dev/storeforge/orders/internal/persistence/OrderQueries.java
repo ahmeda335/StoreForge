@@ -8,19 +8,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /** Merchant order list: one query, allow-listed filters, keyset pagination. */
 @Repository
+@RequiredArgsConstructor
 public class OrderQueries {
 
     private final JdbcClient jdbc;
-
-    OrderQueries(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     public record Filter(@Nullable String status, @Nullable String financialStatus, @Nullable String fulfillmentStatus,
                          @Nullable Long number, @Nullable String emailPrefix) {

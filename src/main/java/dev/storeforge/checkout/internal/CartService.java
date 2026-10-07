@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
  * ({@code X-Cart-Token}). The cart id alone is not enough: ids appear in URLs and logs, tokens don't.
  */
 @Service
+@RequiredArgsConstructor
 class CartService {
 
     static final Duration CART_TTL = Duration.ofDays(30);
@@ -36,15 +38,6 @@ class CartService {
     private final Inventory inventory;
     private final TenantTransactions tenant;
     private final Clock clock;
-
-    CartService(CartStore carts, Pricing pricing, VariantLookup variants, Inventory inventory, TenantTransactions tenant, Clock clock) {
-        this.carts = carts;
-        this.pricing = pricing;
-        this.variants = variants;
-        this.inventory = inventory;
-        this.tenant = tenant;
-        this.clock = clock;
-    }
 
     record CreatedCart(UUID cartId, String cartToken) {
         @Override

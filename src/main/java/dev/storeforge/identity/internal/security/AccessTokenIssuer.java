@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
  * change when roles change, and a token lives for its whole TTL (ADR-003).
  */
 @Component
+@RequiredArgsConstructor
 public class AccessTokenIssuer {
 
     public static final String AUDIENCE = "merchant";
@@ -30,13 +32,6 @@ public class AccessTokenIssuer {
     private final JwtKeys keys;
     private final AuthProperties properties;
     private final Clock clock;
-
-    AccessTokenIssuer(JwtEncoder encoder, JwtKeys keys, AuthProperties properties, Clock clock) {
-        this.encoder = encoder;
-        this.keys = keys;
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     public record AccessToken(String value, long expiresInSeconds) {
         @Override

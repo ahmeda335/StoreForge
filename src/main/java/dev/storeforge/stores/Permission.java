@@ -2,6 +2,8 @@ package dev.storeforge.stores;
 
 import java.util.Arrays;
 import java.util.Optional;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
  * The fixed catalog of permissions ({@code resource:action}). Defined in code, not by merchants:
@@ -9,6 +11,7 @@ import java.util.Optional;
  * Permissions for modules not built yet are listed so roles can be designed ahead; they are
  * enforced as their modules arrive.
  */
+@RequiredArgsConstructor
 public enum Permission {
     STORE_MANAGE("store:manage"),
     STAFF_READ("staff:read"),
@@ -24,15 +27,8 @@ public enum Permission {
     ORDERS_REFUND("orders:refund"),
     CUSTOMERS_READ("customers:read");
 
+    @Getter
     private final String code;
-
-    Permission(String code) {
-        this.code = code;
-    }
-
-    public String code() {
-        return code;
-    }
 
     public static Optional<Permission> fromCode(String code) {
         return Arrays.stream(values()).filter(permission -> permission.code.equals(code)).findFirst();

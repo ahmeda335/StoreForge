@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Service;
  * inventory call is in the same transaction, so "cancelled" and "stock released" can't diverge.
  */
 @Service
+@RequiredArgsConstructor
 public class OrderService {
 
     private final OrderRepository orders;
@@ -43,19 +45,6 @@ public class OrderService {
     private final TenantTransactions tenant;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
-
-    OrderService(OrderRepository orders, OrderRecords records, OrderQueries queries, Inventory inventory, StoreAccess access,
-                 AuditLog audit, TenantTransactions tenant, MeterRegistry meterRegistry, Clock clock) {
-        this.orders = orders;
-        this.records = records;
-        this.queries = queries;
-        this.inventory = inventory;
-        this.access = access;
-        this.audit = audit;
-        this.tenant = tenant;
-        this.meterRegistry = meterRegistry;
-        this.clock = clock;
-    }
 
     public record OrderDetails(Order order, List<Item> items, List<Event> timeline) {
     }

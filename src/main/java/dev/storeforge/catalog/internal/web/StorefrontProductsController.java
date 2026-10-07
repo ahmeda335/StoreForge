@@ -6,6 +6,7 @@ import dev.storeforge.shared.pagination.Cursor;
 import dev.storeforge.shared.pagination.Page;
 import dev.storeforge.stores.CurrentStorefront;
 import dev.storeforge.stores.StoreInfo;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,13 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 /** Public storefront catalog. The store is resolved from the hostname ({@link CurrentStorefront}). */
 @RestController
 @RequestMapping("/storefront/v1/products")
+@RequiredArgsConstructor
 class StorefrontProductsController {
 
     private final StorefrontCatalog catalog;
-
-    StorefrontProductsController(StorefrontCatalog catalog) {
-        this.catalog = catalog;
-    }
 
     @GetMapping
     Page<StorefrontProductResponse> list(@CurrentStorefront StoreInfo store,

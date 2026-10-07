@@ -3,6 +3,7 @@ package dev.storeforge.shared.tenancy;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import java.util.function.Supplier;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * inside a transaction is a bug and fails loudly.
  */
 @Component
+@RequiredArgsConstructor
 public class TenantTransactions {
 
     public static final String MDC_KEY = "storeId";
@@ -39,12 +41,6 @@ public class TenantTransactions {
     private final TransactionTemplate transaction;
     private final JdbcClient jdbc;
     private final Tracer tracer;
-
-    TenantTransactions(TransactionTemplate transaction, JdbcClient jdbc, Tracer tracer) {
-        this.transaction = transaction;
-        this.jdbc = jdbc;
-        this.tracer = tracer;
-    }
 
     public <T> T inStore(StoreId storeId, Supplier<T> work) {
         String previousMdc = MDC.get(MDC_KEY);

@@ -15,6 +15,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -25,6 +26,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
+@RequiredArgsConstructor
 class JdbcAuditLog implements AuditLog {
 
     private static final TypeReference<Map<String, Object>> MAP = new TypeReference<>() {
@@ -33,12 +35,6 @@ class JdbcAuditLog implements AuditLog {
     private final JdbcClient jdbc;
     private final JsonMapper jsonMapper;
     private final Clock clock;
-
-    JdbcAuditLog(JdbcClient jdbc, JsonMapper jsonMapper, Clock clock) {
-        this.jdbc = jdbc;
-        this.jsonMapper = jsonMapper;
-        this.clock = clock;
-    }
 
     /** MANDATORY: auditing outside the business transaction would let the two diverge. */
     @Override

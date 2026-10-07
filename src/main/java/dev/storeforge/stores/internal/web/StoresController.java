@@ -12,6 +12,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,13 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/admin/v1/stores")
+@RequiredArgsConstructor
 class StoresController {
 
     private final StoreService stores;
-
-    StoresController(StoreService stores) {
-        this.stores = stores;
-    }
 
     @PostMapping
     ResponseEntity<StoreResponse> create(@AuthenticationPrincipal UserPrincipal user, @Valid @RequestBody CreateStoreRequest body) {

@@ -130,6 +130,13 @@
             <artifactId>spring-modulith-api</artifactId>
         </dependency>
 
+        <!-- Boilerplate reduction (constructors, getters, loggers); compile-time only, not in the jar -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Tests -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -175,6 +182,15 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
+                    <!-- Lombok runs as an annotation processor. Declared explicitly: from JDK 23 on, javac no
+                         longer picks up processors from the classpath by itself. -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                     <compilerArgs>
                         <arg>-Xlint:all,-processing,-serial</arg>
                         <arg>-Werror</arg>

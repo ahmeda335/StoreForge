@@ -17,12 +17,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 /** Merchant-facing stock management: levels, manual adjustments, ledger. */
 @Service
+@RequiredArgsConstructor
 public class InventoryService {
 
     static final Set<String> ADJUSTMENT_REASONS = Set.of("RECEIVED", "CORRECTION", "DAMAGED", "RETURNED");
@@ -32,14 +34,6 @@ public class InventoryService {
     private final AuditLog audit;
     private final TenantTransactions tenant;
     private final Clock clock;
-
-    InventoryService(InventoryStore store, StoreAccess access, AuditLog audit, TenantTransactions tenant, Clock clock) {
-        this.store = store;
-        this.access = access;
-        this.audit = audit;
-        this.tenant = tenant;
-        this.clock = clock;
-    }
 
     public record Level(UUID itemId, UUID variantId, int onHand, int reserved, int available, boolean tracked) {
         static Level of(Item item) {

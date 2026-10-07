@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,7 @@ import org.springframework.stereotype.Service;
  * accept it, so a forwarded or leaked link is useless to anyone else.
  */
 @Service
+@RequiredArgsConstructor
 public class InvitationService {
 
     private final InvitationStore invitations;
@@ -46,22 +48,6 @@ public class InvitationService {
     private final ApplicationEventPublisher events;
     private final StoresProperties properties;
     private final Clock clock;
-
-    InvitationService(InvitationStore invitations, MemberStore members, RoleRepository roles, StoreRepository stores,
-                      StoreAccess access, UserDirectory users, AuditLog audit, TenantTransactions tenant,
-                      ApplicationEventPublisher events, StoresProperties properties, Clock clock) {
-        this.invitations = invitations;
-        this.members = members;
-        this.roles = roles;
-        this.stores = stores;
-        this.access = access;
-        this.users = users;
-        this.audit = audit;
-        this.tenant = tenant;
-        this.events = events;
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     public record CreatedInvitation(UUID id, String email, UUID roleId, Instant expiresAt) {
     }

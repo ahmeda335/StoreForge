@@ -13,6 +13,7 @@ import dev.storeforge.stores.StoreInfo;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,17 +29,13 @@ import org.springframework.web.bind.annotation.RestController;
 /** Checkout sessions. Authorized by the cart token of the cart they were started from. */
 @RestController
 @RequestMapping("/storefront/v1/checkouts")
+@RequiredArgsConstructor
 class StorefrontCheckoutController {
 
     static final String IDEMPOTENCY_KEY = "Idempotency-Key";
 
     private final CheckoutService checkouts;
     private final Idempotency idempotency;
-
-    StorefrontCheckoutController(CheckoutService checkouts, Idempotency idempotency) {
-        this.checkouts = checkouts;
-        this.idempotency = idempotency;
-    }
 
     @PostMapping
     ResponseEntity<CheckoutResponse> start(@CurrentStorefront StoreInfo store,

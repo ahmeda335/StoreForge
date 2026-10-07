@@ -5,20 +5,18 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /** Single-use, expiring tokens sent by email (verification, password reset). Stored hashed. */
 @Repository
+@RequiredArgsConstructor
 public class EmailTokenStore {
 
     public enum Purpose { VERIFY_EMAIL, RESET_PASSWORD }
 
     private final JdbcClient jdbc;
-
-    EmailTokenStore(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     /** Only the newest link works: older unused tokens of the same purpose are deleted. */
     public void replace(UUID userId, Purpose purpose, String tokenHash, Instant expiresAt, Instant now) {

@@ -19,6 +19,7 @@ import dev.storeforge.identity.internal.web.AuthDtos.TokenResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -38,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/auth/v1")
+@RequiredArgsConstructor
 class AuthController {
 
     private static final AcceptedResponse CHECK_INBOX =
@@ -51,19 +53,6 @@ class AuthController {
     private final RefreshTokenCookies cookies;
     private final JwtKeys keys;
     private final AuthProperties properties;
-
-    AuthController(RegistrationService registration, LoginService login, TokenService tokens,
-                   EmailVerificationService emailVerification, PasswordResetService passwordReset,
-                   RefreshTokenCookies cookies, JwtKeys keys, AuthProperties properties) {
-        this.registration = registration;
-        this.login = login;
-        this.tokens = tokens;
-        this.emailVerification = emailVerification;
-        this.passwordReset = passwordReset;
-        this.cookies = cookies;
-        this.keys = keys;
-        this.properties = properties;
-    }
 
     @PostMapping("/registrations")
     ResponseEntity<AcceptedResponse> register(@Valid @RequestBody RegisterRequest body, HttpServletRequest request) {

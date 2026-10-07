@@ -6,8 +6,8 @@ import dev.storeforge.shared.tenancy.TenantTransactions;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,21 +18,14 @@ import org.springframework.stereotype.Component;
  * A concurrent "mark as paid" on the same order waits for or skips this claim: never both.
  */
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class UnpaidOrderExpiry {
-
-    private static final Logger log = LoggerFactory.getLogger(UnpaidOrderExpiry.class);
 
     private final OrderRecords records;
     private final OrderService orderService;
     private final TenantTransactions tenant;
     private final Clock clock;
-
-    UnpaidOrderExpiry(OrderRecords records, OrderService orderService, TenantTransactions tenant, Clock clock) {
-        this.records = records;
-        this.orderService = orderService;
-        this.tenant = tenant;
-        this.clock = clock;
-    }
 
     @Scheduled(fixedDelayString = "${storeforge.orders.expiry-interval:30s}", initialDelayString = "${storeforge.orders.expiry-interval:30s}")
     public void run() {

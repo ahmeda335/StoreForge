@@ -1,18 +1,20 @@
 package dev.storeforge.identity.internal.application;
 
-import dev.storeforge.identity.internal.persistence.EmailTokenStore.Purpose;
 import dev.storeforge.identity.internal.persistence.EmailTokenStore;
+import dev.storeforge.identity.internal.persistence.EmailTokenStore.Purpose;
 import dev.storeforge.identity.internal.persistence.UserRepository;
 import dev.storeforge.identity.internal.security.AuthProperties;
 import dev.storeforge.shared.crypto.SecretTokens;
 import dev.storeforge.shared.email.EmailAddress;
 import java.time.Clock;
 import java.time.Instant;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class EmailVerificationService {
 
     private final UserRepository users;
@@ -21,16 +23,6 @@ public class EmailVerificationService {
     private final ApplicationEventPublisher events;
     private final AuthProperties properties;
     private final Clock clock;
-
-    EmailVerificationService(UserRepository users, EmailTokenStore emailTokens, AuthRateLimits rateLimits,
-                             ApplicationEventPublisher events, AuthProperties properties, Clock clock) {
-        this.users = users;
-        this.emailTokens = emailTokens;
-        this.rateLimits = rateLimits;
-        this.events = events;
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     /** Consuming the token and marking the email verified succeed or fail together. */
     @Transactional

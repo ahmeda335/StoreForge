@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,13 +29,10 @@ import org.springframework.web.bind.annotation.RestController;
 /** Stock of one variant: level, manual adjustments, tracking flag, ledger. */
 @RestController
 @RequestMapping("/admin/v1/stores/{storeId}/variants/{variantId}/inventory")
+@RequiredArgsConstructor
 class InventoryController {
 
     private final InventoryService inventory;
-
-    InventoryController(InventoryService inventory) {
-        this.inventory = inventory;
-    }
 
     record AdjustmentRequest(@NotNull @Min(-1_000_000) @Max(1_000_000) Integer delta,
                              @NotBlank String reason,

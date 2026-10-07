@@ -6,8 +6,10 @@ import java.net.http.HttpResponse;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
 
 /** Reusable HTTP-level auth steps for integration tests. */
+@RequiredArgsConstructor
 public final class AuthFlows {
 
     public static final String PASSWORD = "correct horse battery staple";
@@ -17,11 +19,6 @@ public final class AuthFlows {
 
     private final HttpTestClient api;
     private final RecordingEmailSender mailbox;
-
-    public AuthFlows(HttpTestClient api, RecordingEmailSender mailbox) {
-        this.api = api;
-        this.mailbox = mailbox;
-    }
 
     public record Session(String accessToken, String refreshToken) {
     }

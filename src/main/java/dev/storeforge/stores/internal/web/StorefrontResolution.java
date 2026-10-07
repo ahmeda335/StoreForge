@@ -6,6 +6,7 @@ import dev.storeforge.stores.StoreInfo;
 import dev.storeforge.stores.StoreNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -22,13 +23,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * client chooses it, which is fine: it only selects WHICH public storefront to show.
  */
 @Configuration(proxyBeanMethods = false)
+@RequiredArgsConstructor
 class StorefrontResolution implements WebMvcConfigurer {
 
     private final StoreDirectory directory;
-
-    StorefrontResolution(StoreDirectory directory) {
-        this.directory = directory;
-    }
 
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {

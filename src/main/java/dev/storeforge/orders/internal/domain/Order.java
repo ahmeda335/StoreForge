@@ -12,6 +12,9 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -32,6 +35,8 @@ import org.jspecify.annotations.Nullable;
  */
 @Entity
 @Table(name = "orders")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order {
 
     public enum Status { OPEN, CLOSED, CANCELLED }
@@ -95,11 +100,8 @@ public class Order {
     @Column(nullable = false)
     private Instant updatedAt;
     @Version
+    @Getter(AccessLevel.NONE)
     private Long version;
-
-    protected Order() {
-        // for JPA
-    }
 
     public static Order place(StoreId storeId, long number, OrderPlacement placement, Instant paymentDueAt, Instant now) {
         Order order = new Order();
@@ -185,31 +187,5 @@ public class Order {
         }
     }
 
-    public UUID id() { return id; }
-    public long number() { return number; }
-    public UUID checkoutId() { return checkoutId; }
-    public @Nullable UUID customerId() { return customerId; }
-    public String email() { return email; }
-    public String currency() { return currency; }
-    public long subtotalMinor() { return subtotalMinor; }
-    public long shippingMinor() { return shippingMinor; }
-    public long taxMinor() { return taxMinor; }
-    public long totalMinor() { return totalMinor; }
-    public Status status() { return status; }
-    public FinancialStatus financialStatus() { return financialStatus; }
-    public FulfillmentStatus fulfillmentStatus() { return fulfillmentStatus; }
-    public String shipName() { return shipName; }
-    public String shipLine1() { return shipLine1; }
-    public @Nullable String shipLine2() { return shipLine2; }
-    public String shipCity() { return shipCity; }
-    public @Nullable String shipRegion() { return shipRegion; }
-    public String shipPostalCode() { return shipPostalCode; }
-    public String shipCountry() { return shipCountry; }
-    public Instant paymentDueAt() { return paymentDueAt; }
-    public @Nullable Instant paidAt() { return paidAt; }
-    public @Nullable Instant fulfilledAt() { return fulfilledAt; }
-    public @Nullable Instant cancelledAt() { return cancelledAt; }
-    public @Nullable String cancelReason() { return cancelReason; }
-    public Instant createdAt() { return createdAt; }
     public long version() { return version == null ? 0 : version; }
 }

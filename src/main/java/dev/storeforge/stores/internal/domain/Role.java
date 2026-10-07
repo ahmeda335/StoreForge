@@ -14,6 +14,9 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -24,18 +27,21 @@ import org.hibernate.type.SqlTypes;
  */
 @Entity
 @Table(name = "roles")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Role {
 
     public static final String OWNER = "Owner";
     public static final String STAFF = "Staff";
 
     @Id
+    @Getter
     private UUID id;
 
     @Column(nullable = false)
     private UUID storeId;
 
     @Column(nullable = false)
+    @Getter
     private String name;
 
     @Column(name = "is_owner", nullable = false)
@@ -53,10 +59,6 @@ public class Role {
 
     @Version
     private Long version;
-
-    protected Role() {
-        // for JPA
-    }
 
     private Role(StoreId storeId, String name, boolean owner, Set<Permission> permissions, Instant now) {
         this.id = Ids.newId();
@@ -79,14 +81,6 @@ public class Role {
     public static Role defaultStaff(StoreId storeId, Instant now) {
         return custom(storeId, STAFF, EnumSet.of(Permission.PRODUCTS_READ, Permission.PRODUCTS_WRITE,
                 Permission.INVENTORY_READ, Permission.INVENTORY_WRITE, Permission.ORDERS_READ), now);
-    }
-
-    public UUID id() {
-        return id;
-    }
-
-    public String name() {
-        return name;
     }
 
     public boolean isOwner() {

@@ -10,11 +10,13 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 class DefaultOrders implements Orders {
 
     private final OrderRepository orders;
@@ -22,14 +24,6 @@ class DefaultOrders implements Orders {
     private final OrdersProperties properties;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
-
-    DefaultOrders(OrderRepository orders, OrderRecords records, OrdersProperties properties, MeterRegistry meterRegistry, Clock clock) {
-        this.orders = orders;
-        this.records = records;
-        this.properties = properties;
-        this.meterRegistry = meterRegistry;
-        this.clock = clock;
-    }
 
     @Override
     public Duration reservationHold() {

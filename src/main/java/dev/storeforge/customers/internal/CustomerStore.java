@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -17,15 +18,11 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@RequiredArgsConstructor
 class CustomerStore implements Customers {
 
     private final JdbcClient jdbc;
     private final Clock clock;
-
-    CustomerStore(JdbcClient jdbc, Clock clock) {
-        this.jdbc = jdbc;
-        this.clock = clock;
-    }
 
     record CustomerRow(UUID id, String email, @Nullable String firstName, @Nullable String lastName, Instant createdAt) {
     }

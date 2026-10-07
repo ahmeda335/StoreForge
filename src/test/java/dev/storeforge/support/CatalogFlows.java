@@ -6,14 +6,12 @@ import dev.storeforge.support.StoreFlows.Owner;
 import java.net.http.HttpResponse;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public final class CatalogFlows {
 
     private final HttpTestClient api;
-
-    public CatalogFlows(HttpTestClient api) {
-        this.api = api;
-    }
 
     /** A T-shirt with Size × Color options and two variants. */
     public static String tShirt(String title, String status, String skuPrefix) {

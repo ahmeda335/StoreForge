@@ -6,18 +6,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /** Carts and their items. Every lookup requires the cart token's hash: holding the token IS the authorization. */
 @Repository
+@RequiredArgsConstructor
 class CartStore {
 
     private final JdbcClient jdbc;
-
-    CartStore(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     record Cart(UUID id, String status, Instant expiresAt) {
         boolean open(Instant now) {

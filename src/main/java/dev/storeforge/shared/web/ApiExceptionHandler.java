@@ -6,11 +6,10 @@ import io.micrometer.tracing.Tracer;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -38,16 +37,13 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * unexpected as a 500 that never leaks internals (stack traces, SQL, class names).
  */
 @RestControllerAdvice
+@Slf4j
+@RequiredArgsConstructor
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
     private static final String TYPE_BASE = "https://docs.storeforge.dev/errors/";
 
     private final Tracer tracer;
-
-    ApiExceptionHandler(Tracer tracer) {
-        this.tracer = tracer;
-    }
 
     @ExceptionHandler(StoreForgeException.class)
     ResponseEntity<Object> handleDomain(StoreForgeException exception, WebRequest request) {

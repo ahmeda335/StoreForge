@@ -10,8 +10,8 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Signing keys for access tokens.
@@ -28,11 +28,12 @@ import org.slf4j.LoggerFactory;
  * <p>ES256 (ECDSA P-256) is asymmetric: verifiers only need the public key (published at the JWKS
  * endpoint), so a future separately deployed service can verify tokens without being able to mint them.
  */
+@Slf4j
 public final class JwtKeys {
 
-    private static final Logger log = LoggerFactory.getLogger(JwtKeys.class);
-
+    @Getter
     private final ECKey activeKey;
+    @Getter
     private final JWKSet verificationKeys;
 
     private JwtKeys(ECKey activeKey, List<JWK> previousPublicKeys) {
@@ -68,12 +69,5 @@ public final class JwtKeys {
         }
     }
 
-    public ECKey activeKey() {
-        return activeKey;
-    }
-
     /** Public keys only: safe to publish. */
-    public JWKSet verificationKeys() {
-        return verificationKeys;
-    }
 }

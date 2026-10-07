@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -16,6 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Order numbering, immutable line items and the order timeline (plain SQL; all append-only or counters). */
 @Repository
+@RequiredArgsConstructor
 public class OrderRecords {
 
     private static final long FIRST_ORDER_NUMBER = 1001;
@@ -24,11 +26,6 @@ public class OrderRecords {
 
     private final JdbcClient jdbc;
     private final JsonMapper jsonMapper;
-
-    OrderRecords(JdbcClient jdbc, JsonMapper jsonMapper) {
-        this.jdbc = jdbc;
-        this.jsonMapper = jsonMapper;
-    }
 
     public record Item(UUID variantId, String productTitle, String variantTitle, @Nullable String sku, long unitPriceMinor,
                        int quantity, long lineTotalMinor) {

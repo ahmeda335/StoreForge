@@ -7,18 +7,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /** Staff invitations (tenant data: RLS). Tokens are stored hashed, like all bearer secrets. */
 @Repository
+@RequiredArgsConstructor
 public class InvitationStore {
 
     private final JdbcClient jdbc;
-
-    InvitationStore(JdbcClient jdbc) {
-        this.jdbc = jdbc;
-    }
 
     public record PendingInvitation(UUID id, String email, UUID roleId, UUID invitedBy, Instant expiresAt, Instant createdAt) {
     }

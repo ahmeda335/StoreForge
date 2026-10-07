@@ -10,6 +10,7 @@ import dev.storeforge.stores.Permission;
 import dev.storeforge.stores.StoreAccess;
 import dev.storeforge.stores.internal.web.StoreDtos.AuditEntryResponse;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,17 +20,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** The store's audit trail (lives here, not in the audit module, so audit stays free of tenant authorization). */
 @RestController
+@RequiredArgsConstructor
 class AuditLogController {
 
     private final AuditLog auditLog;
     private final StoreAccess access;
     private final TenantTransactions tenant;
-
-    AuditLogController(AuditLog auditLog, StoreAccess access, TenantTransactions tenant) {
-        this.auditLog = auditLog;
-        this.access = access;
-        this.tenant = tenant;
-    }
 
     @GetMapping("/admin/v1/stores/{storeId}/audit-log")
     Page<AuditEntryResponse> list(@AuthenticationPrincipal UserPrincipal user, @PathVariable UUID storeId,

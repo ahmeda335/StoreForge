@@ -10,32 +10,41 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /** A tenant. Tenant-directory row: not protected by RLS (see ADR-009). */
 @Entity
 @Table(name = "stores")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Store {
 
     @Id
     private UUID id;
 
     @Column(columnDefinition = "citext", nullable = false)
+    @Getter
     private String handle;
 
     @Column(nullable = false)
+    @Getter
     private String name;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Getter
     private StoreStatus status;
 
     @Column(columnDefinition = "bpchar(3)", nullable = false)
+    @Getter
     private String currency;
 
     @Column(nullable = false)
     private UUID createdBy;
 
     @Column(nullable = false)
+    @Getter
     private Instant createdAt;
 
     @Column(nullable = false)
@@ -43,10 +52,6 @@ public class Store {
 
     @Version
     private Long version;
-
-    protected Store() {
-        // for JPA
-    }
 
     public Store(StoreId id, StoreHandle handle, String name, String currency, UUID createdBy, Instant now) {
         this.id = id.value();
@@ -66,25 +71,5 @@ public class Store {
 
     public StoreId id() {
         return StoreId.of(id);
-    }
-
-    public String handle() {
-        return handle;
-    }
-
-    public String name() {
-        return name;
-    }
-
-    public StoreStatus status() {
-        return status;
-    }
-
-    public String currency() {
-        return currency;
-    }
-
-    public Instant createdAt() {
-        return createdAt;
     }
 }

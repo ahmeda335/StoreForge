@@ -44,6 +44,8 @@ All have local defaults in `application.yml`; override them via the environment 
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | Collector base URL (OTLP/HTTP) |
 | `TRACING_SAMPLING_PROBABILITY` | `1.0` | Head sampling ratio |
 | `INVENTORY_SWEEPER_INTERVAL` | `30s` | Reservation expiry sweep interval |
+| `JOBS_POLL_INTERVAL` | `500ms` | Outbox relay + job worker poll |
+| `ORDER_PAYMENT_WINDOW` / `ORDER_EXPIRY_INTERVAL` | `15m` / `30s` | Unpaid-order expiry |
 | `APP_PROFILES` (Compose) | `default` | Profiles for the containerized app, e.g. `otel` |
 
 ## Database

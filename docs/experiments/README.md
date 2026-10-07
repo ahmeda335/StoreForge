@@ -5,6 +5,8 @@ Planned catalogue: [blueprint/25-failure-experiments.md](../blueprint/25-failure
 | ID | Experiment | Phase | Result |
 |---|---|---|---|
 | [EXP-001](EXP-001-database-unavailable-p1.md) | Database unavailable (stop/start, start while down, graceful shutdown) | P1 | As expected; probe timeout must be > 3s |
+| [EXP-009](EXP-009-smtp-outage-and-dropped-logs.md) | SMTP outage during registration (EXP-002 revisited) | P9 | Email delivered automatically after recovery; found and fixed dropped retry/DEAD log lines |
+| [EXP-008](EXP-008-async-guarantees-mutations.md) | Mutations: no inbox, no SKIP LOCKED | P9 | Double count; job executed 4× (3/3 runs). Both caught by tests |
 | [EXP-007](EXP-007-pay-vs-cancel-race.md) | Pay vs. cancel race with and without the order row lock | P8 | Both correct (side effects in-transaction); lock gives precise errors; mandatory once side effects are external |
 | [EXP-006](EXP-006-duplicate-checkout-completion.md) | 20 concurrent completions with one key, with and without stored idempotency | P7 | Stored results → identical answers; without them, effect still once but 19 × 409 |
 | [EXP-005](EXP-005-collector-unavailable.md) | Telemetry Collector restarted while the app was exporting | P6 | Requests unaffected; ~4s of telemetry lost; exporter ERROR logs (noise) |

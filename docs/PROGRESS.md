@@ -11,8 +11,9 @@
 | P6 Observability stack & tracing | ✅ Done (2026-10-06) | See below |
 | P7 Customers, cart & checkout | ✅ Done (2026-10-06) | See below |
 | P8 Orders | ✅ Done (2026-10-06) | See below |
-| P9 Outbox, jobs & notifications | ⏭ Next | Study list below |
-| P10–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P9 Outbox, jobs & notifications | ✅ Done (2026-10-07) | See below |
+| P10 Payments | ⏭ Next | Study list below |
+| P11–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -161,8 +162,24 @@
 
 **Known limitations:** no payments/refunds (P10); no partial fulfillment/shipments (P13); no events/emails to the outside (P9); customers can't view orders; the per-store counter row is a hot spot under flash sales (measure in P15).
 
-**Study before P9:** the dual-write problem (DB + message/email in two systems); transactional outbox; at-least-once delivery and why consumers must be idempotent (inbox / processed-message table); job queues on PostgreSQL (`FOR UPDATE SKIP LOCKED`, leases/visibility timeouts, poison messages, dead-lettering); exponential backoff with jitter; propagating trace context and tenant context through a queue; [blueprint 09](blueprint/09-events-async.md) and [ADR-005](decisions/ADR-005-async-processing.md).
+**Study before P9 (historical):** the dual-write problem (DB + message/email in two systems); transactional outbox; at-least-once delivery and why consumers must be idempotent (inbox / processed-message table); job queues on PostgreSQL (`FOR UPDATE SKIP LOCKED`, leases/visibility timeouts, poison messages, dead-lettering); exponential backoff with jitter; propagating trace context and tenant context through a queue; [blueprint 09](blueprint/09-events-async.md) and [ADR-005](decisions/ADR-005-async-processing.md).
 
 ## Between P8 and P9: Lombok (2026-10-07)
 
 On request, boilerplate was replaced with an allow-list of Lombok features ([ADR-015](decisions/ADR-015-lombok.md), [learning note](learning/lombok.md)): 74 files, about 380 fewer lines; `@RequiredArgsConstructor` on ~60 beans, `@Slf4j`, fluent `@Getter` on entities/exceptions, `@NoArgsConstructor(access = PROTECTED)` on entities. No behaviour change: all 163 tests pass unchanged. All future code follows the same rules.
+
+## P9: Outbox, jobs & notifications (as built)
+
+**What exists**
+- `jobs` module: transactional `Outbox`, `OutboxRelay` (one transaction, dedup), `JobWorker` (SKIP LOCKED claims, leases, backoff + jitter, DEAD, trace continuation), `Inbox`, queue gauges, `/actuator/jobs` (overview + requeue), `Housekeeping` (incl. cross-tenant idempotency-key purge).
+- Durable email: `Notifications.enqueueEmail` in the business transaction, `EmailSendJob` with retries, sensitive bodies erased after delivery. Identity and invitation emails switched over (P2's "lost on SMTP failure" limitation is gone).
+- Orders publish `OrderPlaced/Paid/Cancelled/Fulfilled`; consumers: order confirmation email (dedup per order), customer purchase stats (inbox).
+- V8 migration; [ADR-016](decisions/ADR-016-async-infrastructure.md); event catalog with explicit delivery semantics in [events/README.md](events/README.md).
+
+**Tests: 178 total** (43 unit + 135 integration). New: `BackoffTest`, `JobQueueIT` (6), `OutboxIT` (4), `ReliableEffectsIT` (4). Mutation-checked ([EXP-008](experiments/EXP-008-async-guarantees-mutations.md)).
+
+**Verified manually** ([EXP-009](experiments/EXP-009-smtp-outage-and-dropped-logs.md)): async verification email in 0.5s; order #1001 confirmation email in Mailpit; customer stats after payment; SMTP stopped during registration → 202, email delivered automatically 10s after Mailpit came back. **Bug found and fixed:** retry/DEAD log lines were silently dropped by the JSON encoder (duplicate MDC key); now covered by tests.
+
+**Known limitations:** single-threaded worker per instance; no ordering or per-tenant fairness in the queue; at-least-once email (rare duplicate after a crash); polling latency ~0.5s; no broker (only when measured, P18).
+
+**Study before P10:** card payment flow (authorization vs. capture, 3-D Secure / client-side confirmation, why the server never sees card numbers: PCI DSS SAQ-A); Stripe PaymentIntents and their statuses; the "unknown outcome" of a timed-out provider call and idempotency keys toward providers; verifying webhook signatures (HMAC over the raw body, timestamp tolerance, replay); an IN_PROGRESS idempotency model for external calls (ADR-013, EXP-007); Resilience4j timeouts/circuit breakers; WireMock for contract tests; [blueprint 10](blueprint/10-payments.md).

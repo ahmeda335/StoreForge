@@ -2,7 +2,7 @@
 
 A multi-tenant commerce platform (Shopify-inspired), built as a long-term learning project in backend engineering, SaaS architecture, reliability, security, observability and production operations.
 
-> Status: **Phase 8 (Orders) complete.** Next: P9 (outbox, jobs & notifications). See [docs/PROGRESS.md](docs/PROGRESS.md).
+> Status: **Phase 9 (Outbox, jobs & notifications) complete.** Next: P10 (payments). See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Quick start
 

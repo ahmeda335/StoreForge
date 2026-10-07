@@ -36,6 +36,7 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | V1 | `V1__baseline_privileges.sql` | Default privileges: every future table/sequence/function created by the owner is usable by the app role |
 | V2 | `V2__identity.sql` | `citext` extension; `users`, `refresh_tokens`, `email_tokens` (see [domains/identity.md](../domains/identity.md)) |
+| V8 | `V8__outbox_jobs_notifications.sql` | Infrastructure tables `outbox_events`, `jobs`, `email_messages` (no RLS, ADR-016); inbox `processed_messages` (RLS); customer stats columns; `purge_idempotency_keys()` delete-only definer fn. See [domains/jobs.md](../domains/jobs.md) |
 | V7 | `V7__orders.sql` | `orders` (state CHECKs, one per checkout), immutable `order_items`/`order_events`, `store_counters`, `checkouts.order_id`, `stores_with_overdue_orders()` definer fn. See [domains/orders.md](../domains/orders.md) |
 | V6 | `V6__customers_cart_checkout.sql` | `customers`, `carts` (hashed token), `cart_items`, `checkouts` (one OPEN per cart), `checkout_lines` (frozen snapshot, `line_total = unit × qty` CHECK), `idempotency_keys`. All RLS. See [domains/checkout.md](../domains/checkout.md) |
 | V5 | `V5__inventory.sql` | `inventory_items` (CHECK `reserved <= on_hand`), `inventory_reservations`, append-only `inventory_transactions`, RLS; `stores_with_expired_reservations()` SECURITY DEFINER ([ADR-011](../decisions/ADR-011-cross-tenant-background-work.md)) |
@@ -48,6 +49,7 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | Platform | `users`, `refresh_tokens`, `email_tokens` | Not tenant data |
 | Tenant directory | `stores`, `store_domains`, `store_members` | Application scoping by the stores module only ([ADR-009](../decisions/ADR-009-tenant-context-and-directory-tables.md)) |
+| Platform infrastructure | `outbox_events`, `jobs`, `email_messages` | Owned by jobs/notifications; tenant effects run in tenant transactions ([ADR-016](../decisions/ADR-016-async-infrastructure.md)) |
 | Tenant data | `roles`, `invitations`, `audit_log`, `products`, `product_variants`, `inventory_items`, `inventory_reservations`, `inventory_transactions`, `customers`, `carts`, `cart_items`, `checkouts`, `checkout_lines`, `idempotency_keys`, `orders`, `order_items`, `order_events`, `store_counters` (+ every future business table) | `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy `tenant_isolation` `USING`/`WITH CHECK (store_id = current_store_id())` |
 
 Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes lead with `store_id` → `UNIQUE (store_id, id)` if children reference it → composite FKs to parents → ENABLE + FORCE RLS + `tenant_isolation` policy **in the same migration**. `RowLevelSecurityIT` fails the build if the RLS part is missing.
@@ -80,6 +82,8 @@ Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes 
 | Counter row `UPDATE … RETURNING` | `store_counters` | Duplicate/gapped order numbers under concurrency |
 | `PESSIMISTIC_WRITE` (`FOR UPDATE`) + `@Version` | Order transitions | Pay vs. cancel both succeeding ([EXP-007](../experiments/EXP-007-pay-vs-cancel-race.md)) |
 | CHECKs on state combinations | `orders` | Impossible states from buggy code |
+| Claim `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` + leases | `jobs` | Double execution by concurrent workers ([EXP-008](../experiments/EXP-008-async-guarantees-mutations.md)) |
+| Inbox row in the same transaction as the effect | `processed_messages` | Double effects on redelivery |
 
 Migration rules (from the blueprint):
 - `src/main/resources/db/migration/V{n}__snake_case_description.sql`; never edit an applied migration (checksum).

@@ -47,6 +47,13 @@ flowchart LR
 | `storeforge_checkouts_completions_total{outcome}` | `completed` / `total_changed` (price changed during checkout) | `CheckoutService` | Prometheus |
 | `storeforge_orders_created_total`, `storeforge_orders_paid_total{method}`, `storeforge_orders_cancelled_total{reason}` | Sales funnel and expiry rate (`reason="payment_timeout"` rising → payment trouble) | `DefaultOrders`, `OrderService` | Prometheus |
 | Order timeline (`order_events`) | Per-order history for support | `OrderRecords` | `GET …/orders/{id}` |
+| `storeforge_jobs_queue_depth{status}` | READY / RUNNING / DEAD jobs | `JobMetrics` (refreshed every 15s) | Prometheus |
+| `storeforge_jobs_oldest_ready_age_seconds` | How long due work has been waiting: the alert signal for a stuck or overloaded queue | `JobMetrics` | Prometheus |
+| `storeforge_outbox_unpublished` | Should stay ~0; growth means the relay isn't running | `JobMetrics` | Prometheus |
+| `storeforge_jobs_executions_total{type,outcome}` | done / retry / dead per job type | `JobWorker` | Prometheus |
+| `job <type>` spans | Async work as part of the producer's trace (`traceparent` stored with events and jobs) | `JobWorker` + `TraceContexts` | Tempo |
+| `jobId`, `jobType` log fields | Correlate a job's retries and failure | MDC in `JobWorker` | Logs |
+| `/actuator/jobs` | Counts, oldest age, latest DEAD jobs; requeue | `JobsEndpoint` | Management port |
 | `storeforge_idempotency_replays_total{scope}` | Retries answered from storage; a spike means clients are timing out | `Idempotency` | Prometheus |
 | `jvm_*`, `process_*` | Memory, GC, threads, CPU | Micrometer binders | Bundled "JVM Overview" dashboard |
 
@@ -64,6 +71,8 @@ Log levels ([blueprint conventions](../blueprint/15-observability-monitoring.md#
 3. **Logs** for that trace: Loki `{service_name="storeforge"} | trace_id="<id>"`, or the warn/error panel. Without the stack: `docker compose logs app --no-log-prefix | jq 'select(.traceId=="<id>")'`.
 4. **Scope it:** same route for all stores (code/DB), or one store (TraceQL by `storeforge.store_id`: data shape or abuse)?
 5. Database outage: readiness `db` DOWN, `hikaricp_connections_pending`; see the [runbook](../operations/runbooks/database-unavailable.md).
+
+**Pitfall (EXP-009):** with the JSON log encoder, never add a key-value that's also in the MDC (e.g. `jobId`): the encoder rejects the duplicate key and the whole line is dropped. Tests now assert that key log lines are emitted.
 
 ## Security signals worth watching
 - `reuse_detected` > 0: a refresh token was replayed. See the [auth anomalies runbook](../operations/runbooks/auth-anomalies.md).

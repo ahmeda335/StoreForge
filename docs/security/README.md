@@ -97,6 +97,15 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 | Order IDOR across stores | Tenant path + RLS | `TenantIsolationIT` (order endpoints with sample bodies) |
 | Money integrity | Totals CHECK, paid orders can't be cancelled without refund | `OrderStateMachineTest`, `OrderLifecycleIT` |
 
+## P9 additions (async)
+
+| Control | Implementation |
+|---|---|
+| Secrets at rest in the email queue | `sensitive` bodies (verification, reset, invitation links) set to NULL once delivered (`ReliableEffectsIT`) |
+| PII in queue tables | Thin event payloads (ids, amounts); consumers re-read under RLS |
+| Cross-tenant purge without data exposure | `purge_idempotency_keys` is delete-only, returns a count, pinned `search_path` |
+| Operator actions | `/actuator/jobs` only on the private management port; requeues are logged |
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

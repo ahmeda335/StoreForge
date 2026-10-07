@@ -20,6 +20,7 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - Assert on stable contracts (`code`, status, headers), not human text.
 - Emails are captured by `RecordingEmailSender` (replaces the SMTP adapter in all ITs); `AuthFlows` bundles register/verify/login steps.
 - Each test uses unique emails (`uniqueEmail()`) and stores (`StoreFlows.uniqueHandle()`), because the context, database and rate-limiter buckets are shared across test classes.
+- Emails are sent by the job worker: `RecordingEmailSender` drains the queue (`JobWorker.drain()`) before every mailbox read; `mailbox.failNext(n)` simulates SMTP outages. Test-only job handlers live in `TestJobHandlers`.
 - Platform-wide jobs (sweeper, order expiry) see **all** test stores' data in the shared database: assert on your own store's rows, not on global counts.
 - `StoreFlows` creates owners with stores, roles and invited members over HTTP; `CatalogFlows` creates products and stock; `StorefrontFlows` acts as an anonymous shopper (hostname + cart token).
 - Scheduling is **off** in tests (`storeforge.scheduling.enabled=false`); tests call background work (e.g. `ReservationSweeper.sweepOnce()`) explicitly.
@@ -27,7 +28,7 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - `QueryCounter` (test-only `BeanPostProcessor`) wraps the `DataSource` and counts prepared statements: use it to assert constant query counts for list endpoints.
 - Concurrency tests start N threads on a `CountDownLatch` and assert **invariants** (exactly one user, exactly one successful rotation), not just "no exception".
 
-## Current suite (P1–P8)
+## Current suite (P1–P9)
 
 | Test | Level | Protects |
 |---|---|---|
@@ -60,6 +61,10 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 | `OrderStateMachineTest` | Unit | Every legal and illegal order transition, expiry idempotency |
 | `OrderPlacementIT` | API + concurrency | Order from checkout snapshot, per-store numbering, **12 concurrent orders → #1001..#1012**, immutable lines |
 | `OrderLifecycleIT` | API + concurrency | Pay → stock sold → fulfil → closed; cancel releases; illegal transitions; **pay vs. cancel race ×5**; expiry job; filters/search; read-only role |
+| `BackoffTest` | Unit | Exponential growth, cap, no overflow, jitter range |
+| `JobQueueIT` | Integration + concurrency | Retry timeline (controlled time), DEAD + operator requeue, permanent failure, lease reclaim after a simulated crash, **4 workers × 60 jobs → each once**, WARN/ERROR lines actually emitted |
+| `OutboxIT` | Integration | Rolled-back transaction → no event; no transaction → refused; relay re-run → no duplicate jobs; **job span in the request's trace** |
+| `ReliableEffectsIT` | Integration | **SMTP outage → delivered after retry**, sensitive body erased; redelivered events → one email, stats once (inbox); housekeeping |
 | `TracingIT` | Observability | One trace per request with JDBC `query` spans and the `storeforge.store_id` attribute; `inventory.reserve` parents its SQL spans (in-memory span exporter) |
 | `StorefrontCatalogIT` | API + performance | Hostname → store, only ACTIVE, no internal fields, per-store handles, unknown host, **N+1 detector** (`QueryCounter`) |
 

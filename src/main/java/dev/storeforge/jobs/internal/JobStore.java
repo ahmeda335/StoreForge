@@ -27,11 +27,11 @@ class JobStore {
 
     /** @return true if inserted, false if a job with the same (type, dedupKey) already exists */
     boolean insert(@Nullable UUID storeId, String type, String dedupKey, @Nullable UUID eventId, String payloadJson,
-                   int maxAttempts, @Nullable String traceParent, Instant now) {
+                   int maxAttempts, @Nullable String traceParent, Instant runAt, Instant now) {
         return jdbc.sql("""
                 INSERT INTO jobs (id, store_id, type, dedup_key, event_id, payload, status, max_attempts, run_at,
                                   trace_parent, created_at, updated_at)
-                VALUES (:id, :storeId, :type, :dedupKey, :eventId, CAST(:payload AS jsonb), 'READY', :maxAttempts, :now,
+                VALUES (:id, :storeId, :type, :dedupKey, :eventId, CAST(:payload AS jsonb), 'READY', :maxAttempts, :runAt,
                         :traceParent, :now, :now)
                 ON CONFLICT (type, dedup_key) DO NOTHING
                 """)
@@ -43,6 +43,7 @@ class JobStore {
                 .param("payload", payloadJson)
                 .param("maxAttempts", maxAttempts)
                 .param("traceParent", traceParent)
+                .param("runAt", Timestamp.from(runAt))
                 .param("now", Timestamp.from(now))
                 .update() == 1;
     }

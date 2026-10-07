@@ -3,6 +3,7 @@ package dev.storeforge.jobs.internal;
 import dev.storeforge.jobs.Jobs;
 import dev.storeforge.shared.tenancy.StoreId;
 import java.time.Clock;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
@@ -23,7 +24,13 @@ class JdbcJobs implements Jobs {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void enqueue(@Nullable StoreId storeId, String type, String dedupKey, Object payload) {
+        enqueue(storeId, type, dedupKey, payload, clock.instant());
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void enqueue(@Nullable StoreId storeId, String type, String dedupKey, Object payload, Instant runAt) {
         store.insert(storeId == null ? null : storeId.value(), type, dedupKey, null, jsonMapper.writeValueAsString(payload),
-                properties.maxAttempts(), traces.currentTraceParent(), clock.instant());
+                properties.maxAttempts(), traces.currentTraceParent(), runAt, clock.instant());
     }
 }

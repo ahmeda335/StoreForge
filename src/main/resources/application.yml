@@ -85,6 +85,30 @@ storeforge:
     backoff-base: 5s
     backoff-cap: 1h
     retention: 7d
+  payments:
+    provider: ${PAYMENTS_PROVIDER:fake}
+    webhook-tolerance: 5m
+    refund-retry-delay: 30s
+    reconciliation:
+      interval: ${PAYMENTS_RECONCILIATION_INTERVAL:5m}
+      stale-after: ${PAYMENTS_STALE_AFTER:10m}
+      provider-event-retention: 30d
+    circuit-breaker:
+      failure-rate-threshold: 50     # percent of the last sliding-window calls
+      sliding-window: 20
+      minimum-calls: 10
+      open-for: 30s
+    fake:
+      webhook-secret: ${FAKE_PROVIDER_WEBHOOK_SECRET:whsec_fake_local_development_only}
+      # Where the fake provider POSTs its webhooks (like Stripe would). Blank: not delivered (tests deliver them).
+      webhook-url: ${FAKE_PROVIDER_WEBHOOK_URL:http://localhost:8080/webhooks/v1/payments/fake}
+    stripe:
+      base-url: ${STRIPE_BASE_URL:https://api.stripe.com}
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+      api-version: ${STRIPE_API_VERSION:}
+      connect-timeout: 2s
+      read-timeout: 10s
   orders:
     payment-window: ${ORDER_PAYMENT_WINDOW:15m}
     reservation-grace: 15m

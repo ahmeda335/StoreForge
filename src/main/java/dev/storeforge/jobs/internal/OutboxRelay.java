@@ -59,7 +59,7 @@ class OutboxRelay {
                         // dedup (type, event id): even a re-run of this loop can't create a second job
                         jobs.insert(event.storeId(), JobWorker.EVENT_PREFIX + handler.name(), event.id().toString(), event.id(),
                                 jsonMapper.writeValueAsString(Map.of("eventId", event.id().toString())),
-                                properties.maxAttempts(), event.traceParent(), now);
+                                properties.maxAttempts(), event.traceParent(), now, now);
                     }
                 }
                 jdbc.sql("UPDATE outbox_events SET published_at = :now WHERE id = :id")

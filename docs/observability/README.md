@@ -47,6 +47,11 @@ flowchart LR
 | `storeforge_checkouts_completions_total{outcome}` | `completed` / `total_changed` (price changed during checkout) | `CheckoutService` | Prometheus |
 | `storeforge_orders_created_total`, `storeforge_orders_paid_total{method}`, `storeforge_orders_cancelled_total{reason}` | Sales funnel and expiry rate (`reason="payment_timeout"` rising → payment trouble) | `DefaultOrders`, `OrderService` | Prometheus |
 | Order timeline (`order_events`) | Per-order history for support | `OrderRecords` | `GET …/orders/{id}` |
+| `storeforge_payments_provider_calls_seconds{provider,operation,outcome}` | Latency and outcome (success / rejected / unavailable / unknown / circuit_open) of every provider call | `PaymentGateway` | Prometheus |
+| `resilience4j_circuitbreaker_state{name="payment-provider",state}` (+ calls, failure rate) | Is the breaker open? | Resilience4j + `TaggedCircuitBreakerMetrics` | Prometheus |
+| `storeforge_payments_webhooks_total{provider,outcome}` | accepted / duplicate / ignored / rejected webhooks | `WebhookIntake` | Prometheus |
+| `storeforge_payments_{captured,declined,reconciled,compensations}_total`, `storeforge_payments_refunds_total{outcome,kind}`, `storeforge_payments_events_unmatched_total`, `storeforge_payments_reconciliation_failures_total{reason}` | Money flow and its safety nets | payments services | Prometheus |
+| `http.client.requests` + client spans | Calls to Stripe (RestClient with the observation registry) | Spring | Prometheus / Tempo |
 | `storeforge_jobs_queue_depth{status}` | READY / RUNNING / DEAD jobs | `JobMetrics` (refreshed every 15s) | Prometheus |
 | `storeforge_jobs_oldest_ready_age_seconds` | How long due work has been waiting: the alert signal for a stuck or overloaded queue | `JobMetrics` | Prometheus |
 | `storeforge_outbox_unpublished` | Should stay ~0; growth means the relay isn't running | `JobMetrics` | Prometheus |

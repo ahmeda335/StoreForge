@@ -8,6 +8,8 @@
 | `GET /orders/{orderId}` | — | `200` order with `items`, `shippingAddress`, `timeline`, `paymentDueAt`, `paidAt`, `fulfilledAt`, `cancelledAt`, `cancelReason` | `order_not_found` |
 | `POST /orders/{orderId}/manual-payment` | `{note?}` | `200` (PAID; reserved stock becomes sold) | `order_already_paid`, `order_not_open` (409) |
 | `POST /orders/{orderId}/fulfillment` | — | `200` (FULFILLED, CLOSED) | `order_not_paid`, `order_already_fulfilled`, `order_not_open` (409) |
-| `POST /orders/{orderId}/cancellation` | `{reason: customer_request\|fraud\|inventory\|other}` | `200` (CANCELLED, VOIDED; stock released) | `cancel_requires_refund`, `order_not_open` (409) |
+| `POST /orders/{orderId}/cancellation` | `{reason: customer_request\|fraud\|inventory\|other}` | `200` (CANCELLED; VOIDED if unpaid, stays REFUNDED after a full refund; reserved stock released; an open card payment is cancelled at the provider) | `cancel_requires_refund`, `order_not_open` (409) |
+
+Payments and refunds: [payments API](payments.md). Orders now include `refunded`, and `financialStatus` can be `PARTIALLY_REFUNDED` / `REFUNDED`.
 
 Unpaid orders are cancelled automatically when `paymentDueAt` passes (default 15 min, `ORDER_PAYMENT_WINDOW`), with `cancelReason: PAYMENT_TIMEOUT`.

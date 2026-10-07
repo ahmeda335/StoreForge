@@ -36,6 +36,7 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | V1 | `V1__baseline_privileges.sql` | Default privileges: every future table/sequence/function created by the owner is usable by the app role |
 | V2 | `V2__identity.sql` | `citext` extension; `users`, `refresh_tokens`, `email_tokens` (see [domains/identity.md](../domains/identity.md)) |
+| V9 | `V9__payments.sql` | `payments`, `payment_operations`, `refunds` (RLS); `provider_events` (infrastructure, webhook dedup PK); orders: refund statuses, `refunded_minor`, cancel-after-refund CHECK; `stores_with_stale_payments()` definer fn. See [domains/payments.md](../domains/payments.md#data-v9) |
 | V8 | `V8__outbox_jobs_notifications.sql` | Infrastructure tables `outbox_events`, `jobs`, `email_messages` (no RLS, ADR-016); inbox `processed_messages` (RLS); customer stats columns; `purge_idempotency_keys()` delete-only definer fn. See [domains/jobs.md](../domains/jobs.md) |
 | V7 | `V7__orders.sql` | `orders` (state CHECKs, one per checkout), immutable `order_items`/`order_events`, `store_counters`, `checkouts.order_id`, `stores_with_overdue_orders()` definer fn. See [domains/orders.md](../domains/orders.md) |
 | V6 | `V6__customers_cart_checkout.sql` | `customers`, `carts` (hashed token), `cart_items`, `checkouts` (one OPEN per cart), `checkout_lines` (frozen snapshot, `line_total = unit × qty` CHECK), `idempotency_keys`. All RLS. See [domains/checkout.md](../domains/checkout.md) |
@@ -84,6 +85,9 @@ Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes 
 | CHECKs on state combinations | `orders` | Impossible states from buggy code |
 | Claim `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` + leases | `jobs` | Double execution by concurrent workers ([EXP-008](../experiments/EXP-008-async-guarantees-mutations.md)) |
 | Inbox row in the same transaction as the effect | `processed_messages` | Double effects on redelivery |
+| CHECK `refunded ≤ captured ≤ amount` + payment row lock for refunds | `payments`, `refunds` | Over-refunding under concurrency ([EXP-010](../experiments/EXP-010-payment-mutations.md)) |
+| `UNIQUE (store_id, order_id)` + `INSERT … ON CONFLICT DO NOTHING` | `payments` | Two payments for one order when starts race |
+| PK `(provider, event_id)` | `provider_events` | Duplicate webhook processing |
 
 Migration rules (from the blueprint):
 - `src/main/resources/db/migration/V{n}__snake_case_description.sql`; never edit an applied migration (checksum).

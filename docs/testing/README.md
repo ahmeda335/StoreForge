@@ -21,6 +21,7 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - Emails are captured by `RecordingEmailSender` (replaces the SMTP adapter in all ITs); `AuthFlows` bundles register/verify/login steps.
 - Each test uses unique emails (`uniqueEmail()`) and stores (`StoreFlows.uniqueHandle()`), because the context, database and rate-limiter buckets are shared across test classes.
 - Emails are sent by the job worker: `RecordingEmailSender` drains the queue (`JobWorker.drain()`) before every mailbox read; `mailbox.failNext(n)` simulates SMTP outages. Test-only job handlers live in `TestJobHandlers`.
+- Payments use the in-process `FakePaymentProvider` (a stateful Stripe simulator): `PaymentFlows` plays browser, provider and merchant; tests deliver webhooks themselves (`storeforge.payments.fake.webhook-url=` is blank in tests) so they can duplicate, drop, delay or forge them; `provider.failNext(UNAVAILABLE | RESPONSE_LOST)` injects provider failures. The real Stripe adapter is covered by WireMock contract tests instead.
 - Platform-wide jobs (sweeper, order expiry) see **all** test stores' data in the shared database: assert on your own store's rows, not on global counts.
 - `StoreFlows` creates owners with stores, roles and invited members over HTTP; `CatalogFlows` creates products and stock; `StorefrontFlows` acts as an anonymous shopper (hostname + cart token).
 - Scheduling is **off** in tests (`storeforge.scheduling.enabled=false`); tests call background work (e.g. `ReservationSweeper.sweepOnce()`) explicitly.
@@ -28,7 +29,7 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - `QueryCounter` (test-only `BeanPostProcessor`) wraps the `DataSource` and counts prepared statements: use it to assert constant query counts for list endpoints.
 - Concurrency tests start N threads on a `CountDownLatch` and assert **invariants** (exactly one user, exactly one successful rotation), not just "no exception".
 
-## Current suite (P1–P9)
+## Current suite (P1–P10)
 
 | Test | Level | Protects |
 |---|---|---|
@@ -64,6 +65,11 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 | `BackoffTest` | Unit | Exponential growth, cap, no overflow, jitter range |
 | `JobQueueIT` | Integration + concurrency | Retry timeline (controlled time), DEAD + operator requeue, permanent failure, lease reclaim after a simulated crash, **4 workers × 60 jobs → each once**, WARN/ERROR lines actually emitted |
 | `OutboxIT` | Integration | Rolled-back transaction → no event; no transaction → refused; relay re-run → no duplicate jobs; **job span in the request's trace** |
+| `StripeFormatTest`, `PaymentTest` | Unit | Webhook signature rules (independent HMAC), event parsing; payment state machine and refund arithmetic |
+| `StripePaymentProviderContractTest` | Contract (WireMock) | Stripe request shape; error classification incl. **read timeout = unknown**, **refused connection = not performed** |
+| `CardPaymentIT` | Integration + concurrency | Card payment end to end; concurrent starts → one intent; lost response → safe retry; declines; duplicate/concurrent/re-sent webhooks applied once; forged/replayed webhooks rejected |
+| `PaymentRecoveryIT` | Integration | Lost webhook → reconciliation; poisoned item isolation; pay-vs-expire race → automatic refund; cancellation voids the intent; paid twice → refund; circuit breaker open/fast-fail/recover |
+| `RefundIT` | Integration + concurrency | Partial/full refunds; idempotency; **10 concurrent refunds never exceed the capture**; lost refund response completed by the job; pending refunds via webhook; permissions |
 | `ReliableEffectsIT` | Integration | **SMTP outage → delivered after retry**, sensitive body erased; redelivered events → one email, stats once (inbox); housekeeping |
 | `TracingIT` | Observability | One trace per request with JDBC `query` spans and the `storeforge.store_id` attribute; `inventory.reserve` parents its SQL spans (in-memory span exporter) |
 | `StorefrontCatalogIT` | API + performance | Hostname → store, only ACTIVE, no internal fields, per-store handles, unknown host, **N+1 detector** (`QueryCounter`) |

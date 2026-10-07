@@ -13,5 +13,6 @@ One page per business module, written when the module is implemented: responsibi
 | `checkout` + `customers` | P7 | [checkout.md](checkout.md) |
 | `orders` | P8 | [orders.md](orders.md) |
 | `jobs` + `notifications` | P9 | [jobs.md](jobs.md) |
+| `payments` | P10 | [payments.md](payments.md) |
 
 Target design for all modules: [blueprint/03-architecture.md](../blueprint/03-architecture.md) and [blueprint/05-domain-model.md](../blueprint/05-domain-model.md).

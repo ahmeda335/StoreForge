@@ -18,7 +18,11 @@ stateDiagram-v2
     New --> Cancelled: cancellation (stock released)
     New --> Cancelled: payment window passed (expiry job, reason PAYMENT_TIMEOUT)
     Paid --> Done: fulfillment
-    Paid --> Paid: cancellation → 409 cancel_requires_refund (refunds: P10)
+    New --> Paid: card payment captured (payments module, same transaction)
+    Paid --> Refunded: refunds (partial → PARTIALLY_REFUNDED, full → REFUNDED)
+    Refunded --> Cancelled2: cancellation (after a full refund)
+    state "OPEN / (PARTIALLY_)REFUNDED" as Refunded
+    state "CANCELLED / REFUNDED" as Cancelled2
 ```
 
 ## Data (V7)
@@ -27,7 +31,8 @@ stateDiagram-v2
 |---|---|
 | `orders` | `UNIQUE (store_id, number)`, `UNIQUE (store_id, checkout_id)` (one order per checkout); CHECKs for totals and forbidden state combinations; partial index on `payment_due_at` for unpaid open orders |
 | `order_items` | Immutable snapshot (UPDATE/DELETE revoked); `line_total = unit × qty` CHECK |
-| `order_events` | Append-only timeline: PLACED, PAID, FULFILLED, CANCELLED, EXPIRED |
+| `order_events` | Append-only timeline: PLACED, PAID, FULFILLED, CANCELLED, EXPIRED; P10: REFUNDED (incl. compensations), PAYMENT_FAILED |
+| `orders.refunded_minor` (V9) | Sum of merchant refunds; CHECK `≤ total_minor` |
 | `store_counters` | Next order number per store (gapless, transactional) |
 | `checkouts.order_id` | Link from checkout to its order |
 
@@ -40,7 +45,7 @@ stateDiagram-v2
 `OrderStateMachineTest` (every legal and illegal transition, pure unit), `OrderPlacementIT` (snapshot, per-store numbering, **12 concurrent orders → #1001..#1012**, immutable lines), `OrderLifecycleIT` (pay → sell → fulfil, cancel releases, illegal transitions, **pay vs. cancel race ×5**, expiry, list filters/search, read-only role); orders endpoints in `TenantIsolationIT`.
 
 ## Known limitations
-- No payments (P10): money is recorded only via manual payment. No refunds, so paid orders can't be cancelled.
+- Payments and refunds: see [payments.md](payments.md). Refunds don't restock automatically (the merchant adjusts inventory).
 - No partial fulfillment or shipments with tracking (P13).
 - No events to other systems yet (P9 outbox → emails, webhooks).
 - Customers can't look up their order yet (no order status page or customer accounts).

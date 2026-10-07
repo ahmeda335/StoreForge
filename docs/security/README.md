@@ -106,6 +106,19 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 | Cross-tenant purge without data exposure | `purge_idempotency_keys` is delete-only, returns a count, pinned `search_path` |
 | Operator actions | `/actuator/jobs` only on the private management port; requeues are logged |
 
+## P10 additions (payments)
+
+| Control | Implementation |
+|---|---|
+| Card data never touches StoreForge (PCI DSS SAQ-A scope) | The browser sends card details to the provider with a `clientSecret`; we store ids, status, amounts and error codes only |
+| Amount integrity | The payment amount comes from the order, server side; the client never sends it |
+| Webhook authentication | HMAC-SHA256 over the raw body, constant-time compare, ±5 min replay window, secret rotation (several `v1`); `/webhooks/**` chain without user auth; failures logged with reason, answered `400 invalid_webhook` without details ([learning](../learning/inbound-webhooks.md)) |
+| Refund authorization and integrity | `orders:refund` permission, audit entry, required `Idempotency-Key`, payment row lock + DB CHECKs against over-refunding |
+| Provider credentials | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` from the environment (secret store in production); never logged; the app refuses to start the Stripe adapter without them |
+| Fake provider | Default locally; anyone can "pay" through `/fake-provider/**`, so it logs a WARN at startup and must never run in production |
+| Provider payloads | `provider_events` keeps raw webhook bodies (may contain customer email/name) for 30 days, then deletes them |
+| Client secret | Returned only to the cart-token holder and only while the payment is PENDING; erased once captured or cancelled |
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

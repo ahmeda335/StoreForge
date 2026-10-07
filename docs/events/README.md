@@ -23,14 +23,17 @@ Design: [blueprint/09-events-async.md](../blueprint/09-events-async.md). Decisio
 | Event | v | Producer | Payload | Consumers | Idempotency |
 |---|---|---|---|---|---|
 | `OrderPlaced` | 1 | orders (`DefaultOrders.place`, inside checkout completion) | `orderId, number, totalMinor, currency, customerId` | `order-confirmation-emails` → email | Email dedup key `order-confirmation:<orderId>` |
-| `OrderPaid` | 1 | orders (manual payment; provider payments in P10) | `orderId, number, totalMinor, currency, customerId, method` | `customer-purchase-stats` → `customers.orders_count/total_spent_minor` | Inbox `(store, consumer, eventId)` |
-| `OrderCancelled` | 1 | orders (merchant cancel, payment timeout) | `orderId, number, reason` | — (webhooks: P11) | — |
+| `OrderPaid` | 1 | orders (manual payment, or a provider capture via `Orders.applyPayment`; `method` = `manual` \| `card`) | `orderId, number, totalMinor, currency, customerId, method` | `customer-purchase-stats` → `customers.orders_count/total_spent_minor` | Inbox `(store, consumer, eventId)` |
+| `OrderCancelled` | 1 | orders (merchant cancel, payment timeout) | `orderId, number, reason` | `payment-cancellations` → cancel the open payment at the provider (or capture + compensate if it already succeeded) | Payment state check + provider key `cancel:<paymentId>` |
+| `OrderRefunded` | 1 | orders (`Orders.applyRefund`, merchant refunds only) | `orderId, number, refundId, amountMinor, currency, refundedTotalMinor` | — (webhooks: P11) | — |
 | `OrderFulfilled` | 1 | orders | `orderId, number` | — (shipping email / webhooks later) | — |
 
 ## Direct jobs (not events)
 
 | Job type | Enqueued by | Payload | Handler |
 |---|---|---|---|
+| `payments.provider-event` | `WebhookIntake` (after signature check + `provider_events` dedup) | normalized provider event | `PaymentService.apply`: capture / decline / cancel / refund status, idempotent state checks |
+| `payments.refund` | `RefundService` (merchant refunds: due after 30 s as a safety net; compensations: immediately) | `refundId` | `RefundService.execute`: refund or retrieve at the provider with key `refund:<refundId>`; retries while the provider reports it pending |
 | `email.send` | `Notifications.enqueueEmail` (identity verification/reset/account-exists, staff invitation, order confirmation) | `messageId` | `EmailSendJob`: send via SMTP, mark SENT, erase sensitive body |
 
 ## Rules for new events and consumers

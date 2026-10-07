@@ -32,6 +32,10 @@
 | `422 idempotency_key_reused` | The same key was sent with a different body (or another cart token) | Use one key per completion attempt; new attempt → new key |
 | `409 cancel_requires_refund` | Paid orders can't be cancelled until refunds exist (P10) | — |
 | An unpaid order cancelled itself (`PAYMENT_TIMEOUT`) | The payment window (`ORDER_PAYMENT_WINDOW`, 15m) passed | Mark it paid within the window, or raise the window locally |
+| `503 payment_provider_unavailable` | Provider down/slow, or the circuit breaker is open | Retry (safe); see the [payments runbook](../operations/runbooks/payments.md) |
+| Webhooks answered `400 invalid_webhook` | Wrong webhook secret, clock skew > 5 min, or a modified body (proxy re-encoding JSON) | Check the WARN log `reason`; the body must reach the app byte-for-byte |
+| Paid at the provider, order still PENDING | Webhook lost/not delivered | Reconciliation fixes it within ~15 min; locally check `FAKE_PROVIDER_WEBHOOK_URL` points at the app |
+| Stripe adapter fails at startup | `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` missing | Set them, or use `PAYMENTS_PROVIDER=fake` locally |
 | An email never arrives | SMTP down (job retrying), or the job went DEAD | `curl localhost:8081/actuator/jobs`; see the [dead-jobs runbook](../operations/runbooks/dead-jobs.md) |
 | `IllegalTransactionStateException: No existing transaction found … MANDATORY` | `Outbox.append`/`Notifications.enqueueEmail`/`Inbox` called outside a transaction | Call them inside the business transaction (that's the point of the outbox) |
 | A log line is missing although the code logs it | Duplicate key: a key-value with the same name as an MDC entry makes the JSON encoder drop the line | Don't add MDC keys as key-values ([EXP-009](../experiments/EXP-009-smtp-outage-and-dropped-logs.md)) |

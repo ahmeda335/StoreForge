@@ -12,8 +12,9 @@
 | P7 Customers, cart & checkout | ✅ Done (2026-10-06) | See below |
 | P8 Orders | ✅ Done (2026-10-06) | See below |
 | P9 Outbox, jobs & notifications | ✅ Done (2026-10-07) | See below |
-| P10 Payments | ⏭ Next | Study list below |
-| P11–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P10 Payments | ✅ Done (2026-10-07) | See below |
+| P11 Outbound webhooks | ⏭ Next | Study list below |
+| P12–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -182,4 +183,48 @@ On request, boilerplate was replaced with an allow-list of Lombok features ([ADR
 
 **Known limitations:** single-threaded worker per instance; no ordering or per-tenant fairness in the queue; at-least-once email (rare duplicate after a crash); polling latency ~0.5s; no broker (only when measured, P18).
 
-**Study before P10:** card payment flow (authorization vs. capture, 3-D Secure / client-side confirmation, why the server never sees card numbers: PCI DSS SAQ-A); Stripe PaymentIntents and their statuses; the "unknown outcome" of a timed-out provider call and idempotency keys toward providers; verifying webhook signatures (HMAC over the raw body, timestamp tolerance, replay); an IN_PROGRESS idempotency model for external calls (ADR-013, EXP-007); Resilience4j timeouts/circuit breakers; WireMock for contract tests; [blueprint 10](blueprint/10-payments.md).
+**Study before P10 (historical):** card payment flow (authorization vs. capture, 3-D Secure / client-side confirmation, why the server never sees card numbers: PCI DSS SAQ-A); Stripe PaymentIntents and their statuses; the "unknown outcome" of a timed-out provider call and idempotency keys toward providers; verifying webhook signatures (HMAC over the raw body, timestamp tolerance, replay); an IN_PROGRESS idempotency model for external calls (ADR-013, EXP-007); Resilience4j timeouts/circuit breakers; WireMock for contract tests; [blueprint 10](blueprint/10-payments.md).
+
+## P10: Payments (as built)
+
+**What exists**
+- `payments` module behind a provider port:
+  - `FakePaymentProvider`: a stateful in-process Stripe simulator with signed webhooks, test cards and failure injection (default locally and in tests);
+  - `StripePaymentProvider`: plain HTTP with explicit timeouts and error classification, pinned by WireMock contract tests;
+  - `PaymentGateway`: Resilience4j circuit breaker and call metrics.
+- **Storefront:** `POST/GET /storefront/v1/checkouts/{id}/payment` (amount from the order; 503 + Retry-After on unknown outcomes).
+- **Admin:** `GET …/orders/{id}/payment`, `POST …/orders/{id}/refunds` (Idempotency-Key, `orders:refund`).
+- **Webhooks:** `/webhooks/v1/payments/{provider}`.
+- **Intent-first provider calls:** `payment_operations` records IN_PROGRESS, SUCCEEDED, FAILED or UNKNOWN with attempts, and every retry reuses the same key.
+- **Capture:** payment, order PAID and stock sold commit in one transaction. **Compensation refunds** for captures the order can't take (expired or cancelled, paid twice).
+- **Refunds:** partial and full, concurrency-safe, with a durable retry job; pending refunds are settled by webhook. Orders gained `PARTIALLY_REFUNDED` / `REFUNDED`, cancellation after a full refund, and `OrderRefunded`.
+- **Recovery:** the `payment-cancellations` consumer of `OrderCancelled`; reconciliation for lost webhooks and unknown outcomes.
+- **Jobs:** delayed jobs (`enqueue(..., runAt)`).
+- **Migration and docs:** V9; [ADR-017](decisions/ADR-017-payments.md); [domains/payments.md](domains/payments.md); [api/payments.md](api/payments.md).
+
+The "IN_PROGRESS idempotency model" flagged in P7 was not built into the generic `Idempotency` component. It lives in the resources themselves: a payment (one per order) and a refund (unique per `Idempotency-Key`) are committed *before* the provider call, and they are the idempotency records. That's simpler, and it can't drift from the data it protects.
+
+**Tests: 215 total** (61 unit + 154 integration). New: `StripeFormatTest`, `PaymentTest`, `StripePaymentProviderContractTest` (WireMock), `CardPaymentIT` (7), `PaymentRecoveryIT` (6), `RefundIT` (6). Mutation-checked ([EXP-010](experiments/EXP-010-payment-mutations.md)): it found and closed a test gap, a re-sent webhook under a new event id that would have refunded a legitimate payment.
+
+**Verified manually** ([EXP-011](experiments/EXP-011-lost-webhooks.md)):
+- Card payment captured by an asynchronous HTTP webhook 0.46 s after confirming.
+- Refund, idempotent replay, an over-refund refused with the available amount, and a decline.
+- Broken webhook delivery: the order was paid anyway by reconciliation after 38 s.
+
+**Bug found and fixed:** a single payment unknown to the provider aborted every reconciliation run. Items are now isolated, with a regression test.
+
+**Known limitations:**
+- no 3-D Secure, disputes or manual capture;
+- one payment per order;
+- the fake provider's state is in memory;
+- no rate limit on payment start (card-testing defense, P14);
+- refunds don't restock;
+- the Stripe test-mode run is manual (`stripe listen`);
+- the order confirmation email is still sent at placement, not at payment (worth revisiting with storefront UX).
+
+**Study before P11:**
+- P10's webhooks from the *sending* side: signing our payloads (the same HMAC scheme merchants will verify), secret rotation with an overlap window;
+- delivery as jobs: per-endpoint ordering vs. parallelism, backoff, DEAD, delivery history and manual replay, pausing an endpoint that keeps failing;
+- SSRF when calling merchant-supplied URLs: private/link-local/metadata IP ranges, DNS rebinding (resolve once, connect to the checked IP), redirects, response size and time limits;
+- mapping internal events (P9 catalog) to public, versioned topics and payloads;
+- [blueprint 11](blueprint/11-webhooks.md), [roadmap P11](blueprint/30-roadmap.md).

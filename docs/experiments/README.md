@@ -5,6 +5,8 @@ Planned catalogue: [blueprint/25-failure-experiments.md](../blueprint/25-failure
 | ID | Experiment | Phase | Result |
 |---|---|---|---|
 | [EXP-001](EXP-001-database-unavailable-p1.md) | Database unavailable (stop/start, start while down, graceful shutdown) | P1 | As expected; probe timeout must be > 3s |
+| [EXP-011](EXP-011-lost-webhooks.md) | Webhooks never arrive (real HTTP delivery broken) | P10 | Reconciliation paid the order after 38 s; found and fixed a reconciliation run aborted by one unknown payment |
+| [EXP-010](EXP-010-payment-mutations.md) | Mutations: no refund lock, non-idempotent capture, random provider key, no compensation | P10 | All caught, after closing a test gap (re-sent webhook under a new event id) |
 | [EXP-009](EXP-009-smtp-outage-and-dropped-logs.md) | SMTP outage during registration (EXP-002 revisited) | P9 | Email delivered automatically after recovery; found and fixed dropped retry/DEAD log lines |
 | [EXP-008](EXP-008-async-guarantees-mutations.md) | Mutations: no inbox, no SKIP LOCKED | P9 | Double count; job executed 4× (3/3 runs). Both caught by tests |
 | [EXP-007](EXP-007-pay-vs-cancel-race.md) | Pay vs. cancel race with and without the order row lock | P8 | Both correct (side effects in-transaction); lock gives precise errors; mandatory once side effects are external |

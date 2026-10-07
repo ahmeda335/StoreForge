@@ -19,3 +19,4 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [012](ADR-012-observability-pipeline.md) | Micrometer Observation → OpenTelemetry, OTLP push, grafana/otel-lgtm locally | Accepted | P6 |
 | [013](ADR-013-checkout-and-idempotency.md) | Checkout scope (guest customers, order in P8), expectedTotal guard, transactional idempotency | Accepted | P7 |
 | [014](ADR-014-orders-lifecycle.md) | Order state machine, gapless per-store numbers, the order owns the payment deadline, locked transitions | Accepted | P8 |
+| [015](ADR-015-lombok.md) | Lombok allow-list: constructors, getters, loggers, JPA no-arg constructors; no @Data/@Setter/@ToString | Accepted | P8→P9 |

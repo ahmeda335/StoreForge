@@ -37,6 +37,10 @@ Only types directly in `dev.storeforge.<module>` are visible to other modules. E
 - **Repository/persistence:** queries. Tenant-scoped signatures.
 - Direction: `web → application → domain ← persistence`. Domain depends on nothing else.
 
+## Lombok ([ADR-015](../decisions/ADR-015-lombok.md))
+
+Allowed: `@RequiredArgsConstructor` (injection-only constructors, enums), `@Slf4j`, `@Getter` (fluent accessors, `order.status()`), `@NoArgsConstructor(access = PROTECTED)` for JPA entities. Forbidden on domain classes: `@Data`, `@Setter`, `@ToString`, `@EqualsAndHashCode`, `@Builder`. Records stay the choice for DTOs, value objects and views. Hand-write constructors with logic, transforming accessors and redacting `toString()`.
+
 ## DTO conventions
 
 Request and response DTOs are separate records per use case. **Never expose or bind JPA entities** (mass assignment, lazy-loading exceptions, accidental field leaks). Mapping is written by hand (small static `from(entity)` methods) until it becomes painful. MapStruct is optional later.

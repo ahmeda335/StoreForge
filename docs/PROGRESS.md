@@ -162,3 +162,7 @@
 **Known limitations:** no payments/refunds (P10); no partial fulfillment/shipments (P13); no events/emails to the outside (P9); customers can't view orders; the per-store counter row is a hot spot under flash sales (measure in P15).
 
 **Study before P9:** the dual-write problem (DB + message/email in two systems); transactional outbox; at-least-once delivery and why consumers must be idempotent (inbox / processed-message table); job queues on PostgreSQL (`FOR UPDATE SKIP LOCKED`, leases/visibility timeouts, poison messages, dead-lettering); exponential backoff with jitter; propagating trace context and tenant context through a queue; [blueprint 09](blueprint/09-events-async.md) and [ADR-005](decisions/ADR-005-async-processing.md).
+
+## Between P8 and P9: Lombok (2026-10-07)
+
+On request, boilerplate was replaced with an allow-list of Lombok features ([ADR-015](decisions/ADR-015-lombok.md), [learning note](learning/lombok.md)): 74 files, about 380 fewer lines; `@RequiredArgsConstructor` on ~60 beans, `@Slf4j`, fluent `@Getter` on entities/exceptions, `@NoArgsConstructor(access = PROTECTED)` on entities. No behaviour change: all 163 tests pass unchanged. All future code follows the same rules.

@@ -3,9 +3,11 @@ package dev.storeforge.checkout.internal;
 import dev.storeforge.checkout.internal.CheckoutDtos.AddressDto;
 import dev.storeforge.checkout.internal.CheckoutDtos.CheckoutResponse;
 import dev.storeforge.checkout.internal.CheckoutDtos.CompletionRequest;
+import dev.storeforge.checkout.internal.CheckoutDtos.PaymentSessionResponse;
 import dev.storeforge.checkout.internal.CheckoutDtos.StartCheckoutRequest;
 import dev.storeforge.checkout.internal.CheckoutDtos.UpdateCheckoutRequest;
 import dev.storeforge.checkout.internal.CheckoutStore.Address;
+import dev.storeforge.payments.Payments;
 import dev.storeforge.shared.crypto.SecretTokens;
 import dev.storeforge.shared.idempotency.Idempotency;
 import dev.storeforge.stores.CurrentStorefront;
@@ -36,6 +38,7 @@ class StorefrontCheckoutController {
 
     private final CheckoutService checkouts;
     private final Idempotency idempotency;
+    private final Payments payments;
 
     @PostMapping
     ResponseEntity<CheckoutResponse> start(@CurrentStorefront StoreInfo store,
@@ -80,6 +83,25 @@ class StorefrontCheckoutController {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Idempotent-Replayed", Boolean.toString(result.replayed()))
                 .body(result.jsonBody());
+    }
+
+    /**
+     * Starts the payment of the completed checkout's order (or returns the existing one: safe to
+     * retry). 503 + Retry-After when the provider is unavailable; retrying never charges twice.
+     */
+    @PostMapping("/{checkoutId}/payment")
+    PaymentSessionResponse startPayment(@CurrentStorefront StoreInfo store, @PathVariable UUID checkoutId,
+                                        @RequestHeader(name = StorefrontCartController.CART_TOKEN, required = false) @Nullable String token) {
+        UUID orderId = checkouts.orderOf(store, checkoutId, token);
+        return PaymentSessionResponse.of(payments.start(store.id(), orderId));
+    }
+
+    /** Polled by the "processing your payment" page; the outcome arrives by webhook. */
+    @GetMapping("/{checkoutId}/payment")
+    PaymentSessionResponse payment(@CurrentStorefront StoreInfo store, @PathVariable UUID checkoutId,
+                                   @RequestHeader(name = StorefrontCartController.CART_TOKEN, required = false) @Nullable String token) {
+        UUID orderId = checkouts.orderOf(store, checkoutId, token);
+        return payments.find(store.id(), orderId).map(PaymentSessionResponse::of).orElseThrow(CheckoutExceptions.PaymentNotStarted::new);
     }
 
     private static @Nullable Address address(@Nullable AddressDto dto) {

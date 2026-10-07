@@ -4,6 +4,7 @@ import dev.storeforge.checkout.internal.CartService.CartView;
 import dev.storeforge.checkout.internal.CheckoutService.CheckoutView;
 import dev.storeforge.checkout.internal.CheckoutStore.Address;
 import dev.storeforge.checkout.internal.CheckoutStore.Line;
+import dev.storeforge.payments.Payments;
 import dev.storeforge.shared.money.Money;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -31,6 +32,15 @@ final class CheckoutDtos {
     record MoneyDto(String amount, String currency) {
         static MoneyDto of(long minor, String currency) {
             return new MoneyDto(Money.ofMinor(minor, Currency.getInstance(currency)).toDecimalString(), currency);
+        }
+    }
+
+    /** What the browser needs to show the provider's card form ({@code clientSecret}), or the payment's state. */
+    record PaymentSessionResponse(UUID paymentId, String provider, String status, MoneyDto amount, @Nullable String clientSecret,
+                                  @Nullable String failureCode) {
+        static PaymentSessionResponse of(Payments.PaymentSession session) {
+            return new PaymentSessionResponse(session.paymentId(), session.provider(), session.status(),
+                    MoneyDto.of(session.amountMinor(), session.currency()), session.clientSecret(), session.failureCode());
         }
     }
 

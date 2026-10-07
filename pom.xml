@@ -25,6 +25,8 @@
         <datasource-micrometer.version>2.3.0</datasource-micrometer.version>
         <!-- Must match the OpenTelemetry SDK managed by Spring Boot (1.55.x) -->
         <otel-instrumentation.version>2.21.0-alpha</otel-instrumentation.version>
+        <resilience4j.version>2.4.0</resilience4j.version>
+        <wiremock.version>3.13.2</wiremock.version>
     </properties>
 
     <dependencyManagement>
@@ -88,6 +90,18 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Circuit breaker around payment-provider calls (plain library, no Spring magic) -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+            <version>${resilience4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-micrometer</artifactId>
+            <version>${resilience4j.version}</version>
         </dependency>
 
         <!-- Email (SMTP; Mailpit locally) -->
@@ -156,6 +170,13 @@
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Fake HTTP server standing in for Stripe in contract tests -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

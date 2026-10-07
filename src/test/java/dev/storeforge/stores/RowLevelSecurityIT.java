@@ -34,7 +34,7 @@ class RowLevelSecurityIT extends IntegrationTest {
      * tenant directory (ADR-009) and cross-tenant job infrastructure (ADR-016).
      */
     private static final Set<String> DIRECTORY_TABLES = Set.of("store_domains", "store_members",
-            "outbox_events", "jobs", "email_messages");
+            "outbox_events", "jobs", "email_messages", "provider_events");
 
     @Autowired
     JdbcClient jdbc;

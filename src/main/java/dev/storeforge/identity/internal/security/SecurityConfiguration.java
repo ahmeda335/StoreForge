@@ -74,6 +74,18 @@ class SecurityConfiguration {
                 .build();
     }
 
+    /**
+     * /webhooks/**: calls FROM payment providers. No user credentials: each request authenticates
+     * itself with a signature over its raw body, verified by the payments module.
+     */
+    @Bean
+    @Order(4)
+    SecurityFilterChain providerWebhooks(HttpSecurity http) throws Exception {
+        return stateless(http.securityMatcher("/webhooks/**"))
+                .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+                .build();
+    }
+
     /** Everything else (unknown paths → 404 problems; actuator on the private management port). */
     @Bean
     @Order(Ordered.LOWEST_PRECEDENCE)

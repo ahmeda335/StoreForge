@@ -22,7 +22,7 @@ Content-Type: application/json
 POST {{base}}/admin/v1/stores/{{storeId}}/orders/{{orderId}}/fulfillment
 Authorization: Bearer {{accessToken}}
 
-### Cancel (only unpaid orders until refunds exist): releases stock
+### Cancel (unpaid orders, or paid orders after a full refund): releases reserved stock
 POST {{base}}/admin/v1/stores/{{storeId}}/orders/{{orderId}}/cancellation
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json

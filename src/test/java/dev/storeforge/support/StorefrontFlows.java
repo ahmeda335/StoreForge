@@ -59,12 +59,27 @@ public final class StorefrontFlows {
 
     /** Full shopper flow → completed checkout with an order. Returns the completion response body. */
     public JsonNode placeOrder(UUID variantId, int quantity, String email) {
+        return place(variantId, quantity, email).completion();
+    }
+
+    /** A placed order together with the shopper's credentials for it (cart token + checkout id), e.g. to pay it. */
+    public record Placed(Cart cart, UUID checkoutId, JsonNode completion) {
+        public UUID orderId() {
+            return UUID.fromString(completion.get("orderId").asString());
+        }
+
+        public String total() {
+            return completion.get("total").get("amount").asString();
+        }
+    }
+
+    public Placed place(UUID variantId, int quantity, String email) {
         Cart cart = newCart();
         UUID checkoutId = readyCheckout(cart, variantId, quantity, email);
         String total = Json.parse(getCheckout(cart, checkoutId).body()).get("total").get("amount").asString();
         HttpResponse<String> completed = complete(cart, checkoutId, total, UUID.randomUUID().toString());
         assertThat(completed.statusCode()).as(completed.body()).isEqualTo(200);
-        return Json.parse(completed.body());
+        return new Placed(cart, checkoutId, Json.parse(completed.body()));
     }
 
     public HttpResponse<String> getCheckout(Cart cart, UUID checkoutId) {

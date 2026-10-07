@@ -24,9 +24,12 @@ import org.jspecify.annotations.Nullable;
  * <pre>
  *   status:             OPEN ──(paid + fulfilled)──► CLOSED
  *                        └───(cancel / expire)─────► CANCELLED
- *   financial_status:   PENDING ──► PAID            (P10 adds REFUNDED, PARTIALLY_REFUNDED)
+ *   financial_status:   PENDING ──► PAID ──► PARTIALLY_REFUNDED ──► REFUNDED
+ *                        │           └──────────────────────────────►┘
  *                        └───────► VOIDED            (cancelled before payment)
- *   fulfillment_status: UNFULFILLED ──► FULFILLED    (only when PAID)
+ *   fulfillment_status: UNFULFILLED ──► FULFILLED    (only when paid and not fully refunded)
+ *
+ *   A paid order can be cancelled only once it is fully refunded: money is never silently kept.
  * </pre>
  *
  * Every transition is a method that checks the current state and throws on an illegal move; the
@@ -41,7 +44,7 @@ public class Order {
 
     public enum Status { OPEN, CLOSED, CANCELLED }
 
-    public enum FinancialStatus { PENDING, PAID, VOIDED }
+    public enum FinancialStatus { PENDING, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED }
 
     public enum FulfillmentStatus { UNFULFILLED, FULFILLED }
 
@@ -68,6 +71,8 @@ public class Order {
     private long taxMinor;
     @Column(nullable = false)
     private long totalMinor;
+    @Column(nullable = false)
+    private long refundedMinor;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;
@@ -144,9 +149,13 @@ public class Order {
         updatedAt = now;
     }
 
+    public boolean awaitingPayment() {
+        return status == Status.OPEN && financialStatus == FinancialStatus.PENDING;
+    }
+
     public void fulfill(Instant now) {
         requireOpen();
-        if (financialStatus != FinancialStatus.PAID) {
+        if (financialStatus != FinancialStatus.PAID && financialStatus != FinancialStatus.PARTIALLY_REFUNDED) {
             throw new OrderExceptions.InvalidTransition("order_not_paid", "Only paid orders can be fulfilled.");
         }
         if (fulfillmentStatus == FulfillmentStatus.FULFILLED) {
@@ -158,14 +167,32 @@ public class Order {
         updatedAt = now;
     }
 
-    /** Cancelling a PAID order needs a refund first (P10): money must never be silently kept or lost. */
+    /**
+     * Money given back. Allowed after fulfillment too (returns). The amount check is repeated by the
+     * database ({@code ck_orders_refunded}); the payments module checks it against the payment first.
+     */
+    public void recordRefund(long amountMinor, Instant now) {
+        if (financialStatus != FinancialStatus.PAID && financialStatus != FinancialStatus.PARTIALLY_REFUNDED) {
+            throw new OrderExceptions.InvalidTransition("order_not_refundable", "Only paid orders can be refunded.");
+        }
+        if (amountMinor <= 0 || refundedMinor + amountMinor > totalMinor) {
+            throw new OrderExceptions.InvalidTransition("refund_exceeds_total", "Refunds can't exceed the order total.");
+        }
+        refundedMinor += amountMinor;
+        financialStatus = refundedMinor == totalMinor ? FinancialStatus.REFUNDED : FinancialStatus.PARTIALLY_REFUNDED;
+        updatedAt = now;
+    }
+
+    /** Cancelling a paid order needs a full refund first: money must never be silently kept or lost. */
     public void cancel(String reason, Instant now) {
         requireOpen();
-        if (financialStatus == FinancialStatus.PAID) {
+        if (financialStatus == FinancialStatus.PAID || financialStatus == FinancialStatus.PARTIALLY_REFUNDED) {
             throw new OrderExceptions.InvalidTransition("cancel_requires_refund",
-                    "Paid orders can only be cancelled together with a refund (available with payments).");
+                    "Paid orders can only be cancelled after a full refund.");
         }
-        financialStatus = FinancialStatus.VOIDED;
+        if (financialStatus == FinancialStatus.PENDING) {
+            financialStatus = FinancialStatus.VOIDED;
+        }
         status = Status.CANCELLED;
         cancelledAt = now;
         cancelReason = reason;

@@ -53,6 +53,18 @@ final class CheckoutExceptions {
         }
     }
 
+    static class CheckoutNotCompleted extends StoreForgeException {
+        CheckoutNotCompleted() {
+            super(HttpStatus.CONFLICT, "checkout_not_completed", "Complete the checkout before paying.");
+        }
+    }
+
+    static class PaymentNotStarted extends StoreForgeException {
+        PaymentNotStarted() {
+            super(HttpStatus.NOT_FOUND, "payment_not_found", "No payment has been started for this checkout.");
+        }
+    }
+
     static class CheckoutNotOpen extends StoreForgeException {
         CheckoutNotOpen() {
             super(HttpStatus.CONFLICT, "checkout_not_open", "This checkout is already completed or expired.");

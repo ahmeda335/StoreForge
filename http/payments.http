@@ -1,0 +1,38 @@
+### Payments (fake provider locally). Needs a COMPLETED checkout from http/storefront.http:
+### its checkoutId and the cart token (X-Cart-Token), plus accessToken/storeId for the merchant part.
+
+@base = http://localhost:8080
+@host = PASTE_HANDLE.storeforge.localhost
+@checkoutId = PASTE_CHECKOUT_ID
+@cartToken = PASTE_CART_TOKEN
+@orderId = PASTE_ORDER_ID
+@intentId = PASTE_INTENT_ID_FROM_CLIENT_SECRET
+
+### Start the payment (or get the existing one; safe to retry). clientSecret = "<intentId>_secret_..."
+POST {{base}}/storefront/v1/checkouts/{{checkoutId}}/payment
+X-Forwarded-Host: {{host}}
+X-Cart-Token: {{cartToken}}
+
+### What the browser does with the provider's card form (fake provider only!)
+### 4242424242424242 succeeds, 4000000000000002 is declined. The webhook arrives asynchronously.
+POST {{base}}/fake-provider/v1/payment_intents/{{intentId}}/confirm
+Content-Type: application/json
+
+{"card": "4242424242424242"}
+
+### Poll the outcome ("processing" page)
+GET {{base}}/storefront/v1/checkouts/{{checkoutId}}/payment
+X-Forwarded-Host: {{host}}
+X-Cart-Token: {{cartToken}}
+
+### Merchant: payment, refunds, provider operations (attempts, UNKNOWN outcomes)
+GET {{base}}/admin/v1/stores/{{storeId}}/orders/{{orderId}}/payment
+Authorization: Bearer {{accessToken}}
+
+### Merchant: refund (Idempotency-Key required; resend the same key = same refund)
+POST {{base}}/admin/v1/stores/{{storeId}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: 7b0c6c2e-2f7e-4b4e-9f5e-0e1c0d9a1111
+Content-Type: application/json
+
+{"amount": "10.00", "reason": "customer_request"}

@@ -15,6 +15,7 @@ public final class OrderEvents {
     public static final String PAID = "OrderPaid";
     public static final String CANCELLED = "OrderCancelled";
     public static final String FULFILLED = "OrderFulfilled";
+    public static final String REFUNDED = "OrderRefunded";
     public static final int VERSION = 1;
 
     private OrderEvents() {
@@ -30,5 +31,8 @@ public final class OrderEvents {
     }
 
     public record Fulfilled(UUID orderId, long number) {
+    }
+
+    public record Refunded(UUID orderId, long number, UUID refundId, long amountMinor, String currency, long refundedTotalMinor) {
     }
 }

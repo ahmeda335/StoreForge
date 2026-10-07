@@ -75,6 +75,17 @@ class CheckoutService {
         return tenant.inStore(store.id(), () -> view(store, find(store, checkoutId, cartToken, false)));
     }
 
+    /** The order of a completed checkout; the cart token proves the caller is the shopper. */
+    UUID orderOf(StoreInfo store, UUID checkoutId, @Nullable String cartToken) {
+        return tenant.inStore(store.id(), () -> {
+            Checkout checkout = find(store, checkoutId, cartToken, false);
+            if (checkout.orderId() == null) {
+                throw new CheckoutExceptions.CheckoutNotCompleted();
+            }
+            return checkout.orderId();
+        });
+    }
+
     CheckoutView update(StoreInfo store, UUID checkoutId, @Nullable String cartToken, @Nullable String email, @Nullable Address address) {
         return tenant.inStore(store.id(), () -> {
             Checkout checkout = find(store, checkoutId, cartToken, true);

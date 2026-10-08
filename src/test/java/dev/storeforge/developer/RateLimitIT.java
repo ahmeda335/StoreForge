@@ -41,11 +41,17 @@ class RateLimitIT extends IntegrationTest {
     @Autowired
     UsageCounters usage;
 
+    @Autowired
+    RedisConnections redis;
+
     Owner shop;
     Key key;
 
     @BeforeEach
-    void shopWithKey() {
+    void shopWithKey() throws InterruptedException {
+        // Isolation: a previous test may have frozen Redis; start from a responsive Redis and a closed breaker.
+        awaitRedis();
+        redisCircuitBreaker.reset();
         shop = new StoreFlows(api, mailbox).newOwnerWithStore(uniqueEmail());
         key = new DeveloperFlows(api).createKey(shop, "read_orders");
     }
@@ -74,9 +80,7 @@ class RateLimitIT extends IntegrationTest {
     void theBudgetIsSharedAcrossInstancesThroughRedis() {
         try (RedisConnections otherInstance = new RedisConnections(redisSettings, Clock.systemUTC())) {
             ApiRateLimiter limiter = new ApiRateLimiter(otherInstance, CircuitBreaker.ofDefaults("other"), limits, new SimpleMeterRegistry());
-            for (int i = 0; i < 40; i++) {
-                limiter.tryConsume(shop.storeId(), key.id());
-            }
+            drain(() -> limiter.tryConsume(shop.storeId(), key.id()));
         }
 
         assertThat(orders(key).statusCode()).as("budget already spent elsewhere").isEqualTo(429);
@@ -88,9 +92,7 @@ class RateLimitIT extends IntegrationTest {
         Key fresh = new DeveloperFlows(api).createKey(shop, "read_orders");   // first: the bucket refills 5/s meanwhile
         try (RedisConnections otherInstance = new RedisConnections(redisSettings, Clock.systemUTC())) {
             ApiRateLimiter limiter = new ApiRateLimiter(otherInstance, CircuitBreaker.ofDefaults("other"), limits, new SimpleMeterRegistry());
-            for (int i = 0; i < 100; i++) {
-                limiter.tryConsume(shop.storeId(), UUID.randomUUID());   // 100 different keys, 1 request each
-            }
+            drain(() -> limiter.tryConsume(shop.storeId(), UUID.randomUUID()));   // many different keys, 1 request each
         }
 
         assertThat(orders(fresh).statusCode()).as("its own bucket is full, the store's is empty").isEqualTo(429);
@@ -102,13 +104,13 @@ class RateLimitIT extends IntegrationTest {
      * waits for Redis's timeout any more.
      */
     @Test
-    void withoutRedisTheApiFailsOpenToLocalLimitsAndStopsWaiting() {
+    void withoutRedisTheApiFailsOpenToLocalLimitsAndStopsWaiting() throws InterruptedException {
         redisCircuitBreaker.reset();
         RedisTestServer.pause();
         List<HttpResponse<String>> responses = new ArrayList<>();
         List<Long> millis = new ArrayList<>();
         try {
-            for (int i = 0; i < 45; i++) {
+            for (int i = 0; i < 60; i++) {
                 long started = System.nanoTime();
                 responses.add(orders(key));
                 millis.add((System.nanoTime() - started) / 1_000_000);
@@ -123,13 +125,39 @@ class RateLimitIT extends IntegrationTest {
         }
 
         assertThat(responses.subList(0, 38)).as("still serving").allSatisfy(r -> assertThat(r.statusCode()).isEqualTo(200));
-        assertThat(responses.getLast().statusCode()).as("still limited, per instance").isEqualTo(429);
+        // The first ~5 requests each waited for Redis's timeout before the breaker opened; the local bucket
+        // refilled meanwhile (2/s), so "allowed" is 40 plus a little, not exactly 40.
+        long allowed = responses.stream().filter(r -> r.statusCode() == 200).count();
+        assertThat(allowed).as("still limited, per instance").isBetween(40L, 50L);
         assertThat(redisCircuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
-        assertThat(millis.subList(20, 45)).as("no request waits for Redis once the breaker is open").allMatch(ms -> ms < 200);
+        assertThat(millis.subList(20, 60)).as("no request waits for Redis once the breaker is open").allMatch(ms -> ms < 200);
         assertThat(management.get("/actuator/prometheus").body()).contains("storeforge_ratelimit_decisions_total{application=\"storeforge\",backend=\"local\"");
 
-        redisCircuitBreaker.reset();
-        assertThat(orders(key).headers().firstValue("X-RateLimit-Remaining")).as("back on Redis").isPresent();
+        // Recovery without a restart: Redis answers again, the breaker closes, budgets are shared again.
+        awaitRedis();
+        redisCircuitBreaker.transitionToHalfOpenState();   // what its 10 s wait would do
+        Key fresh = new DeveloperFlows(api).createKey(shop, "read_orders");
+        for (int i = 0; i < 5; i++) {
+            orders(fresh);
+        }
+        assertThat(redisCircuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+    }
+
+    private void awaitRedis() throws InterruptedException {
+        for (int i = 0; i < 50 && !redis.ping(); i++) {
+            Thread.sleep(100);
+        }
+        assertThat(redis.ping()).as("Redis answers").isTrue();
+    }
+
+    /**
+     * Consume until refused. Not "N times": draining takes a few hundred ms of Redis round trips and
+     * the bucket refills meanwhile, so a fixed count leaves it non-empty some of the time (flaky).
+     */
+    private static void drain(java.util.function.Supplier<ApiRateLimiter.Decision> consume) {
+        for (int i = 0; i < 500 && consume.get().allowed(); i++) {
+            // keep consuming
+        }
     }
 
     private HttpResponse<String> orders(Key credential) {

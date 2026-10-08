@@ -1,0 +1,53 @@
+### Developer platform (P12). Admin parts need accessToken/storeId (a merchant session); developer API parts need an API key.
+
+@base = http://localhost:8080
+@apiKey = PASTE_sfk_TOKEN
+@itemId = PASTE_INVENTORY_ITEM_ID
+
+### Merchant: create an API key (token shown ONCE; scopes can't exceed your own permissions)
+POST {{base}}/admin/v1/stores/{{storeId}}/api-keys
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"name": "Warehouse script", "scopes": ["read_orders", "read_inventory", "write_inventory"]}
+
+### Merchant: keys (prefix only) and hourly usage of one key
+GET {{base}}/admin/v1/stores/{{storeId}}/api-keys
+Authorization: Bearer {{accessToken}}
+
+### Developer API: orders changed since a time (sync feed; follow page.nextCursor)
+GET {{base}}/api/2026-10/stores/{{storeId}}/orders?updatedAfter=2026-10-01T00:00:00Z&limit=50
+Authorization: Bearer {{apiKey}}
+
+### Developer API: inventory items changed since a time
+GET {{base}}/api/2026-10/stores/{{storeId}}/inventory-items?updatedAfter=2026-10-01T00:00:00Z
+Authorization: Bearer {{apiKey}}
+
+### Developer API: idempotent stock adjustment (repeat with the same key = applied once)
+POST {{base}}/api/2026-10/stores/{{storeId}}/inventory-items/{{itemId}}/adjustments
+Authorization: Bearer {{apiKey}}
+Idempotency-Key: 5c1b3f62-0d0e-4b0a-9f4e-2b1d8c7a0001
+Content-Type: application/json
+
+{"delta": 10, "reason": "RECEIVED", "note": "warehouse delivery"}
+
+### Developer API: the key's own webhook subscription (topic needs its read scope)
+POST {{base}}/api/2026-10/stores/{{storeId}}/webhook-subscriptions
+Authorization: Bearer {{apiKey}}
+Content-Type: application/json
+
+{"url": "https://example.com/hooks", "topics": ["inventory_levels/update"]}
+
+### OpenAPI document of the developer API (public)
+GET {{base}}/developer/openapi
+
+### Developer: register an OAuth app (client secret shown ONCE)
+POST {{base}}/admin/v1/apps
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"name": "StockSync", "redirectUris": ["http://127.0.0.1:9095/oauth/callback"], "scopes": ["read_orders", "read_inventory", "write_inventory"]}
+
+### Merchant: installed apps; uninstall = immediate revocation + subscriptions removed
+GET {{base}}/admin/v1/stores/{{storeId}}/app-installations
+Authorization: Bearer {{accessToken}}

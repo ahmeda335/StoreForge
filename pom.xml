@@ -105,6 +105,12 @@
             <version>${resilience4j.version}</version>
         </dependency>
 
+        <!-- OAuth 2.0 authorization server for third-party apps (P12b). Part of Spring Security 7. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId>
+        </dependency>
+
         <!-- Redis (P12): distributed rate limits and usage counters. Plain Lettuce, no Spring Data:
              we need a handful of commands with tight timeouts and our own failure handling. -->
         <dependency>

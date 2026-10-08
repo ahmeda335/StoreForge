@@ -42,6 +42,7 @@ sequenceDiagram
 | `orders/paid` | `OrderPaid` | same + `paymentMethod` |
 | `orders/cancelled` | `OrderCancelled` | `orderId, orderNumber, name, reason` |
 | `orders/fulfilled` | `OrderFulfilled` | `orderId, orderNumber, name` |
+| `fulfillments/create` | `OrderShipped` (P13) | `orderId, orderNumber, name, shipmentId, carrier, trackingNumber, complete` |
 | `refunds/create` | `OrderRefunded` | `orderId, orderNumber, name, refundId, amount, refundedTotal` |
 | `inventory_levels/update` | `InventoryLevelChanged` (adjustments, sales) | `variantId, inventoryItemId, onHand, available, delta, reason` |
 

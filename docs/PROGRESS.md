@@ -15,8 +15,9 @@
 | P10 Payments | ✅ Done (2026-10-07) | See below |
 | P11 Outbound webhooks | ✅ Done (2026-10-08) | See below |
 | P12 Developer platform (+ Redis) | ✅ Done (2026-10-08) | See below |
-| P13 Commerce extensions | ⏭ Next | Study list below |
-| P14–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P13 Commerce extensions | ✅ Done (2026-10-08) | See below |
+| P14 Security hardening | ⏭ Next | Study list below |
+| P15–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -316,3 +317,49 @@ Built in two milestones (12a merchant-owned access, 12b third-party apps), each 
 - **caching:** Caffeine for store resolution, cache-aside with Redis only if measured, invalidation and stampedes;
 - **object storage** (S3 / MinIO): presigned uploads, content-type and size validation;
 - [roadmap P13](blueprint/30-roadmap.md), [blueprint 13](blueprint/13-caching-search.md).
+
+## P13: Commerce extensions (as built)
+
+Built in five milestones, each tested, verified and committed: 13a discounts, 13b shipping and shipments, 13c search, 13d caching (decided against, by measurement), 13e object storage.
+
+**What exists**
+- **Discounts** ([ADR-023](decisions/ADR-023-discounts-shipping-and-order-totals.md), [domains/discounts.md](domains/discounts.md)):
+  - percentage / fixed codes with window, minimum, usage limit and once-per-customer;
+  - applied to a checkout and evaluated live with a reason; re-validated at completion (409);
+  - usage limits by conditional update, released when an order is cancelled.
+- **Shipping and shipments** ([domains/shipping.md](domains/shipping.md), [orders](domains/orders.md#shipments-p13)):
+  - rates by country and weight band, free shipping after discount, chosen at checkout and re-quoted at completion;
+  - shipments with tracking under the order lock: partial fulfilment, delivery, cancellation that reopens the order; `fulfillments/create` webhook;
+  - `total = subtotal − discount + shipping + tax`, CHECKed on the order.
+- **Search** ([ADR-025](decisions/ADR-025-search-in-postgresql-and-no-cache.md)): `GET /storefront/v1/search` with weighted full text, accents, title typos, filters, sorts and disjunctive facets; a tenant-bound definer function for the match step.
+- **Caching:** none added. Measured first: a 5k-product store answers every search shape at p95 ≤ 81 ms with 8 clients ([learning note](learning/caching-measure-first.md)).
+- **Product images** ([ADR-024](decisions/ADR-024-object-storage-and-presigned-uploads.md), [domains/storage.md](domains/storage.md)): a `storage` module on the S3 API; presigned uploads signed for type and length; completion verifies size and file signature; tenant-prefixed keys; sweeper and job-based deletion; signed image URLs on the storefront. **SeaweedFS replaces MinIO** (no longer published as an image).
+- **Migrations and docs:** V13–V17; ADR-023/024/025; domain docs for discounts, shipping, storage; API docs ([discounts](api/discounts.md), [shipping](api/shipping.md), catalog, checkout, orders); [runbook](operations/runbooks/object-storage-and-search.md); `http/commerce.http`.
+
+**Tests: 321 total** (104 unit + 217 integration). New: `DiscountRulesTest`, `RateRulesTest`, `ImageSignaturesTest`, `DiscountIT`, `ShippingIT`, `ShipmentIT`, `ProductSearchIT`, `ProductImagesIT`, the search function in `RowLevelSecurityIT`, the shipment webhook in `WebhookDeliveryIT`. Mutation-checked: coupon conditional update, shipment lock, search tenant scoping, image signature check, signed length, sweep cutoff.
+
+**Verified manually**
+- **[EXP-018](experiments/EXP-018-search-at-scale-under-rls.md):** search at 200k products went from 2–15 s (timeouts) to 44–340 ms for one client after three fixes: RLS blocked the text-search indexes (non-leakproof operators), generic plans, and work for rows nobody shows.
+- **[EXP-019](experiments/EXP-019-image-upload-safeguards.md):** upload → verify → storefront download against Compose; the store refuses size/type mismatches; spoofed files are discarded.
+
+**Bugs found:**
+- `citext = text` comparisons are case-sensitive (codes typed in lowercase didn't match);
+- optional booleans had to be `Boolean` for Jackson 3;
+- the coupon race test couldn't detect a broken usage limit, because completions are already serialized per store ([EXP-017](experiments/EXP-017-discount-race-and-pitfalls.md));
+- search was unusable at scale under RLS (EXP-018).
+
+**Known limitations:**
+- one discount per checkout, no automatic or targeted discounts; tax still 0;
+- flat shipping rates only; no returns;
+- PostgreSQL search: no synonyms or per-language stemming; browsing a 200k catalog takes ~340 ms;
+- no thumbnails, CDN or image reordering; image URLs expire after 1 h; no developer-API access to images;
+- the seed data from EXP-018 (300k products, 51 stores) is still in the local Compose database: `docker compose down -v` resets it.
+
+**Study before P14** (security hardening):
+- **OWASP API Security Top 10 (2023)**, especially BOLA (object-level authorization: our 404 tenant tests), broken function-level authorization and unrestricted resource consumption (search, uploads, storefront without rate limits);
+- **threat modelling** (STRIDE per module, trust boundaries: storefront, admin, developer API, webhooks, storage URLs);
+- **TOTP MFA** (RFC 6238, recovery codes, step-up for platform admins);
+- **security headers and CSP**, HTML sanitization for merchant-entered text (product descriptions);
+- **dependency and image scanning** (OWASP Dependency-Check / Trivy, SBOMs) as CI gates;
+- **privacy:** customer data export and erasure vs. orders that must be kept (retention, pseudonymization);
+- [roadmap P14](blueprint/30-roadmap.md), [blueprint 18](blueprint/18-security.md).

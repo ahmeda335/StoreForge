@@ -122,6 +122,7 @@ Why this order differs from the prompt's sketch: **observability (P6) comes befo
 ## P13 — Commerce extensions
 - **Features:** discounts & coupons (usage-limit race), shipping rates & shipments, PG full-text search + trigram, caching (Caffeine store resolution, Redis product cache if measured), object storage (MinIO) with presigned uploads.
 - **Each feature carries its own concept** (see 02-scope Phase 2 table).
+- **As built:** no product cache (measured, ADR-025); SeaweedFS instead of MinIO (ADR-024).
 
 ## P14 — Security hardening
 - **Features:** full audit coverage, platform admin API with MFA (TOTP), CSP and security headers, dependency/image scanning gates, HTML sanitization, privacy endpoints (export/delete customer), threat-model review per module, pen-test style test suite (OWASP API Top 10 checklist).

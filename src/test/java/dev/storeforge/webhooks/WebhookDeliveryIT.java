@@ -165,6 +165,29 @@ class WebhookDeliveryIT extends IntegrationTest {
         assertThat(one.get("attempts").get(0).get("responseExcerpt").asString()).isEqualTo("ok");
     }
 
+    /** Each shipment is one fulfillments/create with tracking; {@code complete} tells the receiver whether the order is done. */
+    @Test
+    void eachShipmentIsAFulfillmentWebhook() {
+        respond(aResponse().withStatus(200));
+        stockChanged(5);
+        var placed = new StorefrontFlows(api, shop).place(variant, 2, uniqueEmail());
+        String order = "/admin/v1/stores/" + shop.storeId() + "/orders/" + placed.orderId();
+        api.post(order + "/manual-payment", "{}", shop.auth());
+        subscribe("fulfillments/create");
+        assertThat(api.post(order + "/shipments", "{\"lines\":[{\"variantId\":\"" + variant + "\",\"quantity\":1}],"
+                + "\"carrier\":\"DHL\",\"trackingNumber\":\"JD01\"}", shop.auth()).statusCode()).isEqualTo(201);
+        assertThat(api.post(order + "/shipments", "{}", shop.auth()).statusCode()).isEqualTo(201);
+        worker.drain();
+
+        List<JsonNode> shipped = received().stream().map(r -> Json.parse(r.getBodyAsString()).get("data")).toList();
+        assertThat(shipped).hasSize(2);
+        assertThat(shipped).extracting(d -> d.get("complete").asBoolean()).containsExactlyInAnyOrder(false, true);
+        JsonNode first = shipped.stream().filter(d -> !d.get("complete").asBoolean()).findFirst().orElseThrow();
+        assertThat(first.get("orderId").asString()).isEqualTo(placed.orderId().toString());
+        assertThat(first.get("carrier").asString()).isEqualTo("DHL");
+        assertThat(first.get("trackingNumber").asString()).isEqualTo("JD01");
+    }
+
     /** The internal event is delivered at least once; the fan-out must not turn that into two webhooks. */
     @Test
     void aRedeliveredInternalEventDoesNotSendTheWebhookTwice() {

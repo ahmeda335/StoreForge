@@ -27,7 +27,28 @@ Content-Type: application/json
 {"cartId": "{{cartId}}", "email": "buyer@example.test",
  "shippingAddress": {"name": "Ada Lovelace", "line1": "1 Main St", "city": "Paris", "postalCode": "75001", "country": "FR"}}
 
-> {% client.global.set("checkoutId", response.body.id); client.global.set("total", response.body.total.amount); %}
+> {% client.global.set("checkoutId", response.body.id); client.global.set("total", response.body.total.amount);
+     if (response.body.shippingRates.length > 0) client.global.set("rateId", response.body.shippingRates[0].id); %}
+
+### 3a. Apply a discount code (P13; create one with http/commerce.http). "applicable" + "reason" explain the result
+PUT {{base}}/storefront/v1/checkouts/{{checkoutId}}/discount
+X-Forwarded-Host: {{host}}
+X-Cart-Token: {{cartToken}}
+Content-Type: application/json
+
+{"code": "welcome10"}
+
+> {% client.global.set("total", response.body.total.amount); %}
+
+### 3b. Choose a shipping rate (P13; required when the store has rates). Free shipping is judged after the discount
+PUT {{base}}/storefront/v1/checkouts/{{checkoutId}}/shipping-rate
+X-Forwarded-Host: {{host}}
+X-Cart-Token: {{cartToken}}
+Content-Type: application/json
+
+{"rateId": "{{rateId}}"}
+
+> {% client.global.set("total", response.body.total.amount); %}
 
 ### 4. Complete (send it twice with the same key: the second is a replay)
 POST {{base}}/storefront/v1/checkouts/{{checkoutId}}/completion
@@ -37,3 +58,12 @@ Idempotency-Key: 6c1a9f3e-0000-4000-8000-000000000001
 Content-Type: application/json
 
 {"expectedTotal": "{{total}}"}
+
+
+### Search (P13): words, accents ignored, typos in titles tolerated; filters, sort, facets
+GET {{base}}/storefront/v1/search?q=lampshde&maxPrice=100&sort=relevance&limit=10
+X-Forwarded-Host: {{host}}
+
+### Browse with a vendor filter (facets still list the other vendors)
+GET {{base}}/storefront/v1/search?vendor=Acme&sort=price_asc
+X-Forwarded-Host: {{host}}

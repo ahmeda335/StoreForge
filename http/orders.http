@@ -28,3 +28,25 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {"reason": "customer_request"}
+
+
+### Ship part of the order with tracking (P13). Omit "lines" to ship everything remaining
+POST {{base}}/admin/v1/stores/{{storeId}}/orders/{{orderId}}/shipments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"lines": [{"variantId": "PASTE_VARIANT_ID", "quantity": 1}], "carrier": "DHL", "trackingNumber": "JD000123"}
+
+> {% client.global.set("shipmentId", response.body.id); %}
+
+### Shipments of the order
+GET {{base}}/admin/v1/stores/{{storeId}}/orders/{{orderId}}/shipments
+Authorization: Bearer {{accessToken}}
+
+### Mark delivered
+POST {{base}}/admin/v1/stores/{{storeId}}/orders/{{orderId}}/shipments/{{shipmentId}}/delivery
+Authorization: Bearer {{accessToken}}
+
+### Cancel a shipment still in transit (its quantities can be shipped again; the order reopens)
+POST {{base}}/admin/v1/stores/{{storeId}}/orders/{{orderId}}/shipments/{{shipmentId}}/cancellation
+Authorization: Bearer {{accessToken}}

@@ -60,6 +60,6 @@ sequenceDiagram
 `CartIT`, `CheckoutIT`, `CheckoutIdempotencyIT` (see [testing](../testing/README.md)); admin customers endpoints are covered by `TenantIsolationIT`.
 
 ## Known limitations
-- No payment (P10), shipping rates or tax (P13): `shipping` and `tax` are 0.
+- Tax is still 0. Discounts ([discounts.md](discounts.md)) and shipping rates ([shipping.md](shipping.md)) were added in P13: `total = subtotal − discount + shipping + tax`, re-validated at completion.
 - No storefront customer accounts. Abandoned carts and old idempotency keys are not cleaned up yet (P9 jobs).
 - No storefront rate limiting (cart creation abuse, P12).

@@ -30,3 +30,29 @@ The store is chosen by the **hostname**: `{handle}.storeforge.localhost` (or a v
 | `GET /storefront/v1/products/{handle}` | `200` product | `product_not_found` (also for drafts and other stores' products) |
 
 Only ACTIVE products. No SKUs, statuses or internal timestamps. No authentication. Each variant has `available` (in stock or untracked).
+
+## Storefront search (P13): `GET /storefront/v1/search`
+
+| Parameter | Meaning |
+|---|---|
+| `q` | Words (≤ 200 chars). Web-search syntax: `"brass lamp"`, `lamp or light`, `-shade`. Accents ignored; typos in titles tolerated. Empty = browse everything |
+| `vendor`, `productType` | Exact filters |
+| `minPrice`, `maxPrice` | Decimal amounts; a product matches if any variant price is in range |
+| `sort` | `relevance` (default; newest when no `q`), `price_asc`, `price_desc`, `newest` |
+| `limit`, `offset` | 1–50 (default 20), 0–1,000 |
+
+`200 {data: [{id, handle, title, vendor, productType, minPrice, maxPrice}], facets: {vendors: [{value, count}], productTypes: [{value, count}]}, page: {limit, offset, total}}`. Facets are disjunctive: vendor counts ignore the vendor filter (and type counts the type filter). Errors: `invalid_parameter`, `store_not_found`.
+
+Storefront products also include `images: [{url, alt}]`. Image URLs are signed and expire after 1 hour: don't store them.
+
+## Product images (P13): `/admin/v1/stores/{storeId}/products/{productId}/images`
+
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `POST /uploads` | `{contentType: image/jpeg\|image/png\|image/webp, sizeBytes (≤ 10 MB), alt?}` | `201 {imageId, upload: {url, method: PUT, headers: {Content-Type, Content-Length}, expiresAt}}` (`products:write`) | `invalid_image` (422), `too_many_images` (409, 20 incl. uploads in progress), `product_not_found` |
+| *(client)* `PUT {upload.url}` | the file, with exactly those headers, within 10 min | storage answers 200 (403 if size or type differ) | |
+| `POST /{imageId}/completion` | — | `200 {id, url, alt, position, contentType, sizeBytes}` (idempotent) | `upload_missing` (409), `upload_rejected` (422: size or file signature don't match; the upload is discarded), `image_not_found` |
+| `GET /` | — | `200 {data: [image]}` READY images by position (`products:read`) | — |
+| `DELETE /{imageId}` | — | `204` (the file is deleted shortly after) | `image_not_found` |
+
+Uploads not completed within an hour are removed automatically.

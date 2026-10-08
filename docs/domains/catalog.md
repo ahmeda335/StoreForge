@@ -59,8 +59,12 @@ Storefront request: `Host`/`X-Forwarded-Host` → `@CurrentStorefront` (cached `
 ## Tests
 `ProductAdminIT` (creation and money, aggregate rules, If-Match 412, **6 concurrent writers → exactly one 200**, variant lifecycle with version bumps and audit, filters/sort/pagination, `%` literal, invalid sort, read-only role), `StorefrontCatalogIT` (active only, internal fields hidden, handles per store, unknown host, **N+1 detector**), `MoneyTest`, plus the catalog endpoints in `TenantIsolationIT`.
 
+## P13: search and images
+- **Search** (`GET /storefront/v1/search`, `ProductSearch`): weighted full text + trigram typos, filters, sorts, disjunctive facets, one statement; the match step runs in the tenant-bound definer function `search_product_matches` ([ADR-025](../decisions/ADR-025-search-in-postgresql-and-no-cache.md), [EXP-018](../experiments/EXP-018-search-at-scale-under-rls.md)). Tests: `ProductSearchIT`.
+- **Images** (`ProductImageService`, `ImageUploadSweeper`, `AdminProductImagesController`): see [storage.md](storage.md). Storefront products include `images: [{url, alt}]`.
+
 ## Known limitations
-- Search is `ILIKE` on title (full-text search in P13). No product images (object storage in P13). No collections.
+- Admin product search is still `ILIKE` on title. No collections.
 - Archiving is `PATCH status=ARCHIVED`. There is no hard delete (orders will reference products).
 - No inventory or availability on the storefront yet (P5).
 - Storefront responses are not HTTP-cacheable yet (P13).

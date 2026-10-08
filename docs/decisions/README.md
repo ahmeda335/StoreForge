@@ -19,6 +19,9 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [012](ADR-012-observability-pipeline.md) | Micrometer Observation → OpenTelemetry, OTLP push, grafana/otel-lgtm locally | Accepted | P6 |
 | [013](ADR-013-checkout-and-idempotency.md) | Checkout scope (guest customers, order in P8), expectedTotal guard, transactional idempotency | Accepted | P7 |
 | [014](ADR-014-orders-lifecycle.md) | Order state machine, gapless per-store numbers, the order owns the payment deadline, locked transitions | Accepted | P8 |
+| [025](ADR-025-search-in-postgresql-and-no-cache.md) | Product search in PostgreSQL (weighted full text + trigram), matched by a tenant-bound definer function because RLS blocks non-leakproof index conditions; no cache (measured) | Accepted | P13 |
+| [024](ADR-024-object-storage-and-presigned-uploads.md) | Object storage on the S3 API: presigned uploads signed for type and length, stored object verified on completion, tenant-prefixed keys, SeaweedFS instead of MinIO | Accepted | P13 |
+| [023](ADR-023-discounts-shipping-and-order-totals.md) | Discounts and shipping priced in checkout (fixed pipeline), conditional-update usage limits, 409 on stale choices, totals frozen on the order; shipments for partial fulfilment | Accepted | P13 |
 | [022](ADR-022-oauth-apps.md) | Third-party apps on Spring Authorization Server: PKCE, consent with store choice, permission re-check at issuance, installation-bound opaque tokens, no stored plaintext tokens | Accepted | P12 |
 | [021](ADR-021-developer-api-and-credentials.md) | Developer API: opaque hashed credentials (instant revocation), scopes = permissions, `Actor`, `@RequiresScope` + architecture test, date-versioned paths | Accepted | P12 |
 | [020](ADR-020-redis-fail-open.md) | Redis for shared, losable state (rate limits, usage); fail open to per-instance limits; DEGRADED health | Accepted | P12 |

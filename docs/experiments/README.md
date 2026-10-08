@@ -5,6 +5,9 @@ Planned catalogue: [blueprint/25-failure-experiments.md](../blueprint/25-failure
 | ID | Experiment | Phase | Result |
 |---|---|---|---|
 | [EXP-001](EXP-001-database-unavailable-p1.md) | Database unavailable (stop/start, start while down, graceful shutdown) | P1 | As expected; probe timeout must be > 3s |
+| [EXP-019](EXP-019-image-upload-safeguards.md) | Image uploads that lie about size/type; mutations of the signature check, signed length, sweep cutoff | P13 | Store refuses mismatches; spoofed file discarded; 3/3 mutations caught |
+| [EXP-018](EXP-018-search-at-scale-under-rls.md) | Search at 200k products under RLS, 8 query shapes, 8 clients | P13 | 2–15 s → 44–340 ms: RLS blocked non-leakproof index conditions; generic plans; 5k store p95 ≤ 81 ms, no cache |
+| [EXP-017](EXP-017-discount-race-and-pitfalls.md) | Last coupon and last units under concurrency, with mutations | P13 | Coupon mutation survived the end-to-end race (completions already serialized); direct test added; citext pitfall |
 | [EXP-016](EXP-016-developer-platform-mutations.md) | Mutations: store binding, scopes, anti-escalation, OAuth re-checks, stored tokens, PKCE | P12 | Found a test gap (scope escalation via OAuth), a usage-counting bug (rejected requests uncounted) and flaky refill-sensitive tests; D1 showed controllers can't leak other stores even without the binding |
 | [EXP-015](EXP-015-third-party-app-lifecycle.md) | StockSync's whole life: install, events, restock, burst with backoff, uninstall | P12 | Works end to end across two processes; audit shows APP actor |
 | [EXP-014](EXP-014-redis-outage.md) | Redis stops under two instances | P12 | Shared budget 42/60 → per-instance 60/60 at p50 14 ms → 41/60 after recovery; found health 503 → DEGRADED |

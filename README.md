@@ -2,14 +2,14 @@
 
 A multi-tenant commerce platform (Shopify-inspired), built as a long-term learning project in backend engineering, SaaS architecture, reliability, security, observability and production operations.
 
-> Status: **Phase 12 (Developer platform + Redis) complete.** Next: P13 (commerce extensions). See [docs/PROGRESS.md](docs/PROGRESS.md).
+> Status: **Phase 13 (Commerce extensions: discounts, shipping, search, product images) complete.** Next: P14 (security hardening). See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Quick start
 
 Prerequisites: Java 21, Docker (with Compose v2). Maven is provided by the wrapper.
 
 ```bash
-docker compose up -d                 # PostgreSQL 17 (owner/app roles) + Mailpit (emails at http://localhost:8025)
+docker compose up -d                 # PostgreSQL 17 (owner/app roles), Mailpit (emails at http://localhost:8025), Redis, SeaweedFS (S3 API at :8333)
 ./mvnw spring-boot:run               # API on :8080, management (health/metrics) on :8081
 
 curl localhost:8081/actuator/health/readiness

@@ -1,0 +1,66 @@
+### Commerce extensions, P13 (needs accessToken, storeId; productId from http/catalog.http)
+
+@base = http://localhost:8080
+
+### Discount code: 10 % off orders from 20.00, first 100 uses, once per customer
+POST {{base}}/admin/v1/stores/{{storeId}}/discounts
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"code": "WELCOME10", "kind": "PERCENTAGE", "value": "10", "minimumSubtotal": "20.00", "usageLimit": 100, "oncePerCustomer": true}
+
+> {% client.global.set("discountId", response.body.id); %}
+
+### Discounts with usage counts
+GET {{base}}/admin/v1/stores/{{storeId}}/discounts
+Authorization: Bearer {{accessToken}}
+
+### Disable a code
+PATCH {{base}}/admin/v1/stores/{{storeId}}/discounts/{{discountId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"status": "DISABLED"}
+
+### Shipping rate: up to 2 kg, everywhere, free from 50.00 (after discounts)
+POST {{base}}/admin/v1/stores/{{storeId}}/shipping-rates
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"name": "Standard", "maxWeightGrams": 2000, "price": "4.90", "freeOver": "50.00"}
+
+### Shipping rate: EU express
+POST {{base}}/admin/v1/stores/{{storeId}}/shipping-rates
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"name": "EU Express", "countries": ["FR", "DE", "NL"], "price": "9.90"}
+
+### Rates
+GET {{base}}/admin/v1/stores/{{storeId}}/shipping-rates
+Authorization: Bearer {{accessToken}}
+
+### Product image, step 1: ask for an upload URL (declare the exact type and size of the file)
+POST {{base}}/admin/v1/stores/{{storeId}}/products/{{productId}}/images/uploads
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"contentType": "image/png", "sizeBytes": 2048, "alt": "Front view"}
+
+> {% client.global.set("imageId", response.body.imageId); client.global.set("uploadUrl", response.body.upload.url); %}
+
+### Step 2: PUT the file to storage, e.g.
+###   curl -X PUT -H "Content-Type: image/png" --data-binary @front.png "<upload.url>"
+### (the file must be exactly sizeBytes long and a real PNG)
+
+### Step 3: complete (verifies the stored file)
+POST {{base}}/admin/v1/stores/{{storeId}}/products/{{productId}}/images/{{imageId}}/completion
+Authorization: Bearer {{accessToken}}
+
+### Images with signed URLs (valid 1 h)
+GET {{base}}/admin/v1/stores/{{storeId}}/products/{{productId}}/images
+Authorization: Bearer {{accessToken}}
+
+### Remove an image (the file is deleted shortly after)
+DELETE {{base}}/admin/v1/stores/{{storeId}}/products/{{productId}}/images/{{imageId}}
+Authorization: Bearer {{accessToken}}

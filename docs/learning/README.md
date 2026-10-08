@@ -27,6 +27,11 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [money](money.md) | P4 | Minor units, strict parsing, decimal strings on the wire |
 | [postgresql-locking-and-conditional-updates](postgresql-locking-and-conditional-updates.md) | P5 | MVCC, EvalPlanQual, deadlocks and lock ordering, SKIP LOCKED, pool size as race width |
 | [security-definer-functions](security-definer-functions.md) | P5 | Controlled privilege escalation, search_path hijacking, least privilege |
+| [postgresql-full-text-search](postgresql-full-text-search.md) | P13 | tsvector, configurations, weights, websearch queries, trigrams, GIN, facets |
+| [rls-and-leakproof-operators](rls-and-leakproof-operators.md) | P13 | Why RLS stops non-leakproof conditions from using indexes; tenant-bound definer functions |
+| [presigned-uploads-and-object-storage](presigned-uploads-and-object-storage.md) | P13 | Signed PUT/GET, signed headers, magic numbers, two-phase uploads, cleanup |
+| [discounts-and-pricing-pipelines](discounts-and-pricing-pipelines.md) | P13 | Order of price components, rounding, usage limits, re-validation, partial fulfilment |
+| [caching-measure-first](caching-measure-first.md) | P13 | When not to cache, budgets, cache-aside, versioned keys, stampedes |
 | [opentelemetry-and-distributed-tracing](opentelemetry-and-distributed-tracing.md) | P6 | Traces, spans, context propagation, Observation API, sampling, OTLP/Collector, log correlation |
 | [api-credentials-and-scopes](api-credentials-and-scopes.md) | P12 | Opaque hashed tokens, scopes as permissions, Actor, store binding, versioned contracts, sync feeds |
 | [distributed-rate-limiting](distributed-rate-limiting.md) | P12 | Token buckets in Redis, hierarchical limits, fail open vs. closed, breakers, DEGRADED |

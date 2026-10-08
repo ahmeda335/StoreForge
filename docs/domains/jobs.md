@@ -45,6 +45,6 @@ sequenceDiagram
 `BackoffTest`, `JobQueueIT` (retries with backoff, DEAD + operator requeue, permanent failure, lease reclaim after a simulated crash, **4 concurrent workers × 60 jobs → each executed once**, log lines asserted), `OutboxIT` (rollback leaves no event, outside a transaction is refused, relay re-run creates no duplicate jobs, **job span in the request's trace**), `ReliableEffectsIT` (**SMTP outage → retried and delivered**, sensitive body erased, redelivered `OrderPlaced` → one email, redelivered `OrderPaid` → stats counted once, housekeeping). Mutation-checked ([EXP-008](../experiments/EXP-008-async-guarantees-mutations.md)).
 
 ## Known limitations
-- Single-threaded worker per instance (scale out with more instances; a thread pool when measured).
+- Since P11 ([ADR-019](../decisions/ADR-019-concurrent-jobs-and-bulkheads.md)): jobs run concurrently (8 per instance) with per-type bulkheads (`webhooks.deliver`: 4); the original sequential worker caused head-of-line blocking and lease-expiry duplicates ([EXP-012](../experiments/EXP-012-head-of-line-blocking.md)).
 - No ordering; no per-tenant fairness in the queue yet (one store's flood can delay others: P15/P17 noisy-neighbour work).
 - Webhooks (P11) and payment follow-ups (P10) will be the next consumers.

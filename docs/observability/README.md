@@ -47,6 +47,9 @@ flowchart LR
 | `storeforge_checkouts_completions_total{outcome}` | `completed` / `total_changed` (price changed during checkout) | `CheckoutService` | Prometheus |
 | `storeforge_orders_created_total`, `storeforge_orders_paid_total{method}`, `storeforge_orders_cancelled_total{reason}` | Sales funnel and expiry rate (`reason="payment_timeout"` rising → payment trouble) | `DefaultOrders`, `OrderService` | Prometheus |
 | Order timeline (`order_events`) | Per-order history for support | `OrderRecords` | `GET …/orders/{id}` |
+| `storeforge_webhooks_deliveries_total{outcome}` | succeeded / retry / dead / blocked attempts | `DeliveryService` | Prometheus |
+| `storeforge_webhooks_delivery_duration_seconds{outcome}` | Receiver latency | `DeliveryService` | Prometheus |
+| `storeforge_webhooks_subscriptions_paused_total` | Endpoints paused for failing | `DeliveryService` | Prometheus |
 | `storeforge_payments_provider_calls_seconds{provider,operation,outcome}` | Latency and outcome (success / rejected / unavailable / unknown / circuit_open) of every provider call | `PaymentGateway` | Prometheus |
 | `resilience4j_circuitbreaker_state{name="payment-provider",state}` (+ calls, failure rate) | Is the breaker open? | Resilience4j + `TaggedCircuitBreakerMetrics` | Prometheus |
 | `storeforge_payments_webhooks_total{provider,outcome}` | accepted / duplicate / ignored / rejected webhooks | `WebhookIntake` | Prometheus |

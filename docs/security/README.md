@@ -119,6 +119,17 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 | Provider payloads | `provider_events` keeps raw webhook bodies (may contain customer email/name) for 30 days, then deletes them |
 | Client secret | Returned only to the cart-token holder and only while the payment is PENDING; erased once captured or cancelled |
 
+## P11 additions (outbound webhooks)
+
+| Control | Implementation |
+|---|---|
+| SSRF | Policy on **resolved addresses** (private, loopback, link-local/metadata, CGNAT, ULA, IPv4-in-IPv6 forms; ALL answers must pass), enforced as the HTTP client's **DNS resolver** (no rebinding window), https only, no credentials in URLs, **redirects never followed** ([learning](../learning/ssrf.md)) |
+| Resource exhaustion by receivers | Connect 2 s + hard total deadline 10 s, 4 connections per endpoint, 512-byte excerpts, job bulkhead, pause after 20 consecutive failures |
+| Authenticity for receivers | `v1=HMAC-SHA256(secret, timestamp.body)`, per-subscription secret, 24 h rotation overlap; receiver checklist published ([api](../api/webhooks.md#receiving-safely-checklist)) |
+| Secrets at rest | AES-256-GCM, key from `WEBHOOK_ENCRYPTION_KEY` (dev key in yml logs a WARN), subscription id as associated data; shown once |
+| Authorization and audit | `webhooks:manage`; audit entries for create/update/delete/rotate (host + topics, never the secret) |
+| Data minimization | Thin payloads; history keeps no request headers; logs show the host, not the full URL (may contain tokens) |
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

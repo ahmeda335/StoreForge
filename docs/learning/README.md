@@ -28,6 +28,9 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [postgresql-locking-and-conditional-updates](postgresql-locking-and-conditional-updates.md) | P5 | MVCC, EvalPlanQual, deadlocks and lock ordering, SKIP LOCKED, pool size as race width |
 | [security-definer-functions](security-definer-functions.md) | P5 | Controlled privilege escalation, search_path hijacking, least privilege |
 | [opentelemetry-and-distributed-tracing](opentelemetry-and-distributed-tracing.md) | P6 | Traces, spans, context propagation, Observation API, sampling, OTLP/Collector, log correlation |
+| [ssrf](ssrf.md) | P11 | Server-side request forgery: resolved-address checks, DNS rebinding, redirects |
+| [outbound-webhooks](outbound-webhooks.md) | P11 | Signing, retry schedules, dead letters, replay, rotation, receiver contract |
+| [bulkheads-and-head-of-line-blocking](bulkheads-and-head-of-line-blocking.md) | P11 | Concurrency limits per kind of work; leases vs. local queues |
 | [external-calls-and-unknown-outcomes](external-calls-and-unknown-outcomes.md) | P10 | Timeouts with unknown outcome, provider idempotency keys, intent-first transactions, compensation, circuit breakers |
 | [inbound-webhooks](inbound-webhooks.md) | P10 | HMAC signatures over raw bodies, replay windows, dedup, fast ack, idempotent appliers, reconciliation |
 | [transactional-outbox](transactional-outbox.md) | P9 | Dual-write problem, outbox, relay, thin events, idempotent consumers, inbox |

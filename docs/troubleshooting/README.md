@@ -32,6 +32,9 @@
 | `422 idempotency_key_reused` | The same key was sent with a different body (or another cart token) | Use one key per completion attempt; new attempt → new key |
 | `409 cancel_requires_refund` | Paid orders can't be cancelled until refunds exist (P10) | — |
 | An unpaid order cancelled itself (`PAYMENT_TIMEOUT`) | The payment window (`ORDER_PAYMENT_WINDOW`, 15m) passed | Mark it paid within the window, or raise the window locally |
+| `422 webhook_url_not_allowed` | URL not https, has credentials, or resolves to a private address (incl. `localhost`) | Use a public https endpoint; locally `WEBHOOKS_REQUIRE_HTTPS=false WEBHOOKS_ALLOWED_PRIVATE_CIDRS=127.0.0.0/8` |
+| Webhooks stop arriving | Subscription `PAUSED_FAILING` after repeated failures | See the [webhooks runbook](../operations/runbooks/webhooks.md): fix, re-activate, bulk replay |
+| A merchant receives the same webhook twice | At-least-once delivery (retry after a timeout, replay) | Expected: receivers dedup by `X-StoreForge-Event-Id` |
 | `503 payment_provider_unavailable` | Provider down/slow, or the circuit breaker is open | Retry (safe); see the [payments runbook](../operations/runbooks/payments.md) |
 | Webhooks answered `400 invalid_webhook` | Wrong webhook secret, clock skew > 5 min, or a modified body (proxy re-encoding JSON) | Check the WARN log `reason`; the body must reach the app byte-for-byte |
 | Paid at the provider, order still PENDING | Webhook lost/not delivered | Reconciliation fixes it within ~15 min; locally check `FAKE_PROVIDER_WEBHOOK_URL` points at the app |

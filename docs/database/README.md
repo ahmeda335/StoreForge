@@ -36,6 +36,7 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | V1 | `V1__baseline_privileges.sql` | Default privileges: every future table/sequence/function created by the owner is usable by the app role |
 | V2 | `V2__identity.sql` | `citext` extension; `users`, `refresh_tokens`, `email_tokens` (see [domains/identity.md](../domains/identity.md)) |
+| V10 | `V10__webhooks.sql` | `webhook_subscriptions` (topics `text[]`, encrypted secrets, failure counters), `webhook_deliveries` (`UNIQUE (subscription_id, event_id)`, payload as `text`), `webhook_delivery_attempts`; all RLS; `purge_webhook_deliveries()` delete-only definer fn. See [domains/webhooks.md](../domains/webhooks.md#data-v10) |
 | V9 | `V9__payments.sql` | `payments`, `payment_operations`, `refunds` (RLS); `provider_events` (infrastructure, webhook dedup PK); orders: refund statuses, `refunded_minor`, cancel-after-refund CHECK; `stores_with_stale_payments()` definer fn. See [domains/payments.md](../domains/payments.md#data-v9) |
 | V8 | `V8__outbox_jobs_notifications.sql` | Infrastructure tables `outbox_events`, `jobs`, `email_messages` (no RLS, ADR-016); inbox `processed_messages` (RLS); customer stats columns; `purge_idempotency_keys()` delete-only definer fn. See [domains/jobs.md](../domains/jobs.md) |
 | V7 | `V7__orders.sql` | `orders` (state CHECKs, one per checkout), immutable `order_items`/`order_events`, `store_counters`, `checkouts.order_id`, `stores_with_overdue_orders()` definer fn. See [domains/orders.md](../domains/orders.md) |
@@ -88,6 +89,8 @@ Checklist for every new tenant-data table: `store_id uuid NOT NULL` → indexes 
 | CHECK `refunded ≤ captured ≤ amount` + payment row lock for refunds | `payments`, `refunds` | Over-refunding under concurrency ([EXP-010](../experiments/EXP-010-payment-mutations.md)) |
 | `UNIQUE (store_id, order_id)` + `INSERT … ON CONFLICT DO NOTHING` | `payments` | Two payments for one order when starts race |
 | PK `(provider, event_id)` | `provider_events` | Duplicate webhook processing |
+| `UNIQUE (subscription_id, event_id)` + `ON CONFLICT DO NOTHING` | `webhook_deliveries` | Duplicate outbound webhooks on event redelivery |
+| Transaction advisory lock per store | `webhook_subscriptions` | Quota exceeded by concurrent creations (write skew) |
 
 Migration rules (from the blueprint):
 - `src/main/resources/db/migration/V{n}__snake_case_description.sql`; never edit an applied migration (checksum).

@@ -2,9 +2,9 @@
 
 > This page describes what **exists in code now**. The target architecture is in [blueprint/03-architecture.md](../blueprint/03-architecture.md). Diagrams marked *planned* link to the blueprint and are redrawn here when their phase is implemented.
 
-Current phase: **P10 Payments** (complete). Telemetry pipeline: [observability/README.md](../observability/README.md#pipeline).
+Current phase: **P11 Outbound webhooks** (complete). Telemetry pipeline: [observability/README.md](../observability/README.md#pipeline).
 
-## System context (P10)
+## System context (P11)
 
 ```mermaid
 flowchart LR
@@ -38,6 +38,9 @@ flowchart LR
         PY <-->|HTTPS, idempotency keys, circuit breaker| PSP[(Payment provider: fake / Stripe)]
         PSP -->|signed webhooks /webhooks/v1/payments| PY
         JB -->|payments.provider-event, payments.refund, event:payment-cancellations| PY
+        IN -->|InventoryLevelChanged| JB
+        JB -->|event:webhooks, webhooks.deliver| WH[webhooks module]
+        WH -->|signed POST; SSRF-checked DNS; no redirects| MER[(Merchant endpoints)]
         ID -->|enqueueEmail| NT
         ST --> ID
         ST --> AU[audit module]
@@ -75,6 +78,7 @@ Defined in [blueprint/03-architecture.md](../blueprint/03-architecture.md#layers
 |---|---|---|---|
 | `shared` | OPEN (all sub-packages usable) | `web` (request IDs, problem details), `error` (`StoreForgeException`, `ConstraintViolations`), `ids` (UUIDv7), `ratelimit`, `time` (`Clock`) | All modules |
 | `notifications` | Closed | API: `Notifications` (durable email), `EmailMessage`, `EmailSender` port; internal SMTP adapter, `EmailSendJob` | identity, stores, orders |
+| `webhooks` | Closed | No public API; internal subscriptions, fan-out (EventHandler), delivery (JobHandler), sender, SSRF policy, secret box, retry policy, admin API | — (consumes events) |
 | `payments` | Closed | API: `Payments` (start/find a payment); internal provider port + fake/Stripe adapters, gateway (circuit breaker), payment/refund services, webhook intake, reconciliation | checkout |
 | `jobs` | Closed | API: `Outbox`, `Jobs`, `EventHandler`, `JobHandler`, `Event`, `Inbox`, `PermanentJobFailure`; internal relay, worker, metrics, housekeeping, `/actuator/jobs` | orders, notifications, customers |
 | `identity` | Closed | API: `UserPrincipal`, `UserDirectory`; internal web/application/domain/persistence/security | Any module's controllers (via `@AuthenticationPrincipal`); stores |
@@ -140,5 +144,5 @@ flowchart TB
 | Completion → order; order lifecycle & expiry | P8 ✅ | [domains/orders.md](../domains/orders.md#flows) |
 | Outbox → jobs → handlers; durable email | P9 ✅ | [domains/jobs.md](../domains/jobs.md#flow) |
 | Payment, refunds, webhooks, reconciliation | P10 ✅ | [domains/payments.md](../domains/payments.md#flows) |
-| Webhook delivery | P11 | [11](../blueprint/11-webhooks.md) |
+| Webhook delivery, retries, replay, pause | P11 ✅ | [domains/webhooks.md](../domains/webhooks.md#flow) |
 | OAuth app installation | P12 | [12](../blueprint/12-developer-platform.md#installation-flow-oauth-20-authorization-code--pkce) |

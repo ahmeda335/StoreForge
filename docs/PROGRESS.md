@@ -13,8 +13,9 @@
 | P8 Orders | ✅ Done (2026-10-06) | See below |
 | P9 Outbox, jobs & notifications | ✅ Done (2026-10-07) | See below |
 | P10 Payments | ✅ Done (2026-10-07) | See below |
-| P11 Outbound webhooks | ⏭ Next | Study list below |
-| P12–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P11 Outbound webhooks | ✅ Done (2026-10-08) | See below |
+| P12 Developer platform (+ Redis) | ⏭ Next | Study list below |
+| P13–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -222,9 +223,47 @@ The "IN_PROGRESS idempotency model" flagged in P7 was not built into the generic
 - the Stripe test-mode run is manual (`stripe listen`);
 - the order confirmation email is still sent at placement, not at payment (worth revisiting with storefront UX).
 
-**Study before P11:**
+**Study before P11 (historical):**
 - P10's webhooks from the *sending* side: signing our payloads (the same HMAC scheme merchants will verify), secret rotation with an overlap window;
 - delivery as jobs: per-endpoint ordering vs. parallelism, backoff, DEAD, delivery history and manual replay, pausing an endpoint that keeps failing;
 - SSRF when calling merchant-supplied URLs: private/link-local/metadata IP ranges, DNS rebinding (resolve once, connect to the checked IP), redirects, response size and time limits;
 - mapping internal events (P9 catalog) to public, versioned topics and payloads;
 - [blueprint 11](blueprint/11-webhooks.md), [roadmap P11](blueprint/30-roadmap.md).
+
+## P11: Outbound webhooks (as built)
+
+**What exists**
+- **`webhooks` module:** subscriptions (`webhooks:manage`, quota 20 under an advisory lock). Six public topics mapped from internal events (orders create, paid, cancelled and fulfilled; refunds; inventory levels), API version `2026-10`.
+- **Secrets:** shown once, stored AES-256-GCM.
+- **Fan-out and payloads:** idempotent fan-out, with bodies frozen as text.
+- **Signing:** `v1=HMAC(timestamp.body)`, with two signatures during a 24 h rotation overlap.
+- **Retries:** our own schedule (1m…24h, 9 attempts, ~70 h), `Retry-After`, 3 attempts for 4xx, DEAD.
+- **History and recovery:** delivery history with attempts; replay and bulk replay with the same event id; pause after 20 consecutive failures with an email; 30-day retention.
+- **SSRF guard:** checks resolved addresses, enforced as the HTTP client's DNS resolver; no redirects; hard total deadline; per-endpoint connection cap.
+- **Inventory** publishes `InventoryLevelChanged` (adjustments, sales).
+- **Job worker** ([ADR-019](decisions/ADR-019-concurrent-jobs-and-bulkheads.md)): concurrent execution, per-type bulkheads, claims sized to free slots.
+- **Migration and docs:** V10; [ADR-018](decisions/ADR-018-outbound-webhooks.md); [domains/webhooks.md](domains/webhooks.md); [api/webhooks.md](api/webhooks.md), which includes the receiver checklist and a reference Python verifier.
+
+**Tests: 264 total** (96 unit + 168 integration). Two consecutive full runs were green.
+- New: `EndpointPolicyTest` (29), `SecretBoxTest`, `RetryPolicyTest`, `WebhookDeliveryIT` (12), the job bulkhead test, and the payments regression test.
+- Mutation-checked ([EXP-013](experiments/EXP-013-webhook-mutations.md)): it found two bugs in the deadline test (it checked the wrong row, and modelled the wrong threat).
+
+**Verified manually**
+- **[EXP-012](experiments/EXP-012-head-of-line-blocking.md):** two instances and an 8 s receiver. The sequential worker delayed an email by **32.8 s** and delivered **4 webhooks twice** (lease expiry). After the fix: 0.2–0.5 s, 0 duplicates. It also found a payments bug (an unknown payment at cancellation retried forever), now fixed.
+- **Merchant view:** a Python receiver following only the published checklist verified all deliveries, including after a secret rotation. It observed `orders/paid` before `orders/create` (no ordering guarantee). Every SSRF encoding was refused through the API.
+
+**Known limitations:**
+- no per-tenant fairness in the job queue;
+- no endpoint ping; no app-owned subscriptions (P12);
+- encryption-key rotation is manual;
+- the pause threshold counts attempts, not time;
+- no ordering guarantee (by design);
+- I also rebuilt the jar under a running instance once during verification (a `NoClassDefFoundError`). The lesson: build, then start.
+
+**Study before P12:**
+- API keys for apps: generating, hashing (like refresh tokens), prefixes for identification, scopes, rotation;
+- OAuth 2.0 authorization code with PKCE, and Spring Authorization Server: clients, consent, refresh, installations and uninstall;
+- distributed rate limiting with Redis (token bucket, atomic Lua or Bucket4j's Redis backends), fail-open vs. fail-closed;
+- API versioning by date header and OpenAPI documentation (springdoc);
+- app-owned webhook subscriptions;
+- [roadmap P12](blueprint/30-roadmap.md).

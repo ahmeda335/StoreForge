@@ -45,6 +45,9 @@ All have local defaults in `application.yml`; override them via the environment 
 | `TRACING_SAMPLING_PROBABILITY` | `1.0` | Head sampling ratio |
 | `INVENTORY_SWEEPER_INTERVAL` | `30s` | Reservation expiry sweep interval |
 | `JOBS_POLL_INTERVAL` | `500ms` | Outbox relay + job worker poll |
+| `JOBS_CONCURRENCY` | `8` | Jobs running at once per instance (webhook deliveries capped at 4) |
+| `WEBHOOK_ENCRYPTION_KEY` | dev key in `application.yml` | base64 of 32 random bytes (`head -c32 /dev/urandom \| base64`); encrypts webhook secrets at rest |
+| `WEBHOOKS_REQUIRE_HTTPS` / `WEBHOOKS_ALLOWED_PRIVATE_CIDRS` | `true` / empty | Local receivers: `false` / `127.0.0.0/8` (never in production) |
 | `PAYMENTS_PROVIDER` | `fake` | `fake` (in-process Stripe simulator) or `stripe` |
 | `FAKE_PROVIDER_WEBHOOK_URL` | `http://localhost:8080/webhooks/v1/payments/fake` | Where the fake provider POSTs its signed webhooks (blank: not delivered) |
 | `PAYMENTS_RECONCILIATION_INTERVAL` / `PAYMENTS_STALE_AFTER` | `5m` / `10m` | Lost-webhook safety net |

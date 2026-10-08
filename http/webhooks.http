@@ -1,0 +1,50 @@
+### Webhooks (needs accessToken, storeId). Locally, run with WEBHOOKS_REQUIRE_HTTPS=false WEBHOOKS_ALLOWED_PRIVATE_CIDRS=127.0.0.0/8
+### and a receiver, e.g. the reference verifier in docs/api/webhooks.md listening on 127.0.0.1:9098.
+
+@base = http://localhost:8080
+@subscriptionId = PASTE_SUBSCRIPTION_ID
+@deliveryId = PASTE_DELIVERY_ID
+
+### Subscribe (the response contains the secret ONCE)
+POST {{base}}/admin/v1/stores/{{storeId}}/webhook-subscriptions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"url": "http://127.0.0.1:9098/webhooks", "topics": ["orders/create", "orders/paid", "inventory_levels/update"]}
+
+### SSRF attempt: refused with 422 webhook_url_not_allowed
+POST {{base}}/admin/v1/stores/{{storeId}}/webhook-subscriptions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"url": "http://169.254.169.254/latest/meta-data/", "topics": ["orders/create"]}
+
+### Delivery history (filter: status=PENDING|RETRYING|SUCCEEDED|DEAD|PAUSED|DISCARDED)
+GET {{base}}/admin/v1/stores/{{storeId}}/webhook-subscriptions/{{subscriptionId}}/deliveries
+Authorization: Bearer {{accessToken}}
+
+### One delivery with its attempts (status code, duration, error, response excerpt)
+GET {{base}}/admin/v1/stores/{{storeId}}/webhook-subscriptions/{{subscriptionId}}/deliveries/{{deliveryId}}
+Authorization: Bearer {{accessToken}}
+
+### Replay one delivery (same event id)
+POST {{base}}/admin/v1/stores/{{storeId}}/webhook-subscriptions/{{subscriptionId}}/deliveries/{{deliveryId}}/replay
+Authorization: Bearer {{accessToken}}
+
+### Re-activate after a pause, then replay everything parked or dead since a time
+PATCH {{base}}/admin/v1/stores/{{storeId}}/webhook-subscriptions/{{subscriptionId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"status": "ACTIVE"}
+
+###
+POST {{base}}/admin/v1/stores/{{storeId}}/webhook-subscriptions/{{subscriptionId}}/replays
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"statuses": ["PAUSED", "DEAD"], "since": "2026-10-08T00:00:00Z"}
+
+### Rotate the secret (old one keeps signing for 24 h)
+POST {{base}}/admin/v1/stores/{{storeId}}/webhook-subscriptions/{{subscriptionId}}/secret-rotation
+Authorization: Bearer {{accessToken}}

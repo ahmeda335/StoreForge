@@ -5,6 +5,8 @@ Planned catalogue: [blueprint/25-failure-experiments.md](../blueprint/25-failure
 | ID | Experiment | Phase | Result |
 |---|---|---|---|
 | [EXP-001](EXP-001-database-unavailable-p1.md) | Database unavailable (stop/start, start while down, graceful shutdown) | P1 | As expected; probe timeout must be > 3s |
+| [EXP-013](EXP-013-webhook-mutations.md) | Mutations: redirects, plain DNS, no deadline, no bulkhead, no rotation overlap | P11 | All caught after fixing two test bugs in the deadline test (wrong row, wrong threat model) |
+| [EXP-012](EXP-012-head-of-line-blocking.md) | One slow webhook receiver vs. the job worker (2 instances) | P11 | Email 32.8 s → 0.2 s, 4 duplicate webhooks → 0 after concurrent worker + bulkheads; found a payments cancellation bug |
 | [EXP-011](EXP-011-lost-webhooks.md) | Webhooks never arrive (real HTTP delivery broken) | P10 | Reconciliation paid the order after 38 s; found and fixed a reconciliation run aborted by one unknown payment |
 | [EXP-010](EXP-010-payment-mutations.md) | Mutations: no refund lock, non-idempotent capture, random provider key, no compensation | P10 | All caught, after closing a test gap (re-sent webhook under a new event id) |
 | [EXP-009](EXP-009-smtp-outage-and-dropped-logs.md) | SMTP outage during registration (EXP-002 revisited) | P9 | Email delivered automatically after recovery; found and fixed dropped retry/DEAD log lines |

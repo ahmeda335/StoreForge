@@ -37,6 +37,9 @@ class JobQueueIT extends IntegrationTest {
     TestJobHandlers.Recording handler;
 
     @Autowired
+    TestJobHandlers.Slow slow;
+
+    @Autowired
     TransactionTemplate transaction;
 
     @Autowired
@@ -138,6 +141,34 @@ class JobQueueIT extends IntegrationTest {
             assertThat(handler.executions(id)).isEqualTo(1);
             assertThat(status(id)).isEqualTo("DONE");
         });
+    }
+
+    /**
+     * EXP-012 regression: slow work of one type (think: webhooks to a slow receiver) is capped by its
+     * bulkhead, and other work starts in the SAME round instead of queueing behind it.
+     */
+    @Test
+    void slowJobsAreBulkheadedAndDoNotDelayOtherWork() {
+        slow.reset();
+        Instant now = Instant.now();
+        for (int i = 0; i < 6; i++) {
+            String key = UUID.randomUUID().toString();
+            transaction.executeWithoutResult(status -> jobs.enqueue(null, TestJobHandlers.Slow.TYPE, key, Map.of("millis", 400), now));
+        }
+        UUID quick = enqueue(Map.of());
+
+        worker.runOnce(now.plusSeconds(1));
+
+        assertThat(handler.executions(quick)).as("not stuck behind the slow jobs").isEqualTo(1);
+        assertThat(slow.finished()).as("only the bulkhead's share started").isEqualTo(2);
+        assertThat(slow.maxRunning()).isEqualTo(2);
+        worker.drain();
+        assertThat(slow.finished()).isEqualTo(6);
+        assertThat(slow.maxRunning()).as("never more than the limit").isEqualTo(2);
+        assertThat(jdbc.sql("SELECT count(*) FROM jobs WHERE type = :type AND status <> 'DONE'").param("type", TestJobHandlers.Slow.TYPE)
+                .query(Integer.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT max(attempts) FROM jobs WHERE type = :type").param("type", TestJobHandlers.Slow.TYPE)
+                .query(Integer.class).single()).as("released claims don't count as attempts").isEqualTo(1);
     }
 
     private UUID enqueue(Map<String, Object> payload) {

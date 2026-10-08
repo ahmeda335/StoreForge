@@ -3,6 +3,7 @@ package dev.storeforge.jobs.internal;
 import dev.storeforge.shared.ids.Ids;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,13 +55,14 @@ class JobStore {
      * blocking each other or taking the same job. The claim COMMITS before the work starts, so a
      * slow handler never holds row locks or a database connection.
      */
-    List<ClaimedJob> claim(String workerId, Instant now, Instant leaseUntil, int batch) {
+    List<ClaimedJob> claim(String workerId, Instant now, Instant leaseUntil, int batch, Collection<String> excludedTypes) {
         return jdbc.sql("""
                 UPDATE jobs SET status = 'RUNNING', attempts = attempts + 1, locked_by = :worker,
                                 locked_until = :leaseUntil, updated_at = :now
                  WHERE id IN (SELECT id FROM jobs
-                               WHERE (status = 'READY' AND run_at <= :now)
-                                  OR (status = 'RUNNING' AND locked_until < :now)
+                               WHERE ((status = 'READY' AND run_at <= :now)
+                                  OR (status = 'RUNNING' AND locked_until < :now))
+                                 AND type <> ALL (CAST(:excluded AS text[]))
                                ORDER BY run_at
                                LIMIT :batch
                                  FOR UPDATE SKIP LOCKED)
@@ -70,10 +72,23 @@ class JobStore {
                 .param("leaseUntil", Timestamp.from(leaseUntil))
                 .param("now", Timestamp.from(now))
                 .param("batch", batch)
+                .param("excluded", excludedTypes.toArray(String[]::new))
                 .query((rs, rowNum) -> new ClaimedJob(rs.getObject("id", UUID.class), rs.getObject("store_id", UUID.class),
                         rs.getString("type"), rs.getString("payload"), rs.getInt("attempts"), rs.getInt("max_attempts"),
                         rs.getString("trace_parent"), rs.getObject("event_id", UUID.class)))
                 .list();
+    }
+
+    /** Gives back a job claimed beyond a concurrency limit, as if it had never been claimed. */
+    void release(UUID jobId, String workerId, Instant now) {
+        jdbc.sql("""
+                UPDATE jobs SET status = 'READY', attempts = attempts - 1, locked_by = NULL, locked_until = NULL, updated_at = :now
+                 WHERE id = :id AND locked_by = :worker AND status = 'RUNNING'
+                """)
+                .param("id", jobId)
+                .param("worker", workerId)
+                .param("now", Timestamp.from(now))
+                .update();
     }
 
     /** Only the worker that still owns the lease may finish the job (a reclaimed job belongs to its new worker). */

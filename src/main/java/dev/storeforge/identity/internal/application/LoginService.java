@@ -1,5 +1,7 @@
 package dev.storeforge.identity.internal.application;
 
+import dev.storeforge.identity.PasswordAuthenticator;
+import dev.storeforge.identity.UserDirectory;
 import dev.storeforge.identity.internal.domain.User;
 import dev.storeforge.identity.internal.persistence.UserLoginCounters;
 import dev.storeforge.identity.internal.persistence.UserRepository;
@@ -26,7 +28,7 @@ import org.springframework.stereotype.Service;
  * email is unverified.
  */
 @Service
-public class LoginService {
+public class LoginService implements PasswordAuthenticator {
 
     /** Real Argon2 hash of a random string: verifying against it costs the same as a real check. */
     private final String dummyHash;
@@ -55,6 +57,17 @@ public class LoginService {
     }
 
     public IssuedTokens login(String rawEmail, String password, String clientIp) {
+        return tokens.issueNewSession(verify(rawEmail, password, clientIp));
+    }
+
+    @Override
+    public UserDirectory.UserSummary authenticate(String rawEmail, String password, String clientIp) {
+        User user = verify(rawEmail, password, clientIp);
+        return new UserDirectory.UserSummary(user.id(), user.email().value(), user.emailVerified());
+    }
+
+    /** Every check of a password login; issuing tokens (or a browser session) is the caller's job. */
+    private User verify(String rawEmail, String password, String clientIp) {
         EmailAddress email;
         try {
             email = EmailAddress.of(rawEmail);
@@ -96,7 +109,7 @@ public class LoginService {
             users.save(user);
         }
         meterRegistry.counter("storeforge.auth.logins", "outcome", "success").increment();
-        return tokens.issueNewSession(user);
+        return user;
     }
 
     /** The outcome is recorded precisely in metrics, but the client always gets the same answer. */

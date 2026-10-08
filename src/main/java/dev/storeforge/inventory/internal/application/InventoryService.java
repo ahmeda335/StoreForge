@@ -9,6 +9,7 @@ import dev.storeforge.shared.pagination.Cursor;
 import dev.storeforge.shared.pagination.Page;
 import dev.storeforge.shared.tenancy.StoreId;
 import dev.storeforge.shared.tenancy.TenantTransactions;
+import dev.storeforge.stores.Actor;
 import dev.storeforge.stores.Permission;
 import dev.storeforge.stores.StoreAccess;
 import java.time.Clock;
@@ -62,20 +63,61 @@ public class InventoryService {
             throw new InventoryExceptions.InvalidAdjustment("reason must be one of " + ADJUSTMENT_REASONS + ".");
         }
         return variantScoped(() -> tenant.inStore(storeId, () -> {
-            access.require(userId, storeId, Permission.INVENTORY_WRITE);
-            Instant now = clock.instant();
-            Item item = store.getOrCreate(storeId, variantId, now);
-            if (!store.adjustOnHand(storeId, item.id(), delta, now)) {
-                Item current = store.find(storeId, variantId).orElseThrow();
-                throw new InventoryExceptions.BelowReserved(current.onHand(), current.reserved(), delta);
-            }
-            store.ledger(storeId, item.id(), delta, 0, reason, "adjustment", null, userId, note, now);
-            Item updated = store.find(storeId, variantId).orElseThrow();
-            events.levelChanged(storeId, updated, delta, reason);
-            audit.recordUserAction(storeId, userId, "inventory.adjusted", "variant", variantId.toString(),
-                    Map.of("delta", delta, "reason", reason, "onHand", updated.onHand()));
-            return Level.of(updated);
+            Actor actor = Actor.user(userId);
+            access.require(actor, storeId, Permission.INVENTORY_WRITE);
+            return apply(actor, storeId, store.getOrCreate(storeId, variantId, clock.instant()), delta, reason, note);
         }));
+    }
+
+    /** Developer API: adjust an inventory item by its id (same rules, audited with the API client as actor). */
+    public Level adjustItem(Actor actor, StoreId storeId, UUID itemId, int delta, String reason, @Nullable String note) {
+        validate(delta, reason);
+        return tenant.inStore(storeId, () -> {
+            access.require(actor, storeId, Permission.INVENTORY_WRITE);
+            Item item = store.findById(storeId, itemId).orElseThrow(InventoryExceptions.ItemNotFound::new);
+            return apply(actor, storeId, item, delta, reason, note);
+        });
+    }
+
+    /** Developer API sync feed: items changed after a point in time, oldest change first. */
+    public Page<Level> changedSince(Actor actor, StoreId storeId, Instant updatedAfter, int limit, @Nullable Cursor after) {
+        return tenant.inStore(storeId, () -> {
+            access.require(actor, storeId, Permission.INVENTORY_READ);
+            var page = Page.of(store.changedSince(storeId, updatedAfter, limit + 1, after), limit, item -> new Cursor(item.updatedAt(), item.id()));
+            return new Page<>(page.data().stream().map(Level::of).toList(), page.page());
+        });
+    }
+
+    public Level item(Actor actor, StoreId storeId, UUID itemId) {
+        return tenant.inStore(storeId, () -> {
+            access.require(actor, storeId, Permission.INVENTORY_READ);
+            return Level.of(store.findById(storeId, itemId).orElseThrow(InventoryExceptions.ItemNotFound::new));
+        });
+    }
+
+    private Level apply(Actor actor, StoreId storeId, Item item, int delta, String reason, @Nullable String note) {
+        Instant now = clock.instant();
+        if (!store.adjustOnHand(storeId, item.id(), delta, now)) {
+            Item current = store.findById(storeId, item.id()).orElseThrow();
+            throw new InventoryExceptions.BelowReserved(current.onHand(), current.reserved(), delta);
+        }
+        boolean byUser = actor instanceof Actor.User;
+        store.ledger(storeId, item.id(), delta, 0, reason, byUser ? "adjustment" : "api", byUser ? null : actor.id().toString(),
+                byUser ? actor.id() : null, note, now);
+        Item updated = store.findById(storeId, item.id()).orElseThrow();
+        events.levelChanged(storeId, updated, delta, reason);
+        audit.record(storeId, actor.auditType(), actor.id(), "inventory.adjusted", "variant", updated.variantId().toString(),
+                Map.of("delta", delta, "reason", reason, "onHand", updated.onHand()));
+        return Level.of(updated);
+    }
+
+    private static void validate(int delta, String reason) {
+        if (delta == 0) {
+            throw new InventoryExceptions.InvalidAdjustment("delta must not be 0.");
+        }
+        if (!ADJUSTMENT_REASONS.contains(reason)) {
+            throw new InventoryExceptions.InvalidAdjustment("reason must be one of " + ADJUSTMENT_REASONS + ".");
+        }
     }
 
     public Level setTracked(UUID userId, StoreId storeId, UUID variantId, boolean tracked) {

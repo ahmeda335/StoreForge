@@ -23,7 +23,7 @@ public class SubscriptionStore {
     private static final String COLUMNS = """
             id, store_id, url, topics, api_version, status, secret_ciphertext, previous_secret_ciphertext,
             previous_secret_expires_at, consecutive_failures, last_success_at, last_failure_at, paused_at, created_by,
-            created_at, updated_at""";
+            created_at, updated_at, owner_credential_id""";
 
     private final JdbcClient jdbc;
 
@@ -31,7 +31,7 @@ public class SubscriptionStore {
                                String secretCiphertext, @Nullable String previousSecretCiphertext,
                                @Nullable Instant previousSecretExpiresAt, int consecutiveFailures, @Nullable Instant lastSuccessAt,
                                @Nullable Instant lastFailureAt, @Nullable Instant pausedAt, @Nullable UUID createdBy,
-                               Instant createdAt, Instant updatedAt) {
+                               Instant createdAt, Instant updatedAt, @Nullable UUID ownerCredentialId) {
     }
 
     /**
@@ -50,12 +50,13 @@ public class SubscriptionStore {
     }
 
     public void insert(StoreId storeId, UUID id, String url, List<String> topics, String apiVersion, String secretCiphertext,
-                       UUID createdBy, Instant now) {
+                       @Nullable UUID createdBy, @Nullable UUID ownerCredentialId, Instant now) {
         jdbc.sql("""
                 INSERT INTO webhook_subscriptions (id, store_id, url, topics, api_version, status, secret_ciphertext, created_by,
-                                                   created_at, updated_at)
-                VALUES (:id, :storeId, :url, CAST(:topics AS text[]), :apiVersion, 'ACTIVE', :secret, :createdBy, :now, :now)
+                                                   owner_credential_id, created_at, updated_at)
+                VALUES (:id, :storeId, :url, CAST(:topics AS text[]), :apiVersion, 'ACTIVE', :secret, :createdBy, :owner, :now, :now)
                 """)
+                .param("owner", ownerCredentialId)
                 .param("id", id)
                 .param("storeId", storeId.value())
                 .param("url", url)
@@ -127,6 +128,17 @@ public class SubscriptionStore {
                 .update();
     }
 
+    public List<Subscription> ownedBy(StoreId storeId, UUID credentialId) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM webhook_subscriptions WHERE store_id = :storeId AND owner_credential_id = :owner"
+                        + " ORDER BY created_at, id")
+                .param("storeId", storeId.value()).param("owner", credentialId).query(SubscriptionStore::map).list();
+    }
+
+    public int deleteOwnedBy(StoreId storeId, UUID credentialId) {
+        return jdbc.sql("DELETE FROM webhook_subscriptions WHERE store_id = :storeId AND owner_credential_id = :owner")
+                .param("storeId", storeId.value()).param("owner", credentialId).update();
+    }
+
     public boolean delete(StoreId storeId, UUID id) {
         return jdbc.sql("DELETE FROM webhook_subscriptions WHERE store_id = :storeId AND id = :id")
                 .param("storeId", storeId.value()).param("id", id).update() == 1;
@@ -167,7 +179,8 @@ public class SubscriptionStore {
                 rs.getString("secret_ciphertext"), rs.getString("previous_secret_ciphertext"),
                 instant(rs, "previous_secret_expires_at"), rs.getInt("consecutive_failures"), instant(rs, "last_success_at"),
                 instant(rs, "last_failure_at"), instant(rs, "paused_at"), rs.getObject("created_by", UUID.class),
-                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant());
+                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(),
+                rs.getObject("owner_credential_id", UUID.class));
     }
 
     static @Nullable Instant instant(ResultSet rs, String column) throws SQLException {

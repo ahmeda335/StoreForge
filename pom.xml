@@ -27,6 +27,7 @@
         <otel-instrumentation.version>2.21.0-alpha</otel-instrumentation.version>
         <resilience4j.version>2.4.0</resilience4j.version>
         <wiremock.version>3.13.2</wiremock.version>
+        <springdoc.version>3.1.1</springdoc.version>
     </properties>
 
     <dependencyManagement>
@@ -102,6 +103,25 @@
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-micrometer</artifactId>
             <version>${resilience4j.version}</version>
+        </dependency>
+
+        <!-- Redis (P12): distributed rate limits and usage counters. Plain Lettuce, no Spring Data:
+             we need a handful of commands with tight timeouts and our own failure handling. -->
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j_jdk17-lettuce</artifactId>
+            <version>${bucket4j.version}</version>
+        </dependency>
+
+        <!-- OpenAPI document of the developer API, generated from the controllers -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <version>${springdoc.version}</version>
         </dependency>
 
         <!-- Outbound webhooks: HTTP client with a pluggable DNS resolver, so the SSRF check and the

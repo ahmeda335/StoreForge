@@ -2,6 +2,7 @@ package dev.storeforge.inventory.internal.persistence;
 
 import dev.storeforge.shared.ids.Ids;
 import dev.storeforge.shared.tenancy.StoreId;
+import dev.storeforge.shared.pagination.Cursor;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Collection;
@@ -56,6 +57,24 @@ public class InventoryStore {
                 .param("now", Timestamp.from(now))
                 .update();
         return find(storeId, variantId).orElseThrow();
+    }
+
+    /** Items changed after {@code updatedAfter}, oldest first; keyset on (updated_at, id). */
+    public List<Item> changedSince(StoreId storeId, Instant updatedAfter, int limitPlusOne, @Nullable Cursor after) {
+        return jdbc.sql("""
+                SELECT id, variant_id, on_hand, reserved, tracked, updated_at FROM inventory_items
+                 WHERE store_id = :storeId AND updated_at > :updatedAfter
+                   AND (CAST(:afterTime AS timestamptz) IS NULL OR (updated_at, id) > (:afterTime, :afterId))
+                 ORDER BY updated_at, id LIMIT :limit
+                """)
+                .param("storeId", storeId.value())
+                .param("updatedAfter", Timestamp.from(updatedAfter))
+                .param("afterTime", after == null ? null : Timestamp.from(after.timestamp()))
+                .param("afterId", after == null ? null : after.id())
+                .param("limit", limitPlusOne)
+                .query((rs, rowNum) -> new Item(rs.getObject("id", UUID.class), rs.getObject("variant_id", UUID.class),
+                        rs.getInt("on_hand"), rs.getInt("reserved"), rs.getBoolean("tracked"), rs.getTimestamp("updated_at").toInstant()))
+                .list();
     }
 
     public Optional<Item> findById(StoreId storeId, UUID itemId) {

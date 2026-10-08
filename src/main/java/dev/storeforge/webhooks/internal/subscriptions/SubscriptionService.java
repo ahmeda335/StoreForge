@@ -4,6 +4,10 @@ import dev.storeforge.audit.AuditLog;
 import dev.storeforge.shared.ids.Ids;
 import dev.storeforge.shared.tenancy.StoreId;
 import dev.storeforge.shared.tenancy.TenantTransactions;
+import dev.storeforge.developer.ApiClientPrincipal;
+import dev.storeforge.developer.ApiCredentialRevoked;
+import dev.storeforge.developer.Scope;
+import dev.storeforge.stores.Actor;
 import dev.storeforge.stores.Permission;
 import dev.storeforge.stores.StoreAccess;
 import dev.storeforge.webhooks.internal.WebhookExceptions;
@@ -22,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 /** Merchant management of webhook subscriptions ({@code webhooks:manage}). */
@@ -44,21 +49,63 @@ public class SubscriptionService {
 
     public WithSecret create(UUID userId, StoreId storeId, String url, List<String> topics, @Nullable String apiVersion) {
         requireManage(userId, storeId);
+        return create(Actor.user(userId), storeId, url, topics, apiVersion, null);
+    }
+
+    /**
+     * An app's own subscription (developer API): owned by its credential, removed when the credential
+     * is revoked, and limited to topics the credential's scopes can read.
+     */
+    public WithSecret createForClient(ApiClientPrincipal client, String url, List<String> topics) {
+        for (String topic : validateTopics(topics)) {
+            Scope needed = Topics.requiredScope(topic);
+            if (!client.has(needed)) {
+                throw new WebhookExceptions.TopicNotAllowed(topic, needed.code());
+            }
+        }
+        return create(client.actor(), client.storeId(), url, topics, null, client.credentialId());
+    }
+
+    public List<Subscription> listForClient(ApiClientPrincipal client) {
+        return tenant.inStore(client.storeId(), () -> subscriptions.ownedBy(client.storeId(), client.credentialId()));
+    }
+
+    public void deleteForClient(ApiClientPrincipal client, UUID id) {
+        tenant.runInStore(client.storeId(), () -> {
+            Subscription owned = subscriptions.find(client.storeId(), id, true)
+                    .filter(s -> client.credentialId().equals(s.ownerCredentialId()))
+                    .orElseThrow(WebhookExceptions.SubscriptionNotFound::new);
+            subscriptions.delete(client.storeId(), owned.id());
+            audit.record(client.storeId(), client.actor().auditType(), client.credentialId(), "webhook.subscription_deleted",
+                    "webhook_subscription", id.toString(), Map.of());
+        });
+    }
+
+    /** Revocation and cleanup commit together: this runs inside the revoking transaction. */
+    @EventListener
+    public void onCredentialRevoked(ApiCredentialRevoked revoked) {
+        subscriptions.deleteOwnedBy(revoked.storeId(), revoked.credentialId());
+    }
+
+    private WithSecret create(Actor actor, StoreId storeId, String url, List<String> topics, @Nullable String apiVersion,
+                              @Nullable UUID ownerCredentialId) {
         // Outside any transaction: this resolves DNS, which can take a while.
         URI checked = validateUrl(url);
         List<String> checkedTopics = validateTopics(topics);
         String version = validateVersion(apiVersion);
         return tenant.inStore(storeId, () -> {
-            access.require(userId, storeId, Permission.WEBHOOKS_MANAGE);
+            if (actor instanceof Actor.User) {
+                access.require(actor, storeId, Permission.WEBHOOKS_MANAGE);
+            }
             subscriptions.lockStore(storeId);
             if (subscriptions.count(storeId) >= properties.maxSubscriptionsPerStore()) {
                 throw new WebhookExceptions.LimitReached(properties.maxSubscriptionsPerStore());
             }
             UUID id = Ids.newId();
             String secret = WebhookSignature.newSecret();
-            subscriptions.insert(storeId, id, checked.toString(), checkedTopics, version, secretBox.seal(secret, id.toString()), userId,
-                    clock.instant());
-            audit.recordUserAction(storeId, userId, "webhook.subscription_created", "webhook_subscription", id.toString(),
+            subscriptions.insert(storeId, id, checked.toString(), checkedTopics, version, secretBox.seal(secret, id.toString()),
+                    actor instanceof Actor.User ? actor.id() : null, ownerCredentialId, clock.instant());
+            audit.record(storeId, actor.auditType(), actor.id(), "webhook.subscription_created", "webhook_subscription", id.toString(),
                     Map.of("host", checked.getHost(), "topics", checkedTopics));
             return new WithSecret(subscriptions.find(storeId, id, false).orElseThrow(), secret);
         });

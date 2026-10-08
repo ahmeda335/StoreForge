@@ -33,6 +33,12 @@ public final class WebhookExceptions {
         }
     }
 
+    public static class TopicNotAllowed extends StoreForgeException {
+        public TopicNotAllowed(String topic, String scope) {
+            super(HttpStatus.FORBIDDEN, "insufficient_scope", "Subscribing to " + topic + " requires the " + scope + " scope.");
+        }
+    }
+
     public static class UnsupportedApiVersion extends StoreForgeException {
         public UnsupportedApiVersion(String supported) {
             super(HttpStatus.UNPROCESSABLE_CONTENT, "unsupported_api_version", "Supported webhook API version: " + supported + ".");

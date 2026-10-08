@@ -43,6 +43,7 @@ class TenantIsolationIT extends IntegrationTest {
             Map.entry("POST /admin/v1/stores/{storeId}/orders/{orderId}/cancellation", "{\"reason\":\"other\"}"),
             Map.entry("POST /admin/v1/stores/{storeId}/orders/{orderId}/manual-payment", "{}"),
             Map.entry("POST /admin/v1/stores/{storeId}/orders/{orderId}/refunds", "{\"amount\":\"1.00\",\"reason\":\"other\"}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/api-keys", "{\"name\":\"x\",\"scopes\":[\"read_orders\"]}"),
             Map.entry("POST /admin/v1/stores/{storeId}/webhook-subscriptions", "{\"url\":\"https://example.com/hooks\",\"topics\":[\"orders/create\"]}"),
             Map.entry("POST /admin/v1/stores/{storeId}/webhook-subscriptions/{subscriptionId}/replays",
                     "{\"statuses\":[\"DEAD\"],\"since\":\"2026-01-01T00:00:00Z\"}"));

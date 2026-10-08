@@ -14,6 +14,12 @@ final class InventoryExceptions {
         }
     }
 
+    static class ItemNotFound extends StoreForgeException {
+        ItemNotFound() {
+            super(HttpStatus.NOT_FOUND, "inventory_item_not_found", "Inventory item not found.");
+        }
+    }
+
     static class BelowReserved extends StoreForgeException {
         BelowReserved(int onHand, int reserved, int delta) {
             super(HttpStatus.CONFLICT, "stock_below_reserved", "Adjusting on-hand " + onHand + " by " + delta

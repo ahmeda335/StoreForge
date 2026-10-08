@@ -70,6 +70,14 @@ server:
     include-stacktrace: never
     include-message: never
 
+# OpenAPI document of the DEVELOPER API only (the admin API is for our own frontend):
+# GET /developer/openapi (public, outside /api/** so no credential is needed to read it).
+springdoc:
+  api-docs:
+    path: /developer/openapi
+  paths-to-match: /api/**
+  default-produces-media-type: application/json
+
 # JDBC spans (datasource-micrometer): connection acquisition and queries; never parameter values.
 jdbc:
   includes: connection, query
@@ -88,6 +96,19 @@ storeforge:
     backoff-base: 5s
     backoff-cap: 1h
     retention: 7d
+  redis:
+    url: ${REDIS_URL:redis://localhost:6379}
+    command-timeout: 250ms        # fail fast: the caller has a fallback
+    reconnect-backoff: 5s
+  developer:
+    per-credential:               # token bucket per API key / installation
+      capacity: 40                #   burst
+      refill-per-second: 2        #   sustained
+    per-store:                    # all credentials of one store together
+      capacity: 100
+      refill-per-second: 5
+    max-api-keys-per-store: 25
+    usage-retention-in-redis: 3d
   webhooks:
     api-version: "2026-10"
     max-subscriptions-per-store: 20

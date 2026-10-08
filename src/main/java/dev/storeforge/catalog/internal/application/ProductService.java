@@ -22,6 +22,7 @@ import dev.storeforge.shared.pagination.Cursor;
 import dev.storeforge.shared.pagination.Page;
 import dev.storeforge.shared.tenancy.StoreId;
 import dev.storeforge.shared.tenancy.TenantTransactions;
+import dev.storeforge.stores.Actor;
 import dev.storeforge.stores.Permission;
 import dev.storeforge.stores.StoreAccess;
 import dev.storeforge.stores.StoreDirectory;
@@ -72,8 +73,13 @@ public class ProductService {
     }
 
     public Page<ProductSummaryView> list(UUID userId, StoreId storeId, AdminFilter filter, int limit, @Nullable Cursor after) {
+        return list(Actor.user(userId), storeId, filter, limit, after);
+    }
+
+    /** Admin and developer API alike: the actor (user or API client) decides through StoreAccess. */
+    public Page<ProductSummaryView> list(Actor actor, StoreId storeId, AdminFilter filter, int limit, @Nullable Cursor after) {
         return tenant.inStore(storeId, () -> {
-            access.require(userId, storeId, Permission.PRODUCTS_READ);
+            access.require(actor, storeId, Permission.PRODUCTS_READ);
             Currency currency = currency(storeId);
             var rows = queries.adminPage(storeId, filter, limit + 1, after);
             var page = Page.of(rows, limit, row -> new Cursor(row.createdAt(), row.id()));
@@ -84,8 +90,12 @@ public class ProductService {
     }
 
     public ProductView get(UUID userId, StoreId storeId, UUID productId) {
+        return get(Actor.user(userId), storeId, productId);
+    }
+
+    public ProductView get(Actor actor, StoreId storeId, UUID productId) {
         return tenant.inStore(storeId, () -> {
-            access.require(userId, storeId, Permission.PRODUCTS_READ);
+            access.require(actor, storeId, Permission.PRODUCTS_READ);
             return ProductView.of(load(storeId, productId), currency(storeId));
         });
     }

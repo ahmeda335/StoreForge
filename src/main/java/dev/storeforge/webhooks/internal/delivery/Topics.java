@@ -1,5 +1,6 @@
 package dev.storeforge.webhooks.internal.delivery;
 
+import dev.storeforge.developer.Scope;
 import dev.storeforge.inventory.InventoryEvents;
 import dev.storeforge.orders.OrderEvents;
 import dev.storeforge.shared.money.Money;
@@ -28,6 +29,11 @@ public final class Topics {
     public static final Set<String> ALL = Set.copyOf(BY_EVENT_TYPE.values());
 
     private Topics() {
+    }
+
+    /** An app may subscribe to a topic only if it could read the resource through the API. */
+    public static Scope requiredScope(String topic) {
+        return topic.startsWith("inventory_levels/") ? Scope.READ_INVENTORY : Scope.READ_ORDERS;
     }
 
     public static Map<String, Object> data(String eventType, JsonNode p) {

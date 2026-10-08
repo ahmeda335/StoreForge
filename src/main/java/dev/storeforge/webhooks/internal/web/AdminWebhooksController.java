@@ -59,10 +59,11 @@ class AdminWebhooksController {
 
     record SubscriptionResponse(UUID id, String url, List<String> topics, String apiVersion, String status, int consecutiveFailures,
                                 @Nullable Instant lastSuccessAt, @Nullable Instant lastFailureAt, @Nullable Instant pausedAt,
-                                @Nullable Instant previousSecretExpiresAt, Instant createdAt, @Nullable String secret) {
+                                @Nullable Instant previousSecretExpiresAt, @Nullable UUID ownerCredentialId, Instant createdAt,
+                                @Nullable String secret) {
         static SubscriptionResponse of(Subscription s, @Nullable String secret) {
             return new SubscriptionResponse(s.id(), s.url(), s.topics(), s.apiVersion(), s.status(), s.consecutiveFailures(),
-                    s.lastSuccessAt(), s.lastFailureAt(), s.pausedAt(), s.previousSecretExpiresAt(), s.createdAt(), secret);
+                    s.lastSuccessAt(), s.lastFailureAt(), s.pausedAt(), s.previousSecretExpiresAt(), s.ownerCredentialId(), s.createdAt(), secret);
         }
     }
 

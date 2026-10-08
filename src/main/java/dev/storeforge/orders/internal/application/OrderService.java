@@ -17,6 +17,7 @@ import dev.storeforge.shared.pagination.Cursor;
 import dev.storeforge.shared.pagination.Page;
 import dev.storeforge.shared.tenancy.StoreId;
 import dev.storeforge.shared.tenancy.TenantTransactions;
+import dev.storeforge.stores.Actor;
 import dev.storeforge.stores.Permission;
 import dev.storeforge.stores.StoreAccess;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -59,9 +60,21 @@ public class OrderService {
         });
     }
 
-    public OrderDetails get(UUID userId, StoreId storeId, UUID orderId) {
+    /** Developer API sync: orders changed after {@code updatedAfter}, oldest change first. */
+    public Page<Row> changedSince(Actor actor, StoreId storeId, Instant updatedAfter, int limit, @Nullable Cursor after) {
         return tenant.inStore(storeId, () -> {
-            access.require(userId, storeId, Permission.ORDERS_READ);
+            access.require(actor, storeId, Permission.ORDERS_READ);
+            return Page.of(queries.changedSince(storeId, updatedAfter, limit + 1, after), limit, row -> new Cursor(row.updatedAt(), row.id()));
+        });
+    }
+
+    public OrderDetails get(UUID userId, StoreId storeId, UUID orderId) {
+        return get(Actor.user(userId), storeId, orderId);
+    }
+
+    public OrderDetails get(Actor actor, StoreId storeId, UUID orderId) {
+        return tenant.inStore(storeId, () -> {
+            access.require(actor, storeId, Permission.ORDERS_READ);
             Order order = orders.findByStoreIdAndId(storeId.value(), orderId).orElseThrow(OrderExceptions.OrderNotFound::new);
             return details(storeId, order);
         });

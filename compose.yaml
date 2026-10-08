@@ -30,6 +30,19 @@ services:
       - "1025:1025"
       - "8025:8025"
 
+  # Shared state for rate limits and usage counters across app instances (P12). No persistence:
+  # everything in it is either recomputable or acceptable to lose (see ADR-020).
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-ttl"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # OpenTelemetry Collector + Prometheus + Tempo + Loki + Grafana in one container (dev only).
   # Grafana: http://localhost:3000 (admin/admin). The app ships OTLP to 4318 with SPRING_PROFILES_ACTIVE=otel.
   otel-lgtm:
@@ -55,6 +68,7 @@ services:
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:-storeforge_app_dev}
       ENVIRONMENT: docker
       MAIL_HOST: mailpit
+      REDIS_URL: redis://redis:6379
       # With "--profile observability" too, telemetry goes to the otel-lgtm container.
       SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-default}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4318

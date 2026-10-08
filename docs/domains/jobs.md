@@ -39,7 +39,7 @@ sequenceDiagram
 ## Operations
 - `GET :8081/actuator/jobs`: counts by status, unpublished events, oldest ready age, latest 50 DEAD jobs. `POST :8081/actuator/jobs/{id}`: requeue a DEAD job.
 - Housekeeping (hourly): DONE jobs and published events (only if all their jobs are DONE) after 7 days; SENT emails after 30 days; idempotency keys after 24 h.
-- Config: `storeforge.jobs.*` (poll 500 ms, batch 50, lease 60 s, max attempts 10, backoff 5 s → 1 h, retention 7 d). Scheduling can be disabled (`storeforge.scheduling.enabled=false`, as tests do).
+- Config: `storeforge.jobs.*` (poll 500 ms, batch 50, concurrency 8, `type-concurrency` bulkheads, lease 60 s, max attempts 10, backoff 5 s → 1 h, retention 7 d). Scheduling can be disabled (`storeforge.scheduling.enabled=false`, as tests do).
 
 ## Tests
 `BackoffTest`, `JobQueueIT` (retries with backoff, DEAD + operator requeue, permanent failure, lease reclaim after a simulated crash, **4 concurrent workers × 60 jobs → each executed once**, log lines asserted), `OutboxIT` (rollback leaves no event, outside a transaction is refused, relay re-run creates no duplicate jobs, **job span in the request's trace**), `ReliableEffectsIT` (**SMTP outage → retried and delivered**, sensitive body erased, redelivered `OrderPlaced` → one email, redelivered `OrderPaid` → stats counted once, housekeeping). Mutation-checked ([EXP-008](../experiments/EXP-008-async-guarantees-mutations.md)).
@@ -47,4 +47,4 @@ sequenceDiagram
 ## Known limitations
 - Since P11 ([ADR-019](../decisions/ADR-019-concurrent-jobs-and-bulkheads.md)): jobs run concurrently (8 per instance) with per-type bulkheads (`webhooks.deliver`: 4); the original sequential worker caused head-of-line blocking and lease-expiry duplicates ([EXP-012](../experiments/EXP-012-head-of-line-blocking.md)).
 - No ordering; no per-tenant fairness in the queue yet (one store's flood can delay others: P15/P17 noisy-neighbour work).
-- Webhooks (P11) and payment follow-ups (P10) will be the next consumers.
+- Consumers today: emails, customer stats, payments (provider events, refunds, cancellations: P10), webhooks (fan-out and deliveries: P11). See the [event catalog](../events/README.md).

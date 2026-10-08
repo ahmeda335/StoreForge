@@ -58,6 +58,18 @@ public class InventoryStore {
         return find(storeId, variantId).orElseThrow();
     }
 
+    public Optional<Item> findById(StoreId storeId, UUID itemId) {
+        return jdbc.sql("""
+                SELECT id, variant_id, on_hand, reserved, tracked, updated_at FROM inventory_items
+                 WHERE store_id = :storeId AND id = :itemId
+                """)
+                .param("storeId", storeId.value())
+                .param("itemId", itemId)
+                .query((rs, rowNum) -> new Item(rs.getObject("id", UUID.class), rs.getObject("variant_id", UUID.class),
+                        rs.getInt("on_hand"), rs.getInt("reserved"), rs.getBoolean("tracked"), rs.getTimestamp("updated_at").toInstant()))
+                .optional();
+    }
+
     public Optional<Item> find(StoreId storeId, UUID variantId) {
         return jdbc.sql("""
                 SELECT id, variant_id, on_hand, reserved, tracked, updated_at FROM inventory_items

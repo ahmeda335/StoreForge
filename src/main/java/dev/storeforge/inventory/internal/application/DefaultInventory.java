@@ -33,6 +33,7 @@ class DefaultInventory implements Inventory {
     private final InventoryStore store;
     private final MeterRegistry meterRegistry;
     private final ObservationRegistry observations;
+    private final InventoryEventPublisher events;
     private final Clock clock;
 
     /**
@@ -99,6 +100,9 @@ class DefaultInventory implements Inventory {
             store.settle(storeId, row.inventoryItemId(), row.quantity(), sold, now);
             store.ledger(storeId, row.inventoryItemId(), sold ? -row.quantity() : 0, -row.quantity(), reason,
                     "checkout", checkoutId.toString(), null, null, now);
+            if (sold) {
+                events.levelChanged(storeId, store.findById(storeId, row.inventoryItemId()).orElseThrow(), -row.quantity(), reason);
+            }
         }
         return rows.size();
     }

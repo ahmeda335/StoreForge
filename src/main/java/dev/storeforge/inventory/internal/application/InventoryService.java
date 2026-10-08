@@ -33,6 +33,7 @@ public class InventoryService {
     private final StoreAccess access;
     private final AuditLog audit;
     private final TenantTransactions tenant;
+    private final InventoryEventPublisher events;
     private final Clock clock;
 
     public record Level(UUID itemId, UUID variantId, int onHand, int reserved, int available, boolean tracked) {
@@ -70,6 +71,7 @@ public class InventoryService {
             }
             store.ledger(storeId, item.id(), delta, 0, reason, "adjustment", null, userId, note, now);
             Item updated = store.find(storeId, variantId).orElseThrow();
+            events.levelChanged(storeId, updated, delta, reason);
             audit.recordUserAction(storeId, userId, "inventory.adjusted", "variant", variantId.toString(),
                     Map.of("delta", delta, "reason", reason, "onHand", updated.onHand()));
             return Level.of(updated);

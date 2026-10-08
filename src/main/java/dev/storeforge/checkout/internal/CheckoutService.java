@@ -5,6 +5,8 @@ import dev.storeforge.checkout.internal.CheckoutStore.Address;
 import dev.storeforge.checkout.internal.CheckoutStore.Checkout;
 import dev.storeforge.checkout.internal.CheckoutStore.Line;
 import dev.storeforge.customers.Customers;
+import dev.storeforge.discounts.DiscountUnavailableException;
+import dev.storeforge.discounts.Discounts;
 import dev.storeforge.inventory.Inventory;
 import dev.storeforge.inventory.ReservationLine;
 import dev.storeforge.orders.Orders;
@@ -37,15 +39,20 @@ class CheckoutService {
     private final Inventory inventory;
     private final Customers customers;
     private final Orders orders;
+    private final Discounts discounts;
     private final TenantTransactions tenant;
     private final ObservationRegistry observations;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
 
     record CheckoutView(UUID id, UUID cartId, String status, @Nullable String email, @Nullable Address shippingAddress,
-                        String currency, List<Line> lines, List<Line> unavailable, long subtotalMinor, long shippingMinor,
-                        long taxMinor, long totalMinor, @Nullable UUID customerId, @Nullable Instant completedAt,
+                        String currency, List<Line> lines, List<Line> unavailable, long subtotalMinor, @Nullable DiscountView discount,
+                        long shippingMinor, long taxMinor, long totalMinor, @Nullable UUID customerId, @Nullable Instant completedAt,
                         @Nullable Instant reservationExpiresAt, @Nullable UUID orderId, @Nullable Long orderNumber) {
+    }
+
+    /** The code in the checkout, evaluated live while OPEN (it can stop applying: shown, not hidden). */
+    record DiscountView(String code, long amountMinor, boolean applicable, @Nullable String reason) {
     }
 
     record Started(CheckoutView view, boolean created) {
@@ -83,6 +90,34 @@ class CheckoutService {
                 throw new CheckoutExceptions.CheckoutNotCompleted();
             }
             return checkout.orderId();
+        });
+    }
+
+    /** Applies a discount code to an open checkout. One code per checkout: applying another replaces it. */
+    CheckoutView applyDiscount(StoreInfo store, UUID checkoutId, @Nullable String cartToken, String code) {
+        return tenant.inStore(store.id(), () -> {
+            Checkout checkout = find(store, checkoutId, cartToken, true);
+            if (!"OPEN".equals(checkout.status())) {
+                throw new CheckoutExceptions.CheckoutNotOpen();
+            }
+            var priced = pricing.price(store.id(), carts.items(store.id(), checkout.cartId()));
+            var evaluation = discounts.evaluate(store.id(), code, priced.subtotal(), checkout.email(), clock.instant());
+            if (!evaluation.applicable()) {
+                throw new CheckoutExceptions.DiscountNotApplicable(evaluation.reason());
+            }
+            checkouts.setDiscountCode(store.id(), checkoutId, evaluation.code(), clock.instant());
+            return view(store, find(store, checkoutId, cartToken, false));
+        });
+    }
+
+    CheckoutView removeDiscount(StoreInfo store, UUID checkoutId, @Nullable String cartToken) {
+        return tenant.inStore(store.id(), () -> {
+            Checkout checkout = find(store, checkoutId, cartToken, true);
+            if (!"OPEN".equals(checkout.status())) {
+                throw new CheckoutExceptions.CheckoutNotOpen();
+            }
+            checkouts.setDiscountCode(store.id(), checkoutId, null, clock.instant());
+            return view(store, find(store, checkoutId, cartToken, false));
         });
     }
 
@@ -134,14 +169,25 @@ class CheckoutService {
         if (!priced.unavailable().isEmpty()) {
             throw new CheckoutExceptions.ItemUnavailable(priced.unavailable().getFirst().variantId());
         }
+        Instant now = clock.instant();
+        long discount = 0;
+        if (checkout.discountCode() != null) {
+            // The code may have expired or been used up since the customer saw the total: fail clearly, never charge more silently.
+            var evaluation = discounts.evaluate(store.id(), checkout.discountCode(), priced.subtotal(), checkout.email(), now);
+            if (!evaluation.applicable()) {
+                meterRegistry.counter("storeforge.checkouts.completions", "outcome", "discount_unavailable").increment();
+                throw new DiscountUnavailableException(evaluation.reason());
+            }
+            discount = evaluation.amountMinor();
+        }
+        long total = priced.total() - discount;
         Money expected = parse(expectedTotal, store);
-        if (expected.amountMinor() != priced.total()) {
+        if (expected.amountMinor() != total) {
             meterRegistry.counter("storeforge.checkouts.completions", "outcome", "total_changed").increment();
             throw new CheckoutExceptions.TotalChanged(expected.toDecimalString(),
-                    Money.ofMinor(priced.total(), store.currency()).toDecimalString());
+                    Money.ofMinor(total, store.currency()).toDecimalString());
         }
 
-        Instant now = clock.instant();
         inventory.reserve(store.id(), checkoutId,
                 priced.lines().stream().map(line -> new ReservationLine(line.variantId(), line.quantity())).toList(),
                 orders.reservationHold());
@@ -154,9 +200,13 @@ class CheckoutService {
                         address.postalCode(), address.country()),
                 priced.lines().stream().map(line -> new Orders.PlacedLine(line.variantId(), line.productTitle(), line.variantTitle(),
                         line.sku(), line.unitPriceMinor(), line.quantity(), line.lineTotalMinor())).toList(),
-                priced.subtotal(), priced.shipping(), priced.tax(), priced.total()));
-        checkouts.complete(store.id(), checkoutId, customerId, placed.orderId(), priced.subtotal(), priced.shipping(), priced.tax(),
-                priced.total(), placed.paymentDueAt(), now);
+                priced.subtotal(), discount, checkout.discountCode(), priced.shipping(), priced.tax(), total));
+        if (checkout.discountCode() != null) {
+            // Takes the use in THIS transaction: if anything later fails, the rollback gives it back.
+            discounts.redeem(store.id(), checkout.discountCode(), checkoutId, placed.orderId(), priced.subtotal(), checkout.email(), now);
+        }
+        checkouts.complete(store.id(), checkoutId, customerId, placed.orderId(), priced.subtotal(), discount, priced.shipping(), priced.tax(),
+                total, placed.paymentDueAt(), now);
         carts.markConverted(store.id(), checkout.cartId(), now);
         meterRegistry.counter("storeforge.checkouts.completions", "outcome", "completed").increment();
         return view(store, find(store, checkoutId, cartToken, false));
@@ -174,12 +224,20 @@ class CheckoutService {
     private CheckoutView view(StoreInfo store, Checkout checkout) {
         if ("OPEN".equals(checkout.status())) {
             var priced = pricing.price(store.id(), carts.items(store.id(), checkout.cartId()));
+            DiscountView discount = null;
+            if (checkout.discountCode() != null) {
+                var e = discounts.evaluate(store.id(), checkout.discountCode(), priced.subtotal(), checkout.email(), clock.instant());
+                discount = new DiscountView(e.code(), e.amountMinor(), e.applicable(), e.reason());
+            }
+            long discountMinor = discount == null ? 0 : discount.amountMinor();
             return new CheckoutView(checkout.id(), checkout.cartId(), checkout.status(), checkout.email(), checkout.address(),
-                    checkout.currency(), priced.lines(), priced.unavailable(), priced.subtotal(), priced.shipping(), priced.tax(),
-                    priced.total(), null, null, null, null, null);
+                    checkout.currency(), priced.lines(), priced.unavailable(), priced.subtotal(), discount, priced.shipping(), priced.tax(),
+                    priced.total() - discountMinor, null, null, null, null, null);
         }
+        DiscountView frozen = checkout.discountCode() == null ? null
+                : new DiscountView(checkout.discountCode(), checkout.discountMinor() == null ? 0 : checkout.discountMinor(), true, null);
         return new CheckoutView(checkout.id(), checkout.cartId(), checkout.status(), checkout.email(), checkout.address(),
-                checkout.currency(), checkouts.lines(store.id(), checkout.id()), List.of(), checkout.subtotalMinor(),
+                checkout.currency(), checkouts.lines(store.id(), checkout.id()), List.of(), checkout.subtotalMinor(), frozen,
                 checkout.shippingMinor(), checkout.taxMinor(), checkout.totalMinor(), checkout.customerId(),
                 checkout.completedAt(), checkout.reservationExpiresAt(), checkout.orderId(), checkout.orderNumber());
     }

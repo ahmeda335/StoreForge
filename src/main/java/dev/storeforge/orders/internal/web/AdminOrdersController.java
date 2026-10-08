@@ -68,7 +68,8 @@ class AdminOrdersController {
     }
 
     record OrderResponse(UUID id, String name, long number, String email, @Nullable UUID customerId, String status,
-                         String financialStatus, String fulfillmentStatus, MoneyDto subtotal, MoneyDto shipping, MoneyDto tax,
+                         String financialStatus, String fulfillmentStatus, MoneyDto subtotal, MoneyDto discount,
+                         @Nullable String discountCode, MoneyDto shipping, MoneyDto tax,
                          MoneyDto total, MoneyDto refunded, Address shippingAddress, List<Item> items, List<TimelineEntry> timeline,
                          Instant paymentDueAt, @Nullable Instant paidAt, @Nullable Instant fulfilledAt,
                          @Nullable Instant cancelledAt, @Nullable String cancelReason, Instant createdAt) {
@@ -77,7 +78,7 @@ class AdminOrdersController {
             String c = o.currency();
             return new OrderResponse(o.id(), "#" + o.number(), o.number(), o.email(), o.customerId(), o.status().name(),
                     o.financialStatus().name(), o.fulfillmentStatus().name(), MoneyDto.of(o.subtotalMinor(), c),
-                    MoneyDto.of(o.shippingMinor(), c), MoneyDto.of(o.taxMinor(), c), MoneyDto.of(o.totalMinor(), c),
+                    MoneyDto.of(o.discountMinor(), c), o.discountCode(), MoneyDto.of(o.shippingMinor(), c), MoneyDto.of(o.taxMinor(), c), MoneyDto.of(o.totalMinor(), c),
                     MoneyDto.of(o.refundedMinor(), c),
                     new Address(o.shipName(), o.shipLine1(), o.shipLine2(), o.shipCity(), o.shipRegion(), o.shipPostalCode(),
                             o.shipCountry()),

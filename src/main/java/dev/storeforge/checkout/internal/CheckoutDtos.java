@@ -44,6 +44,13 @@ final class CheckoutDtos {
         }
     }
 
+    /** {@code applicable=false} + {@code reason} when the code stopped applying (the total then excludes it). */
+    record DiscountResponse(String code, MoneyDto amount, boolean applicable, @Nullable String reason) {
+    }
+
+    record DiscountRequest(@NotBlank @Size(max = 40) String code) {
+    }
+
     record CreatedCartResponse(UUID cartId, String cartToken) {
         @Override
         public String toString() {
@@ -111,7 +118,8 @@ final class CheckoutDtos {
     }
 
     record CheckoutResponse(UUID id, String status, @Nullable String email, @Nullable AddressDto shippingAddress,
-                            List<CheckoutLineResponse> lines, List<UUID> unavailableItems, MoneyDto subtotal, MoneyDto shipping,
+                            List<CheckoutLineResponse> lines, List<UUID> unavailableItems, MoneyDto subtotal,
+                            @Nullable DiscountResponse discount, MoneyDto shipping,
                             MoneyDto tax, MoneyDto total, @Nullable UUID customerId, @Nullable Instant completedAt,
                             @Nullable Instant paymentDueAt, @Nullable UUID orderId, @Nullable String orderName) {
         static CheckoutResponse of(CheckoutView view) {
@@ -119,7 +127,10 @@ final class CheckoutDtos {
             return new CheckoutResponse(view.id(), view.status(), view.email(), AddressDto.of(view.shippingAddress()),
                     view.lines().stream().map(line -> CheckoutLineResponse.of(line, c)).toList(),
                     view.unavailable().stream().map(Line::variantId).toList(),
-                    MoneyDto.of(view.subtotalMinor(), c), MoneyDto.of(view.shippingMinor(), c), MoneyDto.of(view.taxMinor(), c),
+                    MoneyDto.of(view.subtotalMinor(), c),
+                    view.discount() == null ? null : new DiscountResponse(view.discount().code(), MoneyDto.of(view.discount().amountMinor(), c),
+                            view.discount().applicable(), view.discount().reason()),
+                    MoneyDto.of(view.shippingMinor(), c), MoneyDto.of(view.taxMinor(), c),
                     MoneyDto.of(view.totalMinor(), c), view.customerId(), view.completedAt(), view.reservationExpiresAt(),
                     view.orderId(), view.orderNumber() == null ? null : "#" + view.orderNumber());
         }

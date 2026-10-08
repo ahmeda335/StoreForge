@@ -80,7 +80,7 @@ class OrderStateMachineTest {
     private static Order newOrder() {
         var placement = new OrderPlacement(UUID.randomUUID(), null, "a@example.test", "USD",
                 new ShippingAddress("Ada", "1 Main St", null, "Paris", null, "75001", "FR"),
-                List.of(new PlacedLine(UUID.randomUUID(), "Lamp", "Default", null, 1000, 2, 2000)), 2000, 0, 0, 2000);
+                List.of(new PlacedLine(UUID.randomUUID(), "Lamp", "Default", null, 1000, 2, 2000)), 2000, 0, null, 0, 0, 2000);
         return Order.place(StoreId.of(UUID.randomUUID()), 1001, placement, NOW.plusSeconds(15 * 60), NOW);
     }
 }

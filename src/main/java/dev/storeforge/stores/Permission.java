@@ -27,7 +27,8 @@ public enum Permission {
     ORDERS_REFUND("orders:refund"),
     CUSTOMERS_READ("customers:read"),
     WEBHOOKS_MANAGE("webhooks:manage"),
-    APPS_MANAGE("apps:manage");
+    APPS_MANAGE("apps:manage"),
+    DISCOUNTS_MANAGE("discounts:manage");
 
     @Getter
     private final String code;

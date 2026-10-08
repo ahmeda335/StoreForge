@@ -53,6 +53,12 @@ final class CheckoutExceptions {
         }
     }
 
+    static class DiscountNotApplicable extends StoreForgeException {
+        DiscountNotApplicable(String reason) {
+            super(HttpStatus.UNPROCESSABLE_CONTENT, "discount_not_applicable", "This discount code can't be applied (" + reason + ").");
+        }
+    }
+
     static class CheckoutNotCompleted extends StoreForgeException {
         CheckoutNotCompleted() {
             super(HttpStatus.CONFLICT, "checkout_not_completed", "Complete the checkout before paying.");

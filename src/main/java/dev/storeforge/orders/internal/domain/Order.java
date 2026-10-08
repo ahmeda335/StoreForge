@@ -66,6 +66,9 @@ public class Order {
     @Column(nullable = false)
     private long subtotalMinor;
     @Column(nullable = false)
+    private long discountMinor;
+    private String discountCode;
+    @Column(nullable = false)
     private long shippingMinor;
     @Column(nullable = false)
     private long taxMinor;
@@ -118,6 +121,8 @@ public class Order {
         order.email = placement.email();
         order.currency = placement.currency();
         order.subtotalMinor = placement.subtotalMinor();
+        order.discountMinor = placement.discountMinor();
+        order.discountCode = placement.discountCode();
         order.shippingMinor = placement.shippingMinor();
         order.taxMinor = placement.taxMinor();
         order.totalMinor = placement.totalMinor();

@@ -53,7 +53,8 @@ class DeveloperOrdersController {
     }
 
     record OrderDetail(UUID id, String name, long number, String email, String status, String financialStatus, String fulfillmentStatus,
-                       Price subtotal, Price shipping, Price tax, Price total, Price refunded, List<LineItem> lineItems,
+                       Price subtotal, Price discount, @Nullable String discountCode, Price shipping, Price tax, Price total,
+                       Price refunded, List<LineItem> lineItems,
                        Instant createdAt, Instant updatedAt) {
     }
 
@@ -77,7 +78,8 @@ class DeveloperOrdersController {
         Order o = details.order();
         String c = o.currency();
         return new OrderDetail(o.id(), "#" + o.number(), o.number(), o.email(), o.status().name(), o.financialStatus().name(),
-                o.fulfillmentStatus().name(), Price.of(o.subtotalMinor(), c), Price.of(o.shippingMinor(), c), Price.of(o.taxMinor(), c),
+                o.fulfillmentStatus().name(), Price.of(o.subtotalMinor(), c), Price.of(o.discountMinor(), c), o.discountCode(),
+                Price.of(o.shippingMinor(), c), Price.of(o.taxMinor(), c),
                 Price.of(o.totalMinor(), c), Price.of(o.refundedMinor(), c),
                 details.items().stream().map(i -> new LineItem(i.variantId(), i.productTitle(), i.variantTitle(), i.sku(), i.quantity(),
                         Price.of(i.unitPriceMinor(), c))).toList(),

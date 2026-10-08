@@ -54,7 +54,7 @@ public interface Orders {
 
     record OrderPlacement(UUID checkoutId, @Nullable UUID customerId, String email, String currency, ShippingAddress address,
                           List<PlacedLine> lines, long subtotalMinor, long discountMinor, @Nullable String discountCode,
-                          long shippingMinor, long taxMinor, long totalMinor) {
+                          long shippingMinor, @Nullable String shippingRateName, long taxMinor, long totalMinor) {
     }
 
     record PlacedOrder(UUID orderId, long number, Instant paymentDueAt) {

@@ -53,6 +53,13 @@ final class CheckoutExceptions {
         }
     }
 
+    static class ShippingRateNotAvailable extends StoreForgeException {
+        ShippingRateNotAvailable() {
+            super(HttpStatus.CONFLICT, "shipping_rate_not_available",
+                    "The chosen shipping rate doesn't apply to this address or cart (any more). Choose one of the listed rates.");
+        }
+    }
+
     static class DiscountNotApplicable extends StoreForgeException {
         DiscountNotApplicable(String reason) {
             super(HttpStatus.UNPROCESSABLE_CONTENT, "discount_not_applicable", "This discount code can't be applied (" + reason + ").");

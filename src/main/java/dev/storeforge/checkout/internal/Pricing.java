@@ -15,8 +15,8 @@ import org.springframework.stereotype.Component;
  * Prices cart items from the CATALOG, never from client input. Every amount the customer pays is
  * computed here, server-side, from current prices (blueprint 18: "never trust the client").
  *
- * <p>Shipping and tax are 0 until discounts/shipping arrive (P13); the totals already carry them so
- * the API and the frozen snapshot don't change shape later.
+ * <p>Shipping is added by the checkout from the chosen rate (it depends on the destination and the
+ * weight computed here); discounts likewise. Tax stays 0 (out of scope).
  */
 @Component
 @RequiredArgsConstructor
@@ -24,7 +24,8 @@ class Pricing {
 
     private final VariantLookup variants;
 
-    record PricedCart(List<Line> lines, List<Line> unavailable, long subtotal, long shipping, long tax) {
+    /** {@code weightGrams}: total weight of the sellable lines; variants without a weight count as 0. */
+    record PricedCart(List<Line> lines, List<Line> unavailable, long subtotal, long shipping, long tax, int weightGrams) {
         long total() {
             return Math.addExact(Math.addExact(subtotal, shipping), tax);
         }
@@ -36,6 +37,7 @@ class Pricing {
         List<Line> lines = new ArrayList<>();
         List<Line> unavailable = new ArrayList<>();
         long subtotal = 0;
+        int weight = 0;
         for (Item item : items) {
             SellableVariant variant = catalog.get(item.variantId());
             if (variant == null || !variant.sellable()) {
@@ -47,7 +49,8 @@ class Pricing {
             lines.add(new Line(variant.variantId(), variant.productTitle(), variant.variantTitle(), variant.sku(),
                     variant.priceMinor(), item.quantity(), lineTotal));
             subtotal = Math.addExact(subtotal, lineTotal);
+            weight = Math.addExact(weight, Math.multiplyExact(variant.weightGrams(), item.quantity()));
         }
-        return new PricedCart(lines, unavailable, subtotal, 0, 0);
+        return new PricedCart(lines, unavailable, subtotal, 0, 0, weight);
     }
 }

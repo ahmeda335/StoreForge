@@ -48,6 +48,15 @@ final class CheckoutDtos {
     record DiscountResponse(String code, MoneyDto amount, boolean applicable, @Nullable String reason) {
     }
 
+    record ShippingOptionResponse(UUID id, String name, MoneyDto price, boolean available) {
+        static ShippingOptionResponse of(CheckoutService.ShippingOption option, String currency) {
+            return new ShippingOptionResponse(option.rateId(), option.name(), MoneyDto.of(option.priceMinor(), currency), option.available());
+        }
+    }
+
+    record ShippingRateRequest(@jakarta.validation.constraints.NotNull UUID rateId) {
+    }
+
     record DiscountRequest(@NotBlank @Size(max = 40) String code) {
     }
 
@@ -119,7 +128,8 @@ final class CheckoutDtos {
 
     record CheckoutResponse(UUID id, String status, @Nullable String email, @Nullable AddressDto shippingAddress,
                             List<CheckoutLineResponse> lines, List<UUID> unavailableItems, MoneyDto subtotal,
-                            @Nullable DiscountResponse discount, MoneyDto shipping,
+                            @Nullable DiscountResponse discount, List<ShippingOptionResponse> shippingRates,
+                            @Nullable ShippingOptionResponse shippingRate, MoneyDto shipping,
                             MoneyDto tax, MoneyDto total, @Nullable UUID customerId, @Nullable Instant completedAt,
                             @Nullable Instant paymentDueAt, @Nullable UUID orderId, @Nullable String orderName) {
         static CheckoutResponse of(CheckoutView view) {
@@ -130,6 +140,8 @@ final class CheckoutDtos {
                     MoneyDto.of(view.subtotalMinor(), c),
                     view.discount() == null ? null : new DiscountResponse(view.discount().code(), MoneyDto.of(view.discount().amountMinor(), c),
                             view.discount().applicable(), view.discount().reason()),
+                    view.shippingRates().stream().map(o -> ShippingOptionResponse.of(o, c)).toList(),
+                    view.shippingRate() == null ? null : ShippingOptionResponse.of(view.shippingRate(), c),
                     MoneyDto.of(view.shippingMinor(), c), MoneyDto.of(view.taxMinor(), c),
                     MoneyDto.of(view.totalMinor(), c), view.customerId(), view.completedAt(), view.reservationExpiresAt(),
                     view.orderId(), view.orderNumber() == null ? null : "#" + view.orderNumber());

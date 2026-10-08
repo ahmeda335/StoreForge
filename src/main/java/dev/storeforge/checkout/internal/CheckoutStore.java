@@ -27,7 +27,7 @@ class CheckoutStore {
                     @Nullable UUID customerId, String currency, @Nullable Long subtotalMinor, @Nullable Long shippingMinor,
                     @Nullable Long taxMinor, @Nullable Long totalMinor, @Nullable Instant completedAt,
                     @Nullable Instant reservationExpiresAt, @Nullable UUID orderId, @Nullable Long orderNumber,
-                    @Nullable String discountCode, @Nullable Long discountMinor) {
+                    @Nullable String discountCode, @Nullable Long discountMinor, @Nullable UUID shippingRateId) {
     }
 
     record Line(UUID variantId, String productTitle, String variantTitle, @Nullable String sku, long unitPriceMinor,
@@ -37,7 +37,7 @@ class CheckoutStore {
     private static final String COLUMNS = """
             c.id, c.cart_id, c.status, c.email, c.ship_name, c.ship_line1, c.ship_line2, c.ship_city, c.ship_region,
             c.ship_postal_code, c.ship_country, c.customer_id, c.currency, c.subtotal_minor, c.shipping_minor, c.tax_minor,
-            c.total_minor, c.completed_at, c.reservation_expires_at, c.order_id, c.discount_code, c.discount_minor,
+            c.total_minor, c.completed_at, c.reservation_expires_at, c.order_id, c.discount_code, c.discount_minor, c.shipping_rate_id,
             (SELECT o.number FROM orders o WHERE o.store_id = c.store_id AND o.id = c.order_id) AS order_number""";
 
     void create(StoreId storeId, UUID checkoutId, UUID cartId, String currency, Instant now) {
@@ -137,6 +137,11 @@ class CheckoutStore {
                 .list();
     }
 
+    void setShippingRate(StoreId storeId, UUID checkoutId, @Nullable UUID rateId, Instant now) {
+        jdbc.sql("UPDATE checkouts SET shipping_rate_id = :rate, updated_at = :now WHERE store_id = :storeId AND id = :id AND status = 'OPEN'")
+                .param("rate", rateId).param("now", Timestamp.from(now)).param("storeId", storeId.value()).param("id", checkoutId).update();
+    }
+
     void setDiscountCode(StoreId storeId, UUID checkoutId, @Nullable String code, Instant now) {
         jdbc.sql("UPDATE checkouts SET discount_code = :code, updated_at = :now WHERE store_id = :storeId AND id = :id AND status = 'OPEN'")
                 .param("code", code).param("now", Timestamp.from(now)).param("storeId", storeId.value()).param("id", checkoutId).update();
@@ -174,7 +179,7 @@ class CheckoutStore {
                 rs.getObject("subtotal_minor", Long.class), rs.getObject("shipping_minor", Long.class), rs.getObject("tax_minor", Long.class),
                 rs.getObject("total_minor", Long.class), instant(rs, "completed_at"), instant(rs, "reservation_expires_at"),
                 rs.getObject("order_id", UUID.class), rs.getObject("order_number", Long.class), rs.getString("discount_code"),
-                rs.getObject("discount_minor", Long.class));
+                rs.getObject("discount_minor", Long.class), rs.getObject("shipping_rate_id", UUID.class));
     }
 
     private static @Nullable Instant instant(ResultSet rs, String column) throws SQLException {

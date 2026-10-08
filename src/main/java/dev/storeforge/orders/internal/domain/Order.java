@@ -46,7 +46,7 @@ public class Order {
 
     public enum FinancialStatus { PENDING, PAID, PARTIALLY_REFUNDED, REFUNDED, VOIDED }
 
-    public enum FulfillmentStatus { UNFULFILLED, FULFILLED }
+    public enum FulfillmentStatus { UNFULFILLED, PARTIALLY_FULFILLED, FULFILLED }
 
     public static final String REASON_PAYMENT_TIMEOUT = "PAYMENT_TIMEOUT";
 
@@ -70,6 +70,7 @@ public class Order {
     private String discountCode;
     @Column(nullable = false)
     private long shippingMinor;
+    private String shippingRateName;
     @Column(nullable = false)
     private long taxMinor;
     @Column(nullable = false)
@@ -123,6 +124,7 @@ public class Order {
         order.subtotalMinor = placement.subtotalMinor();
         order.discountMinor = placement.discountMinor();
         order.discountCode = placement.discountCode();
+        order.shippingRateName = placement.shippingRateName();
         order.shippingMinor = placement.shippingMinor();
         order.taxMinor = placement.taxMinor();
         order.totalMinor = placement.totalMinor();
@@ -158,7 +160,16 @@ public class Order {
         return status == Status.OPEN && financialStatus == FinancialStatus.PENDING;
     }
 
+    /** Everything remaining ships at once. */
     public void fulfill(Instant now) {
+        recordShipment(true, now);
+    }
+
+    /**
+     * A shipment left. {@code everythingShipped}: no unshipped quantity remains (computed by the
+     * caller under this order's row lock). Paid + fully shipped closes the order.
+     */
+    public void recordShipment(boolean everythingShipped, Instant now) {
         requireOpen();
         if (financialStatus != FinancialStatus.PAID && financialStatus != FinancialStatus.PARTIALLY_REFUNDED) {
             throw new OrderExceptions.InvalidTransition("order_not_paid", "Only paid orders can be fulfilled.");
@@ -166,9 +177,22 @@ public class Order {
         if (fulfillmentStatus == FulfillmentStatus.FULFILLED) {
             throw new OrderExceptions.InvalidTransition("order_already_fulfilled", "The order is already fulfilled.");
         }
-        fulfillmentStatus = FulfillmentStatus.FULFILLED;
-        fulfilledAt = now;
-        status = Status.CLOSED;   // paid + fulfilled: nothing left to do
+        fulfillmentStatus = everythingShipped ? FulfillmentStatus.FULFILLED : FulfillmentStatus.PARTIALLY_FULFILLED;
+        if (everythingShipped) {
+            fulfilledAt = now;
+            status = Status.CLOSED;   // paid + fulfilled: nothing left to do
+        }
+        updatedAt = now;
+    }
+
+    /** A shipment was cancelled (lost, not sent): its quantities are unshipped again, and a closed order reopens. */
+    public void shipmentCancelled(boolean anythingStillShipped, Instant now) {
+        if (status == Status.CANCELLED) {
+            throw new OrderExceptions.InvalidTransition("order_not_open", "The order is cancelled.");
+        }
+        fulfillmentStatus = anythingStillShipped ? FulfillmentStatus.PARTIALLY_FULFILLED : FulfillmentStatus.UNFULFILLED;
+        fulfilledAt = null;
+        status = Status.OPEN;
         updatedAt = now;
     }
 
@@ -191,6 +215,9 @@ public class Order {
     /** Cancelling a paid order needs a full refund first: money must never be silently kept or lost. */
     public void cancel(String reason, Instant now) {
         requireOpen();
+        if (fulfillmentStatus != FulfillmentStatus.UNFULFILLED) {
+            throw new OrderExceptions.InvalidTransition("order_has_shipments", "Orders with shipments can't be cancelled; cancel the shipments first.");
+        }
         if (financialStatus == FinancialStatus.PAID || financialStatus == FinancialStatus.PARTIALLY_REFUNDED) {
             throw new OrderExceptions.InvalidTransition("cancel_requires_refund",
                     "Paid orders can only be cancelled after a full refund.");

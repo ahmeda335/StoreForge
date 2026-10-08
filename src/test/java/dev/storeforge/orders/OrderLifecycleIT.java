@@ -56,7 +56,7 @@ class OrderLifecycleIT extends IntegrationTest {
         assertThat(fulfilled.get("status").asString()).isEqualTo("CLOSED");
         assertThat(fulfilled.get("fulfillmentStatus").asString()).isEqualTo("FULFILLED");
         assertThat(fulfilled.get("timeline").valueStream().map(e -> e.get("type").asString()))
-                .containsExactly("PLACED", "PAID", "FULFILLED");
+                .containsExactly("PLACED", "PAID", "SHIPPED", "FULFILLED");
     }
 
     @Test

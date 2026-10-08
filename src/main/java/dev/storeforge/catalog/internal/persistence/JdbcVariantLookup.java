@@ -31,7 +31,7 @@ class JdbcVariantLookup implements VariantLookup {
         }
         jdbc.sql("""
                 SELECT v.id, v.product_id, p.title AS product_title, v.sku, v.price_minor, v.option1, v.option2, v.option3,
-                       p.status
+                       p.status, coalesce(v.weight_grams, 0) AS weight_grams
                   FROM product_variants v JOIN products p ON p.store_id = v.store_id AND p.id = v.product_id
                  WHERE v.store_id = :storeId AND v.id = ANY(:ids)
                 """)
@@ -47,7 +47,7 @@ class JdbcVariantLookup implements VariantLookup {
                     UUID id = rs.getObject("id", UUID.class);
                     result.put(id, new SellableVariant(id, rs.getObject("product_id", UUID.class), rs.getString("product_title"),
                             options.isEmpty() ? "Default" : String.join(" / ", options), rs.getString("sku"),
-                            rs.getLong("price_minor"), "ACTIVE".equals(rs.getString("status"))));
+                            rs.getLong("price_minor"), "ACTIVE".equals(rs.getString("status")), rs.getInt("weight_grams")));
                 });
         return result;
     }

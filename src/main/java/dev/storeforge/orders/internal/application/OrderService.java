@@ -47,6 +47,7 @@ public class OrderService {
     private final AuditLog audit;
     private final TenantTransactions tenant;
     private final Outbox outbox;
+    private final ShipmentService shipmentService;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
 
@@ -95,13 +96,11 @@ public class OrderService {
         });
     }
 
+    /** Ships everything still unshipped, in one shipment (the P8 endpoint, kept). Partial shipments: {@link ShipmentService}. */
     public OrderDetails fulfill(UUID userId, StoreId storeId, UUID orderId) {
-        return transition(userId, storeId, orderId, Permission.ORDERS_WRITE, order -> {
-            Instant now = clock.instant();
-            order.fulfill(now);
-            records.event(storeId, order.id(), "FULFILLED", userId, Map.of(), now);
-            audit.recordUserAction(storeId, userId, "order.fulfilled", "order", order.id().toString(), Map.of("number", order.number()));
-            publish(storeId, order, OrderEvents.FULFILLED, new OrderEvents.Fulfilled(order.id(), order.number()));
+        return tenant.inStore(storeId, () -> {
+            shipmentService.ship(userId, storeId, orderId, null, null, null);
+            return get(userId, storeId, orderId);
         });
     }
 

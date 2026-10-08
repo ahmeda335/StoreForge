@@ -4,6 +4,7 @@ import dev.storeforge.checkout.internal.CheckoutDtos.AddressDto;
 import dev.storeforge.checkout.internal.CheckoutDtos.CheckoutResponse;
 import dev.storeforge.checkout.internal.CheckoutDtos.CompletionRequest;
 import dev.storeforge.checkout.internal.CheckoutDtos.DiscountRequest;
+import dev.storeforge.checkout.internal.CheckoutDtos.ShippingRateRequest;
 import dev.storeforge.checkout.internal.CheckoutDtos.PaymentSessionResponse;
 import dev.storeforge.checkout.internal.CheckoutDtos.StartCheckoutRequest;
 import dev.storeforge.checkout.internal.CheckoutDtos.UpdateCheckoutRequest;
@@ -86,6 +87,13 @@ class StorefrontCheckoutController {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Idempotent-Replayed", Boolean.toString(result.replayed()))
                 .body(result.jsonBody());
+    }
+
+    @PutMapping("/{checkoutId}/shipping-rate")
+    CheckoutResponse selectShippingRate(@CurrentStorefront StoreInfo store, @PathVariable UUID checkoutId,
+                                        @RequestHeader(name = StorefrontCartController.CART_TOKEN, required = false) @Nullable String token,
+                                        @Valid @RequestBody ShippingRateRequest body) {
+        return CheckoutResponse.of(checkouts.selectShippingRate(store, checkoutId, token, body.rateId()));
     }
 
     @PutMapping("/{checkoutId}/discount")

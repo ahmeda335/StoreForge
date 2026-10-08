@@ -23,6 +23,7 @@ public final class Topics {
             OrderEvents.PAID, "orders/paid",
             OrderEvents.CANCELLED, "orders/cancelled",
             OrderEvents.FULFILLED, "orders/fulfilled",
+            OrderEvents.SHIPPED, "fulfillments/create",
             OrderEvents.REFUNDED, "refunds/create",
             InventoryEvents.LEVEL_CHANGED, "inventory_levels/update");
 
@@ -60,6 +61,12 @@ public final class Topics {
                 }
             }
             case OrderEvents.CANCELLED -> data.put("reason", p.get("reason").asString());
+            case OrderEvents.SHIPPED -> {
+                data.put("shipmentId", p.get("shipmentId").asString());
+                data.put("carrier", text(p, "carrier"));
+                data.put("trackingNumber", text(p, "trackingNumber"));
+                data.put("complete", p.get("complete").asBoolean());
+            }
             case OrderEvents.REFUNDED -> {
                 data.put("refundId", p.get("refundId").asString());
                 data.put("amount", money(p.get("amountMinor").asLong(), currency));

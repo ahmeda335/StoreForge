@@ -25,7 +25,8 @@ public enum Permission {
     ORDERS_READ("orders:read"),
     ORDERS_WRITE("orders:write"),
     ORDERS_REFUND("orders:refund"),
-    CUSTOMERS_READ("customers:read");
+    CUSTOMERS_READ("customers:read"),
+    WEBHOOKS_MANAGE("webhooks:manage");
 
     @Getter
     private final String code;

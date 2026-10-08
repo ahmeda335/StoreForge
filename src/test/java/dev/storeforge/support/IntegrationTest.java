@@ -31,7 +31,13 @@ import org.springframework.test.context.DynamicPropertySource;
                 // Background work runs only when a test triggers it explicitly (no timer races).
                 "storeforge.scheduling.enabled=false",
                 // The fake payment provider's webhooks are delivered by the tests (to duplicate, drop, reorder them).
-                "storeforge.payments.fake.webhook-url="
+                "storeforge.payments.fake.webhook-url=",
+                // Webhook receivers in tests are WireMock servers on http://127.0.0.1 (the SSRF guard's escape hatch).
+                "storeforge.webhooks.require-https=false",
+                "storeforge.webhooks.allowed-private-cidrs=127.0.0.0/8",
+                "storeforge.webhooks.request-timeout=1s",
+                "storeforge.webhooks.pause-after-consecutive-failures=5",
+                "storeforge.jobs.type-concurrency.[test.slow]=2"
         })
 @Import(IntegrationTest.TestBeans.class)
 public abstract class IntegrationTest {
@@ -77,6 +83,11 @@ public abstract class IntegrationTest {
         @Bean
         TestJobHandlers.Recording recordingJobHandler() {
             return new TestJobHandlers.Recording();
+        }
+
+        @Bean
+        TestJobHandlers.Slow slowJobHandler() {
+            return new TestJobHandlers.Slow();
         }
 
         /** Captures finished spans in memory so tests can assert on trace structure. */

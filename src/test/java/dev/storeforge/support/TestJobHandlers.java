@@ -39,4 +39,44 @@ public final class TestJobHandlers {
             return executions.getOrDefault(jobId, new AtomicInteger()).get();
         }
     }
+
+    /** Takes {@code millis} (payload); remembers how many ran at the same time, at most. */
+    public static class Slow implements JobHandler {
+
+        public static final String TYPE = "test.slow";
+        private final AtomicInteger running = new AtomicInteger();
+        private final AtomicInteger maxRunning = new AtomicInteger();
+        private final AtomicInteger finished = new AtomicInteger();
+
+        @Override
+        public String type() {
+            return TYPE;
+        }
+
+        @Override
+        public void handle(Job job) {
+            maxRunning.accumulateAndGet(running.incrementAndGet(), Math::max);
+            try {
+                Thread.sleep(job.payload().path("millis").asLong(500));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                running.decrementAndGet();
+                finished.incrementAndGet();
+            }
+        }
+
+        public int maxRunning() {
+            return maxRunning.get();
+        }
+
+        public int finished() {
+            return finished.get();
+        }
+
+        public void reset() {
+            maxRunning.set(0);
+            finished.set(0);
+        }
+    }
 }

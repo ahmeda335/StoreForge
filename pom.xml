@@ -104,6 +104,13 @@
             <version>${resilience4j.version}</version>
         </dependency>
 
+        <!-- Outbound webhooks: HTTP client with a pluggable DNS resolver, so the SSRF check and the
+             connection use the SAME resolved addresses (no DNS-rebinding window). -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
+
         <!-- Email (SMTP; Mailpit locally) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

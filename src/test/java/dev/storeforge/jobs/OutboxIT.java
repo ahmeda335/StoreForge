@@ -76,7 +76,7 @@ class OutboxIT extends IntegrationTest {
         worker.drain();
 
         List<String> jobTypes = jdbc.sql("SELECT type FROM jobs WHERE event_id = :id").param("id", eventId).query(String.class).list();
-        assertThat(jobTypes).containsExactly("event:order-confirmation-emails");
+        assertThat(jobTypes).containsExactlyInAnyOrder("event:order-confirmation-emails", "event:webhooks");
     }
 
     /** request → outbox row (traceparent) → relay → job span: one trace, visible end to end in Tempo. */

@@ -80,11 +80,32 @@ storeforge:
   jobs:
     poll-interval: ${JOBS_POLL_INTERVAL:500ms}
     batch-size: 50
+    concurrency: ${JOBS_CONCURRENCY:8}         # per instance; below the DB pool size (handlers use it briefly)
+    type-concurrency:                          # bulkheads: slow kinds of work can't take every slot
+      "[webhooks.deliver]": 4
     lease: 60s
     max-attempts: 10
     backoff-base: 5s
     backoff-cap: 1h
     retention: 7d
+  webhooks:
+    api-version: "2026-10"
+    max-subscriptions-per-store: 20
+    connect-timeout: 2s
+    request-timeout: 10s
+    retry-schedule: 1m, 5m, 30m, 2h, 6h, 12h, 24h, 24h   # 9 attempts over ~70 h
+    max-attempts: 9
+    max-attempts-on-client-error: 3
+    pause-after-consecutive-failures: 20
+    max-connections-per-endpoint: 4
+    secret-overlap: 24h
+    retention: 30d
+    response-excerpt-bytes: 512
+    # base64 of 32 random bytes encrypting signing secrets at rest. This value is for LOCAL DEVELOPMENT only.
+    encryption-key: ${WEBHOOK_ENCRYPTION_KEY:uJpdIXQiVMWS3GxRYbhcbQPA/RSV8pSJsHcBn1vA/0M=}
+    require-https: ${WEBHOOKS_REQUIRE_HTTPS:true}
+    # SSRF escape hatch for local receivers, e.g. 127.0.0.0/8. Never in production.
+    allowed-private-cidrs: ${WEBHOOKS_ALLOWED_PRIVATE_CIDRS:}
   payments:
     provider: ${PAYMENTS_PROVIDER:fake}
     webhook-tolerance: 5m

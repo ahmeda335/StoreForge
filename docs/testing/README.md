@@ -21,6 +21,8 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - Emails are captured by `RecordingEmailSender` (replaces the SMTP adapter in all ITs); `AuthFlows` bundles register/verify/login steps.
 - Each test uses unique emails (`uniqueEmail()`) and stores (`StoreFlows.uniqueHandle()`), because the context, database and rate-limiter buckets are shared across test classes.
 - Emails are sent by the job worker: `RecordingEmailSender` drains the queue (`JobWorker.drain()`) before every mailbox read; `mailbox.failNext(n)` simulates SMTP outages. Test-only job handlers live in `TestJobHandlers`.
+- Redis: one Testcontainers Redis for the suite (`RedisTestServer`); outage tests PAUSE it (connections open, no answers) and always unpause. Rate-limit tests drain buckets until refused (buckets refill in real time).
+- OAuth: `OAuthBrowser` keeps cookies and never follows redirects, so every hop is asserted; forged requests test the server-side rules.
 - Webhook receivers: a static WireMock server (unique path per test) or a raw `ServerSocket` when exact byte timing matters (WireMock's dribble delays the status line too). Tests that move time call `runDueAt(t)` (rounds until idle): one round starts at most 4 deliveries (bulkhead) and the shared database holds other tests' retries.
 - Payments use the in-process `FakePaymentProvider` (a stateful Stripe simulator): `PaymentFlows` plays browser, provider and merchant; tests deliver webhooks themselves (`storeforge.payments.fake.webhook-url=` is blank in tests) so they can duplicate, drop, delay or forge them; `provider.failNext(UNAVAILABLE | RESPONSE_LOST)` injects provider failures. The real Stripe adapter is covered by WireMock contract tests instead.
 - Platform-wide jobs (sweeper, order expiry) see **all** test stores' data in the shared database: assert on your own store's rows, not on global counts.
@@ -30,7 +32,7 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 - `QueryCounter` (test-only `BeanPostProcessor`) wraps the `DataSource` and counts prepared statements: use it to assert constant query counts for list endpoints.
 - Concurrency tests start N threads on a `CountDownLatch` and assert **invariants** (exactly one user, exactly one successful rotation), not just "no exception".
 
-## Current suite (P1–P11)
+## Current suite (P1–P12)
 
 | Test | Level | Protects |
 |---|---|---|
@@ -66,6 +68,9 @@ Strategy: [blueprint/17-testing.md](../blueprint/17-testing.md).
 | `BackoffTest` | Unit | Exponential growth, cap, no overflow, jitter range |
 | `JobQueueIT` | Integration + concurrency | Retry timeline (controlled time), DEAD + operator requeue, permanent failure, lease reclaim after a simulated crash, **4 workers × 60 jobs → each once**, WARN/ERROR lines actually emitted |
 | `OutboxIT` | Integration | Rolled-back transaction → no event; no transaction → refused; relay re-run → no duplicate jobs; **job span in the request's trace** |
+| `DeveloperApiIT` | Integration + architecture | `@RequiresScope` on every `/api/**` handler; credentials, store binding, scopes, versions, revocation, anti-escalation, sync feeds, idempotent writes, app-owned subscriptions, OpenAPI |
+| `RateLimitIT` | Integration (Redis) | Burst/429/usage; budget shared across instances; store-wide cap; frozen Redis (paused container) → local limits, no waiting, DEGRADED, recovery |
+| `OAuthInstallIT` | Integration (browser flow) | Install end to end; forged consent and scope escalation refused at issuance; PKCE, replay, wrong secret, foreign redirect, excess scopes, shared lockout, session isolation, no stored tokens |
 | `EndpointPolicyTest`, `SecretBoxTest`, `RetryPolicyTest` | Unit | SSRF rules on resolved addresses (29 cases incl. encodings, rebinding); AES-GCM tamper/row binding; retry schedule |
 | `WebhookDeliveryIT` | Integration (WireMock + raw socket receivers) | Signed deliveries verified independently; idempotent fan-out; retries with identical bytes; slow and **dripping** receivers; redirects not followed; 429/4xx; replay; pause + bulk replay; rotation overlap; destination turned private at delivery |
 | `StripeFormatTest`, `PaymentTest` | Unit | Webhook signature rules (independent HMAC), event parsing; payment state machine and refund arithmetic |

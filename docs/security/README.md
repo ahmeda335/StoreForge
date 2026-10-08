@@ -130,6 +130,17 @@ Threat analysis and target controls: [blueprint/18-security.md](../blueprint/18-
 | Authorization and audit | `webhooks:manage`; audit entries for create/update/delete/rotate (host + topics, never the secret) |
 | Data minimization | Thin payloads; history keeps no request headers; logs show the host, not the full URL (may contain tokens) |
 
+## P12 additions (developer platform)
+
+| Control | Implementation |
+|---|---|
+| Credentials | Opaque `sfk_`/`sfat_` tokens (256 bits), SHA-256 at rest, shown once, prefix for identification, looked up per request (instant revocation), `last_used_at` |
+| Least privilege | Scopes = permissions; anti-escalation at key creation and at OAuth token issuance; `@RequiresScope` mandatory (architecture test, fail closed) |
+| Tenant binding | Credential bound to one store; URL store must match (404); data access uses the credential's store (EXP-016 D1) |
+| Abuse | Redis token buckets per credential and per store; fail open to per-instance limits (ADR-020) |
+| OAuth | Authorization code + PKCE (required), exact redirect URIs, `state`, confidential clients (Argon2 secrets), consent with store/app/scopes, 5-minute single-use codes, no plaintext tokens stored, re-check at issuance; login via identity's protections; session chain isolated from the stateless APIs |
+| Accountability | Audit actor `API_KEY` / `APP`; per-credential usage |
+
 ## Not yet (by design)
 MFA (P14), dependency and secret scanning in CI (P14), TLS (P16 via the reverse proxy).
 

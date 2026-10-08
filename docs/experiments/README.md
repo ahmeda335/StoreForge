@@ -5,6 +5,9 @@ Planned catalogue: [blueprint/25-failure-experiments.md](../blueprint/25-failure
 | ID | Experiment | Phase | Result |
 |---|---|---|---|
 | [EXP-001](EXP-001-database-unavailable-p1.md) | Database unavailable (stop/start, start while down, graceful shutdown) | P1 | As expected; probe timeout must be > 3s |
+| [EXP-016](EXP-016-developer-platform-mutations.md) | Mutations: store binding, scopes, anti-escalation, OAuth re-checks, stored tokens, PKCE | P12 | Found a test gap (scope escalation via OAuth), a usage-counting bug (rejected requests uncounted) and flaky refill-sensitive tests; D1 showed controllers can't leak other stores even without the binding |
+| [EXP-015](EXP-015-third-party-app-lifecycle.md) | StockSync's whole life: install, events, restock, burst with backoff, uninstall | P12 | Works end to end across two processes; audit shows APP actor |
+| [EXP-014](EXP-014-redis-outage.md) | Redis stops under two instances | P12 | Shared budget 42/60 → per-instance 60/60 at p50 14 ms → 41/60 after recovery; found health 503 → DEGRADED |
 | [EXP-013](EXP-013-webhook-mutations.md) | Mutations: redirects, plain DNS, no deadline, no bulkhead, no rotation overlap | P11 | All caught after fixing two test bugs in the deadline test (wrong row, wrong threat model) |
 | [EXP-012](EXP-012-head-of-line-blocking.md) | One slow webhook receiver vs. the job worker (2 instances) | P11 | Email 32.8 s → 0.2 s, 4 duplicate webhooks → 0 after concurrent worker + bulkheads; found a payments cancellation bug |
 | [EXP-011](EXP-011-lost-webhooks.md) | Webhooks never arrive (real HTTP delivery broken) | P10 | Reconciliation paid the order after 38 s; found and fixed a reconciliation run aborted by one unknown payment |

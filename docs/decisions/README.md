@@ -19,6 +19,9 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [012](ADR-012-observability-pipeline.md) | Micrometer Observation → OpenTelemetry, OTLP push, grafana/otel-lgtm locally | Accepted | P6 |
 | [013](ADR-013-checkout-and-idempotency.md) | Checkout scope (guest customers, order in P8), expectedTotal guard, transactional idempotency | Accepted | P7 |
 | [014](ADR-014-orders-lifecycle.md) | Order state machine, gapless per-store numbers, the order owns the payment deadline, locked transitions | Accepted | P8 |
+| [022](ADR-022-oauth-apps.md) | Third-party apps on Spring Authorization Server: PKCE, consent with store choice, permission re-check at issuance, installation-bound opaque tokens, no stored plaintext tokens | Accepted | P12 |
+| [021](ADR-021-developer-api-and-credentials.md) | Developer API: opaque hashed credentials (instant revocation), scopes = permissions, `Actor`, `@RequiresScope` + architecture test, date-versioned paths | Accepted | P12 |
+| [020](ADR-020-redis-fail-open.md) | Redis for shared, losable state (rate limits, usage); fail open to per-instance limits; DEGRADED health | Accepted | P12 |
 | [019](ADR-019-concurrent-jobs-and-bulkheads.md) | Job worker runs jobs concurrently with per-type bulkheads; claims only what can start (fixes head-of-line blocking and lease-expiry duplicates) | Accepted | P11 |
 | [018](ADR-018-outbound-webhooks.md) | Outbound webhooks: own retry schedule, SSRF check as the HTTP client's DNS resolver, AES-GCM secrets, frozen payloads, pause + replay | Accepted | P11 |
 | [017](ADR-017-payments.md) | Payments: provider calls outside transactions, order updated in the same transaction, automatic compensation refunds, signed webhooks + reconciliation, no SDK + stateful fake | Accepted | P10 |

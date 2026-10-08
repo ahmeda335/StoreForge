@@ -28,6 +28,9 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [postgresql-locking-and-conditional-updates](postgresql-locking-and-conditional-updates.md) | P5 | MVCC, EvalPlanQual, deadlocks and lock ordering, SKIP LOCKED, pool size as race width |
 | [security-definer-functions](security-definer-functions.md) | P5 | Controlled privilege escalation, search_path hijacking, least privilege |
 | [opentelemetry-and-distributed-tracing](opentelemetry-and-distributed-tracing.md) | P6 | Traces, spans, context propagation, Observation API, sampling, OTLP/Collector, log correlation |
+| [api-credentials-and-scopes](api-credentials-and-scopes.md) | P12 | Opaque hashed tokens, scopes as permissions, Actor, store binding, versioned contracts, sync feeds |
+| [distributed-rate-limiting](distributed-rate-limiting.md) | P12 | Token buckets in Redis, hierarchical limits, fail open vs. closed, breakers, DEGRADED |
+| [oauth2-authorization-code-pkce](oauth2-authorization-code-pkce.md) | P12 | Authorization code + PKCE, state, exact redirects, consent as a decision, installation tokens |
 | [ssrf](ssrf.md) | P11 | Server-side request forgery: resolved-address checks, DNS rebinding, redirects |
 | [outbound-webhooks](outbound-webhooks.md) | P11 | Signing, retry schedules, dead letters, replay, rotation, receiver contract |
 | [bulkheads-and-head-of-line-blocking](bulkheads-and-head-of-line-blocking.md) | P11 | Concurrency limits per kind of work; leases vs. local queues |

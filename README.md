@@ -2,7 +2,7 @@
 
 A multi-tenant commerce platform (Shopify-inspired), built as a long-term learning project in backend engineering, SaaS architecture, reliability, security, observability and production operations.
 
-> Status: **Phase 11 (Outbound webhooks) complete.** Next: P12 (developer platform + Redis). See [docs/PROGRESS.md](docs/PROGRESS.md).
+> Status: **Phase 12 (Developer platform + Redis) complete.** Next: P13 (commerce extensions). See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Quick start
 

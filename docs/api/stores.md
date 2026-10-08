@@ -20,7 +20,7 @@ All endpoints need `Authorization: Bearer <access token>`. Errors are Problem De
 | `POST …/{storeId}/invitations/acceptance` | (invited user; not yet a member) | `{token}` | `204` | `invitation_not_found` (wrong user/expired/used), `already_member` |
 | `GET …/{storeId}/audit-log?limit=&cursor=` | `audit:read` | — | `200 {data: [...], page: {nextCursor, hasMore}}` | `invalid_cursor` (400) |
 
-**Permissions:** `store:manage`, `staff:read`, `staff:manage`, `roles:manage`, `audit:read`, `products:read|write`, `inventory:read|write`, `orders:read|write|refund`, `customers:read`, `webhooks:manage`. New stores get the **Owner** role (all permissions, now and future) and a **Staff** role (`products:*`, `inventory:*`, `orders:read`).
+**Permissions:** `store:manage`, `staff:read`, `staff:manage`, `roles:manage`, `audit:read`, `products:read|write`, `inventory:read|write`, `orders:read|write|refund`, `customers:read`, `webhooks:manage`, `apps:manage` (API keys, app installations). New stores get the **Owner** role (all permissions, now and future) and a **Staff** role (`products:*`, `inventory:*`, `orders:read`).
 
 **Invitation link:** `{APP_BASE_URL}/accept-invitation#store=<storeId>&token=<token>` (valid 7 days). The invitee must sign in with the invited email address.
 

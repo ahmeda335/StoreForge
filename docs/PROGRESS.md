@@ -14,8 +14,9 @@
 | P9 Outbox, jobs & notifications | ✅ Done (2026-10-07) | See below |
 | P10 Payments | ✅ Done (2026-10-07) | See below |
 | P11 Outbound webhooks | ✅ Done (2026-10-08) | See below |
-| P12 Developer platform (+ Redis) | ⏭ Next | Study list below |
-| P13–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P12 Developer platform (+ Redis) | ✅ Done (2026-10-08) | See below |
+| P13 Commerce extensions | ⏭ Next | Study list below |
+| P14–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -260,10 +261,58 @@ The "IN_PROGRESS idempotency model" flagged in P7 was not built into the generic
 - no ordering guarantee (by design);
 - I also rebuilt the jar under a running instance once during verification (a `NoClassDefFoundError`). The lesson: build, then start.
 
-**Study before P12:**
+**Study before P12 (historical):**
 - API keys for apps: generating, hashing (like refresh tokens), prefixes for identification, scopes, rotation;
 - OAuth 2.0 authorization code with PKCE, and Spring Authorization Server: clients, consent, refresh, installations and uninstall;
 - distributed rate limiting with Redis (token bucket, atomic Lua or Bucket4j's Redis backends), fail-open vs. fail-closed;
 - API versioning by date header and OpenAPI documentation (springdoc);
 - app-owned webhook subscriptions;
 - [roadmap P12](blueprint/30-roadmap.md).
+
+## P12: Developer platform + Redis (as built)
+
+Built in two milestones (12a merchant-owned access, 12b third-party apps), each tested, verified and committed.
+
+**What exists**
+- **`developer` module, credentials and API:**
+  - API keys: `sfk_`, SHA-256, shown once, `apps:manage`, anti-escalation;
+  - scopes = permissions; `Actor` (user | API client) in `StoreAccess` and the audit log;
+  - developer API `/api/2026-10/stores/{storeId}`: products, the orders and inventory "changed since" feeds, idempotent inventory adjustments, app-owned webhook subscriptions;
+  - `@RequiresScope` enforced by an architecture test;
+  - OpenAPI at `/developer/openapi`.
+- **Redis** ([ADR-020](decisions/ADR-020-redis-fail-open.md)): token buckets per credential (40 / 2 per s) and per store (100 / 5 per s), usage counters → `app_usage_hourly`. The API fails open to per-instance limits behind a circuit breaker; health reports DEGRADED (200).
+- **OAuth apps** ([ADR-022](decisions/ADR-022-oauth-apps.md)):
+  - Spring Authorization Server with code + PKCE (required);
+  - login through identity's `PasswordAuthenticator`;
+  - a consent page with store, app and scopes;
+  - installation at token issuance, with a permission re-check, opaque `sfat_` tokens and `store_id` in the response;
+  - no plaintext tokens stored;
+  - reinstall replaces the token; uninstall revokes it and deletes the app's subscriptions.
+- **[StockSync](../samples/stocksync/README.md):** a stdlib-Python sample app built only on the public contract.
+- **Migrations and docs:** V11, V12; [ADR-021](decisions/ADR-021-developer-api-and-credentials.md); [domains/developer.md](domains/developer.md); [api/developer.md](api/developer.md).
+
+**Tests: 284 total** (96 unit + 188 integration). New: `DeveloperApiIT` (8), `RateLimitIT` (4), `OAuthInstallIT` (8). Mutation-checked ([EXP-016](experiments/EXP-016-developer-platform-mutations.md)).
+
+**Verified manually**
+- **[EXP-014](experiments/EXP-014-redis-outage.md):** two instances, Redis stopped and restarted. Shared budget 42/60 → per-instance 60/60 at p50 14 ms → 41/60 after recovery. Found and fixed `/actuator/health` answering 503 during the outage.
+- **[EXP-015](experiments/EXP-015-third-party-app-lifecycle.md):** StockSync's full life (install, signed events, idempotent restock audited as APP, burst with 429 backoff, uninstall → 401, no subscriptions left).
+
+**Bugs found:**
+- usage never counted rejected requests (an interceptor's `afterCompletion` isn't called when `preHandle` throws);
+- a test gap for scope escalation through OAuth;
+- refill-sensitive flaky tests. One commit (6401c0f) went in with failing tests and was fixed in the next.
+
+**Known limitations:**
+- OAuth browser sessions are in memory (multi-instance needs sticky sessions or Spring Session Redis);
+- no `app/uninstalled` webhook, no app review or marketplace, offline tokens without expiry;
+- credential lookups aren't cached (on purpose);
+- usage statistics are lossy during Redis outages;
+- every request costs 1 token (no per-endpoint weights).
+
+**Study before P13** (commerce extensions: discounts, shipping, search, caching, object storage):
+- **discount/coupon correctness:** usage limits under concurrency (the "last coupon" race: conditional updates vs. locks, P5's patterns), stacking rules, rounding with money;
+- **shipping rates and shipments:** rate tables, partial fulfillment;
+- **PostgreSQL full-text search** (`tsvector`, GIN, ranking) and **trigram** similarity (`pg_trgm`), and when they stop being enough;
+- **caching:** Caffeine for store resolution, cache-aside with Redis only if measured, invalidation and stampedes;
+- **object storage** (S3 / MinIO): presigned uploads, content-type and size validation;
+- [roadmap P13](blueprint/30-roadmap.md), [blueprint 13](blueprint/13-caching-search.md).

@@ -15,5 +15,6 @@ One page per business module, written when the module is implemented: responsibi
 | `jobs` + `notifications` | P9 | [jobs.md](jobs.md) |
 | `payments` | P10 | [payments.md](payments.md) |
 | `webhooks` | P11 | [webhooks.md](webhooks.md) |
+| `developer` | P12 | [developer.md](developer.md) |
 
 Target design for all modules: [blueprint/03-architecture.md](../blueprint/03-architecture.md) and [blueprint/05-domain-model.md](../blueprint/05-domain-model.md).

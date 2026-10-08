@@ -32,6 +32,10 @@
 | `422 idempotency_key_reused` | The same key was sent with a different body (or another cart token) | Use one key per completion attempt; new attempt → new key |
 | `409 cancel_requires_refund` | Paid orders can't be cancelled until refunds exist (P10) | — |
 | An unpaid order cancelled itself (`PAYMENT_TIMEOUT`) | The payment window (`ORDER_PAYMENT_WINDOW`, 15m) passed | Mark it paid within the window, or raise the window locally |
+| `/actuator/health` says DEGRADED | Redis unreachable (developer API serving with per-instance limits) | `docker compose up -d redis`; see the [developer platform runbook](../operations/runbooks/developer-platform.md) |
+| Developer API 401 with a valid-looking key | Revoked key / uninstalled app (immediate), or a user JWT sent instead of an API credential | Create a new key / reinstall |
+| Developer API 404 `store_not_found` | Path store ≠ the credential's store | Use the store id of the key / the `store_id` from the token response |
+| `invalid_grant` at `/oauth2/token` | Code reused or expired (5 min), wrong `code_verifier`, or the approving merchant lacks permissions | Restart the install; check the merchant's role |
 | `422 webhook_url_not_allowed` | URL not https, has credentials, or resolves to a private address (incl. `localhost`) | Use a public https endpoint; locally `WEBHOOKS_REQUIRE_HTTPS=false WEBHOOKS_ALLOWED_PRIVATE_CIDRS=127.0.0.0/8` |
 | Webhooks stop arriving | Subscription `PAUSED_FAILING` after repeated failures | See the [webhooks runbook](../operations/runbooks/webhooks.md): fix, re-activate, bulk replay |
 | A merchant receives the same webhook twice | At-least-once delivery (retry after a timeout, replay) | Expected: receivers dedup by `X-StoreForge-Event-Id` |

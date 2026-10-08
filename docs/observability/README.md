@@ -47,6 +47,11 @@ flowchart LR
 | `storeforge_checkouts_completions_total{outcome}` | `completed` / `total_changed` (price changed during checkout) | `CheckoutService` | Prometheus |
 | `storeforge_orders_created_total`, `storeforge_orders_paid_total{method}`, `storeforge_orders_cancelled_total{reason}` | Sales funnel and expiry rate (`reason="payment_timeout"` rising → payment trouble) | `DefaultOrders`, `OrderService` | Prometheus |
 | Order timeline (`order_events`) | Per-order history for support | `OrderRecords` | `GET …/orders/{id}` |
+| `storeforge_ratelimit_decisions_total{backend,outcome}` | Developer API rate-limit decisions; `backend="local"` means Redis is bypassed | `ApiRateLimiter` | Prometheus |
+| `resilience4j_circuitbreaker_state{name="redis"}` | Redis breaker | Resilience4j | Prometheus |
+| `storeforge_usage_dropped_total` | Usage increments lost (Redis down) | `UsageCounters` | Prometheus |
+| Health `redis: DEGRADED` | Redis unreachable; app serving (HTTP 200) | `redisHealthIndicator` | `/actuator/health` |
+| Per-credential usage (requests, 4xx, 5xx, rate-limited per hour) | Not Prometheus (cardinality): `app_usage_hourly` | `UsageFilter` + roll-up | Admin API |
 | `storeforge_webhooks_deliveries_total{outcome}` | succeeded / retry / dead / blocked attempts | `DeliveryService` | Prometheus |
 | `storeforge_webhooks_delivery_duration_seconds{outcome}` | Receiver latency | `DeliveryService` | Prometheus |
 | `storeforge_webhooks_subscriptions_paused_total` | Endpoints paused for failing | `DeliveryService` | Prometheus |

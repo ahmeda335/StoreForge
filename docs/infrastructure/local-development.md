@@ -45,6 +45,7 @@ All have local defaults in `application.yml`; override them via the environment 
 | `TRACING_SAMPLING_PROBABILITY` | `1.0` | Head sampling ratio |
 | `INVENTORY_SWEEPER_INTERVAL` | `30s` | Reservation expiry sweep interval |
 | `JOBS_POLL_INTERVAL` | `500ms` | Outbox relay + job worker poll |
+| `REDIS_URL` | `redis://localhost:6379` | Rate limits + usage (`docker compose up -d redis`); optional: without it the developer API fails open |
 | `JOBS_CONCURRENCY` | `8` | Jobs running at once per instance (webhook deliveries capped at 4) |
 | `WEBHOOK_ENCRYPTION_KEY` | dev key in `application.yml` | base64 of 32 random bytes (`head -c32 /dev/urandom \| base64`); encrypts webhook secrets at rest |
 | `WEBHOOKS_REQUIRE_HTTPS` / `WEBHOOKS_ALLOWED_PRIVATE_CIDRS` | `true` / empty | Local receivers: `false` / `127.0.0.0/8` (never in production) |

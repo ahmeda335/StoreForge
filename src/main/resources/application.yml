@@ -204,6 +204,11 @@ management:
     health:
       probes:
         enabled: true
+      status:
+        # DEGRADED = serving, with an optional dependency missing (Redis). Answers 200, unlike DOWN.
+        order: DOWN, OUT_OF_SERVICE, DEGRADED, UP, UNKNOWN
+        http-mapping:
+          DEGRADED: 200
       show-details: always
       group:
         # Liveness = the process works. Deliberately NOT the database: a DB outage must not make

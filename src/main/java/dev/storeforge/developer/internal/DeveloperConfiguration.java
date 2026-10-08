@@ -99,10 +99,15 @@ class DeveloperConfiguration {
         return new UsageCounters(redis, redisCircuitBreaker, jdbc, transaction, properties.usageRetentionInRedis(), meterRegistry);
     }
 
-    /** Visible in /actuator/health, deliberately NOT in readiness: the API fails open without Redis (ADR-020). */
+    /**
+     * Redis down is DEGRADED, not DOWN: the app keeps serving (ADR-020). DOWN would turn the overall
+     * /actuator/health into 503 and make monitors call a working app dead (found in EXP-014).
+     * Not part of readiness either.
+     */
     @Bean
     HealthIndicator redisHealthIndicator(RedisConnections redis) {
-        return () -> redis.ping() ? Health.up().build() : Health.down().withDetail("impact", "rate limits per instance; usage not recorded").build();
+        return () -> redis.ping() ? Health.up().build()
+                : Health.status("DEGRADED").withDetail("impact", "rate limits per instance; usage not recorded").build();
     }
 
     @Bean

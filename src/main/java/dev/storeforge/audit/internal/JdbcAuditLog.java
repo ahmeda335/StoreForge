@@ -41,6 +41,13 @@ class JdbcAuditLog implements AuditLog {
     @Transactional(propagation = Propagation.MANDATORY)
     public void recordUserAction(StoreId storeId, UUID userId, String action, String resourceType,
                                  @Nullable String resourceId, Map<String, Object> details) {
+        record(storeId, ActorType.USER, userId, action, resourceType, resourceId, details);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void record(StoreId storeId, ActorType actorType, @Nullable UUID actorId, String action, String resourceType,
+                       @Nullable String resourceId, Map<String, Object> details) {
         jdbc.sql("""
                 INSERT INTO audit_log (id, store_id, actor_type, actor_id, action, resource_type, resource_id,
                                        details, request_id, occurred_at)
@@ -49,8 +56,8 @@ class JdbcAuditLog implements AuditLog {
                 """)
                 .param("id", Ids.newId())
                 .param("storeId", storeId.value())
-                .param("actorType", ActorType.USER.name())
-                .param("actorId", userId)
+                .param("actorType", actorType.name())
+                .param("actorId", actorId)
                 .param("action", action)
                 .param("resourceType", resourceType)
                 .param("resourceId", resourceId)

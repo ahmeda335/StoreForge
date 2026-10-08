@@ -13,6 +13,10 @@ public interface AuditLog {
     void recordUserAction(StoreId storeId, UUID userId, String action, String resourceType,
                           @Nullable String resourceId, Map<String, Object> details);
 
+    /** Records an action by any kind of actor (users, API keys, apps). Same transaction rule. */
+    void record(StoreId storeId, AuditEntry.ActorType actorType, @Nullable UUID actorId, String action, String resourceType,
+                @Nullable String resourceId, Map<String, Object> details);
+
     /** Newest first, keyset-paginated. Must be called inside a tenant transaction for {@code storeId}. */
     Page<AuditEntry> list(StoreId storeId, int limit, @Nullable Cursor after);
 }

@@ -17,4 +17,10 @@ public interface StoreAccess {
 
     /** @throws StoreNotFoundException if not a member; {@link PermissionDeniedException} if a permission is missing */
     StoreMember require(UUID userId, StoreId storeId, Permission... permissions);
+
+    /**
+     * Same decision for any actor. Users: as above. API clients: 404 for any store but their own,
+     * 403 for a permission their scopes don't grant. Also requires a tenant transaction.
+     */
+    void require(Actor actor, StoreId storeId, Permission... permissions);
 }

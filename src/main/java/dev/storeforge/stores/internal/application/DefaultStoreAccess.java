@@ -1,6 +1,7 @@
 package dev.storeforge.stores.internal.application;
 
 import dev.storeforge.shared.tenancy.StoreId;
+import dev.storeforge.stores.Actor;
 import dev.storeforge.stores.Permission;
 import dev.storeforge.stores.PermissionDeniedException;
 import dev.storeforge.stores.StoreAccess;
@@ -35,5 +36,23 @@ class DefaultStoreAccess implements StoreAccess {
             }
         }
         return member;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY, readOnly = true)
+    public void require(Actor actor, StoreId storeId, Permission... permissions) {
+        switch (actor) {
+            case Actor.User user -> require(user.id(), storeId, permissions);
+            case Actor.ApiClient client -> {
+                if (!client.storeId().equals(storeId)) {
+                    throw new StoreNotFoundException();
+                }
+                for (Permission permission : permissions) {
+                    if (!client.permissions().contains(permission)) {
+                        throw new PermissionDeniedException("The credential's scopes don't allow " + permission.code() + ".");
+                    }
+                }
+            }
+        }
     }
 }

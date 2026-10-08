@@ -108,6 +108,23 @@ class PaymentRecoveryIT extends IntegrationTest {
         assertThat(payments.order(lostWebhook.orderId()).get("financialStatus").asString()).isEqualTo("PAID");
     }
 
+    /** EXP-012 finding: a cancellation for a payment the provider doesn't know must not retry forever. */
+    @Test
+    void cancellingAnOrderWhosePaymentTheProviderDoesNotKnowCancelsItLocally() {
+        Placed placed = payments.storefront().place(variant, 1, uniqueEmail());
+        payments.started(placed);
+        tenant.runInStore(StoreId.of(shop.storeId()), () -> jdbc.sql("UPDATE payments SET provider_payment_id = 'pi_forgotten' WHERE order_id = :id")
+                .param("id", placed.orderId()).update());
+
+        api.post("/admin/v1/stores/" + shop.storeId() + "/orders/" + placed.orderId() + "/cancellation", "{\"reason\":\"other\"}", shop.auth());
+        worker.drain();
+
+        assertThat(payments.paymentStatus(placed).get("status").asString()).isEqualTo("CANCELLED");
+        assertThat(jdbc.sql("SELECT count(*) FROM jobs WHERE type = 'event:payment-cancellations' AND status <> 'DONE' AND event_id IN "
+                + "(SELECT id FROM outbox_events WHERE aggregate_id = :id)").param("id", placed.orderId().toString())
+                .query(Integer.class).single()).isZero();
+    }
+
     /**
      * The race: the shopper pays at minute 14:59, the order expires at 15:00 before the webhook is
      * processed. The cancellation finds the provider payment already succeeded; the capture is

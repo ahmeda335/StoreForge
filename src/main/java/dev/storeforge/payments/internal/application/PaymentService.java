@@ -215,6 +215,15 @@ public class PaymentService implements Payments {
         } catch (ProviderUnavailableException e) {
             finishOperation(storeId, key, e);
             throw e;   // the job retries with backoff
+        } catch (ProviderRejectedException e) {
+            // The provider doesn't know this payment at all (another account/environment): nobody can pay
+            // it, so cancel it here instead of retrying forever (found in EXP-012).
+            tenant.runInStore(storeId, () -> {
+                records.finishOperation(storeId, key, "FAILED", null, e.code(), clock.instant());
+                payments.lock(storeId.value(), payment.id()).ifPresent(locked -> locked.cancel(clock.instant()));
+            });
+            log.atWarn().addKeyValue("paymentId", payment.id()).log("Provider does not know this payment; cancelled it locally: " + e.code());
+            return;
         }
         ProviderPayment result = state;
         tenant.runInStore(storeId, () -> {

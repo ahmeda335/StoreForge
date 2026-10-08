@@ -42,7 +42,9 @@ class ProductSearchIT extends IntegrationTest {
 
     @Test
     void accentsAndTyposStillFindTheProduct() {
-        assertThat(titles(search("q=cafe"))).containsExactly("Café Table");
+        JsonNode cafe = search("q=cafe");
+        assertThat(titles(cafe)).containsExactly("Café Table");
+        assertThat(cafe.get("data").get(0).get("minPrice").get("amount").asString()).as("prices looked up for the page").isEqualTo("240.00");
         assertThat(titles(search("q=CAFÉ"))).containsExactly("Café Table");
         assertThat(titles(search("q=lampshde"))).as("one letter missing").contains("Linen Lampshade");
         assertThat(titles(search("q=lampshade"))).containsExactly("Linen Lampshade");

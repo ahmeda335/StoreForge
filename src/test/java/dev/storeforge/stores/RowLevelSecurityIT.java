@@ -150,6 +150,23 @@ class RowLevelSecurityIT extends IntegrationTest {
         }
     }
 
+    /** The search definer function bypasses RLS to use its indexes; it must still only see the transaction's tenant. */
+    @Test
+    void theSearchFunctionOnlyMatchesTheTransactionsOwnStore() {
+        for (Owner owner : List.of(a, b)) {
+            assertThat(api.post("/admin/v1/stores/" + owner.storeId() + "/products",
+                    "{\"title\":\"Brass Lamp\",\"status\":\"ACTIVE\",\"options\":[],\"variants\":[{\"price\":\"1.00\",\"options\":[]}]}",
+                    owner.auth()).statusCode()).isEqualTo(201);
+        }
+        Long seenInA = tenant.inStore(StoreId.of(a.storeId()), () -> jdbc.sql("SELECT count(*) FROM search_product_matches('brass')")
+                .query(Long.class).single());
+        Long seenWithoutTenant = transaction.execute(status -> jdbc.sql("SELECT count(*) FROM search_product_matches('brass')")
+                .query(Long.class).single());
+
+        assertThat(seenInA).as("store A's own lamp only, not B's").isEqualTo(1);
+        assertThat(seenWithoutTenant).isZero();
+    }
+
     private Integer countRoles(UUID first, UUID second) {
         return jdbc.sql("SELECT count(*) FROM roles WHERE store_id IN (:a, :b)")
                 .param("a", first).param("b", second).query(Integer.class).single();

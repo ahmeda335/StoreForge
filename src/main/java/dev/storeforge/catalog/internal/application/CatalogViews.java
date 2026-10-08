@@ -3,6 +3,7 @@ package dev.storeforge.catalog.internal.application;
 import dev.storeforge.catalog.internal.domain.Product;
 import dev.storeforge.catalog.internal.domain.Variant;
 import dev.storeforge.shared.money.Money;
+import java.net.URI;
 import java.time.Instant;
 import java.util.Currency;
 import java.util.List;
@@ -46,6 +47,10 @@ public final class CatalogViews {
 
     public record StorefrontProductView(UUID id, String handle, String title, String description, @Nullable String vendor,
                                         @Nullable String productType, List<String> optionNames,
-                                        List<StorefrontVariantView> variants) {
+                                        List<StorefrontVariantView> variants, List<StorefrontImageView> images) {
+    }
+
+    /** {@code url} is signed and expires (1 h): clients must not store it. */
+    public record StorefrontImageView(URI url, @Nullable String alt) {
     }
 }

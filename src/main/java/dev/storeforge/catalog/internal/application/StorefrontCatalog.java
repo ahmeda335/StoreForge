@@ -1,5 +1,6 @@
 package dev.storeforge.catalog.internal.application;
 
+import dev.storeforge.catalog.internal.application.CatalogViews.StorefrontImageView;
 import dev.storeforge.catalog.internal.application.CatalogViews.StorefrontProductView;
 import dev.storeforge.catalog.internal.application.CatalogViews.StorefrontVariantView;
 import dev.storeforge.catalog.internal.domain.CatalogExceptions;
@@ -30,6 +31,7 @@ public class StorefrontCatalog {
 
     private final ProductQueries queries;
     private final Inventory inventory;
+    private final ProductImageService images;
     private final TenantTransactions tenant;
 
     public Page<StorefrontProductView> list(StoreInfo store, int limit, @Nullable Cursor after) {
@@ -39,8 +41,10 @@ public class StorefrontCatalog {
             Map<UUID, List<VariantRow>> variants = queries.variantsOf(store.id(), page.data().stream().map(ProductRow::id).toList());
             Map<UUID, Integer> stock = inventory.availability(store.id(),
                     variants.values().stream().flatMap(List::stream).map(VariantRow::id).toList());
+            var imagesOf = images.ready(store.id(), page.data().stream().map(ProductRow::id).toList());
             return new Page<>(page.data().stream()
-                    .map(row -> view(row, variants.getOrDefault(row.id(), List.of()), stock, store)).toList(), page.page());
+                    .map(row -> view(row, variants.getOrDefault(row.id(), List.of()), stock, imagesOf.getOrDefault(row.id(), List.of()), store))
+                    .toList(), page.page());
         });
     }
 
@@ -52,7 +56,7 @@ public class StorefrontCatalog {
             }
             List<VariantRow> variants = queries.variantsOf(store.id(), List.of(row.id())).getOrDefault(row.id(), List.of());
             Map<UUID, Integer> stock = inventory.availability(store.id(), variants.stream().map(VariantRow::id).toList());
-            return view(row, variants, stock, store);
+            return view(row, variants, stock, images.ready(store.id(), List.of(row.id())).getOrDefault(row.id(), List.of()), store);
         });
     }
 
@@ -61,12 +65,14 @@ public class StorefrontCatalog {
         return stock.containsKey(variantId) ? stock.get(variantId) == null || stock.get(variantId) > 0 : false;
     }
 
-    private static StorefrontProductView view(ProductRow row, List<VariantRow> variants, Map<UUID, Integer> stock, StoreInfo store) {
+    private static StorefrontProductView view(ProductRow row, List<VariantRow> variants, Map<UUID, Integer> stock,
+                                              List<ProductImageService.ImageView> images, StoreInfo store) {
         return new StorefrontProductView(row.id(), row.handle(), row.title(), row.description(), row.vendor(), row.productType(),
                 row.optionNames(), variants.stream().map(variant -> new StorefrontVariantView(variant.id(),
                         variant.optionValues().isEmpty() ? "Default" : String.join(" / ", variant.optionValues()),
                         Money.ofMinor(variant.priceMinor(), store.currency()),
                         variant.compareAtPriceMinor() == null ? null : Money.ofMinor(variant.compareAtPriceMinor(), store.currency()),
-                        variant.optionValues(), inStock(stock, variant.id()))).toList());
+                        variant.optionValues(), inStock(stock, variant.id()))).toList(),
+                images.stream().map(image -> new StorefrontImageView(image.url(), image.alt())).toList());
     }
 }

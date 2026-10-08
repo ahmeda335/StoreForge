@@ -57,4 +57,37 @@ public final class CatalogExceptions {
                     "The product was modified since you loaded it (If-Match does not match). Reload and retry.");
         }
     }
+
+    public static class ImageNotFound extends StoreForgeException {
+        public ImageNotFound() {
+            super(HttpStatus.NOT_FOUND, "image_not_found", "Image not found.");
+        }
+    }
+
+    /** The requested upload is not allowed (type, size). */
+    public static class InvalidImage extends StoreForgeException {
+        public InvalidImage(String detail) {
+            super(HttpStatus.UNPROCESSABLE_CONTENT, "invalid_image", detail);
+        }
+    }
+
+    public static class TooManyImages extends StoreForgeException {
+        public TooManyImages(int max) {
+            super(HttpStatus.CONFLICT, "too_many_images", "A product can have at most " + max + " images (including uploads in progress).");
+        }
+    }
+
+    /** Completion was requested but nothing has been uploaded to the URL (yet). */
+    public static class UploadMissing extends StoreForgeException {
+        public UploadMissing() {
+            super(HttpStatus.CONFLICT, "upload_missing", "Nothing has been uploaded for this image yet. PUT the file to the upload URL first.");
+        }
+    }
+
+    /** The stored object isn't what was declared: wrong size or not that image format. The upload is discarded. */
+    public static class UploadRejected extends StoreForgeException {
+        public UploadRejected(String detail) {
+            super(HttpStatus.UNPROCESSABLE_CONTENT, "upload_rejected", detail);
+        }
+    }
 }

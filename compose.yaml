@@ -43,6 +43,17 @@ services:
       timeout: 3s
       retries: 10
 
+  # S3-compatible object storage for product images (P13, ADR-024). S3 API: http://localhost:8333.
+  # Credentials in infra/seaweedfs/s3.json (local development only).
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.97
+    command: ["server", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-dir=/data", "-volume.max=0", "-master.volumeSizeLimitMB=64"]
+    ports:
+      - "127.0.0.1:8333:8333"
+    volumes:
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+      - seaweedfs-data:/data
+
   # OpenTelemetry Collector + Prometheus + Tempo + Loki + Grafana in one container (dev only).
   # Grafana: http://localhost:3000 (admin/admin). The app ships OTLP to 4318 with SPRING_PROFILES_ACTIVE=otel.
   otel-lgtm:
@@ -69,6 +80,8 @@ services:
       ENVIRONMENT: docker
       MAIL_HOST: mailpit
       REDIS_URL: redis://redis:6379
+      STORAGE_ENDPOINT: http://seaweedfs:8333
+      STORAGE_PUBLIC_ENDPOINT: http://localhost:8333   # presigned URLs are opened by clients outside Compose
       # With "--profile observability" too, telemetry goes to the otel-lgtm container.
       SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-default}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4318
@@ -81,3 +94,4 @@ services:
 
 volumes:
   postgres-data:
+  seaweedfs-data:

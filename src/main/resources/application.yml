@@ -96,6 +96,16 @@ storeforge:
     backoff-base: 5s
     backoff-cap: 1h
     retention: 7d
+  storage:
+    # Any S3-compatible store. Local: SeaweedFS from compose.yaml. Production: real S3 with IAM credentials.
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:8333}
+    public-endpoint: ${STORAGE_PUBLIC_ENDPOINT:}
+    region: ${STORAGE_REGION:us-east-1}
+    bucket: ${STORAGE_BUCKET:storeforge-media}
+    access-key: ${STORAGE_ACCESS_KEY:storeforge}
+    secret-key: ${STORAGE_SECRET_KEY:storeforge-local-secret}   # LOCAL DEVELOPMENT only
+    path-style: ${STORAGE_PATH_STYLE:true}
+    create-bucket: ${STORAGE_CREATE_BUCKET:true}
   redis:
     url: ${REDIS_URL:redis://localhost:6379}
     command-timeout: 250ms        # fail fast: the caller has a fallback

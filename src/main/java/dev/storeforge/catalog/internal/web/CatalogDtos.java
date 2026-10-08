@@ -2,6 +2,7 @@ package dev.storeforge.catalog.internal.web;
 
 import dev.storeforge.catalog.internal.application.CatalogViews.ProductSummaryView;
 import dev.storeforge.catalog.internal.application.CatalogViews.ProductView;
+import dev.storeforge.catalog.internal.application.CatalogViews.StorefrontImageView;
 import dev.storeforge.catalog.internal.application.CatalogViews.StorefrontProductView;
 import dev.storeforge.catalog.internal.application.CatalogViews.VariantView;
 import dev.storeforge.catalog.internal.domain.ProductStatus;
@@ -98,12 +99,13 @@ final class CatalogDtos {
     }
 
     record StorefrontProductResponse(UUID id, String handle, String title, String description, @Nullable String vendor,
-                                     @Nullable String productType, List<String> options, List<StorefrontVariantResponse> variants) {
+                                     @Nullable String productType, List<String> options, List<StorefrontVariantResponse> variants,
+                                     List<StorefrontImageView> images) {
         static StorefrontProductResponse of(StorefrontProductView view) {
             return new StorefrontProductResponse(view.id(), view.handle(), view.title(), view.description(), view.vendor(),
                     view.productType(), view.optionNames(), view.variants().stream()
                     .map(v -> new StorefrontVariantResponse(v.id(), v.title(), MoneyDto.of(v.price()), MoneyDto.of(v.compareAtPrice()),
-                            v.optionValues(), v.available())).toList());
+                            v.optionValues(), v.available())).toList(), view.images());
         }
     }
 }

@@ -55,6 +55,7 @@ public abstract class IntegrationTest {
     static void database(DynamicPropertyRegistry registry) {
         PostgresTestDatabase.registerProperties(registry);
         RedisTestServer.registerProperties(registry);
+        StorageTestServer.registerProperties(registry);
     }
 
     @BeforeEach

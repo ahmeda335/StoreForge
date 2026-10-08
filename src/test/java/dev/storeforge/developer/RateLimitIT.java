@@ -113,6 +113,11 @@ class RateLimitIT extends IntegrationTest {
                 responses.add(orders(key));
                 millis.add((System.nanoTime() - started) / 1_000_000);
             }
+            // EXP-014 regression: an optional dependency down must not make the whole app look dead.
+            HttpResponse<String> health = management.get("/actuator/health");
+            assertThat(health.statusCode()).isEqualTo(200);
+            assertThat(Json.parse(health.body()).get("status").asString()).isEqualTo("DEGRADED");
+            assertThat(management.get("/actuator/health/readiness").statusCode()).isEqualTo(200);
         } finally {
             RedisTestServer.unpause();
         }

@@ -138,6 +138,12 @@
         </dependency>
 
         <!-- Email (SMTP; Mailpit locally) -->
+        <!-- Merchant-written HTML (product descriptions) is reduced to an allow list before it is stored (P14). -->
+        <dependency>
+            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+            <artifactId>owasp-java-html-sanitizer</artifactId>
+            <version>20260924.2</version>
+        </dependency>
         <!-- Object storage (P13): the plain S3 API, so any S3-compatible store works (AWS, SeaweedFS, MinIO...).
              The blocking Apache client only: the async Netty client is not used. -->
         <dependency>

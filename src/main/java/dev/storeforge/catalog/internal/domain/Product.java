@@ -174,7 +174,7 @@ public class Product {
             throw new CatalogExceptions.InvalidProduct("Title must be 1-255 characters.");
         }
         title = newTitle.trim();
-        description = newDescription == null ? "" : newDescription;
+        description = RichText.sanitize(newDescription);
         vendor = blankToNull(newVendor);
         productType = blankToNull(newProductType);
     }

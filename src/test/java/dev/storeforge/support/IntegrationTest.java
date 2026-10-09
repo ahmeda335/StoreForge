@@ -28,6 +28,12 @@ import org.springframework.test.context.DynamicPropertySource;
         properties = {
                 // All test requests come from 127.0.0.1; the per-IP limit is exercised in unit tests.
                 "storeforge.auth.rate-limits.per-ip=100000",
+                // Same for the storefront abuse limits (StorefrontRateLimitIT tests them in their own context).
+                "storeforge.storefront.rate-limits.general.capacity=1000000",
+                "storeforge.storefront.rate-limits.cart-creation.capacity=1000000",
+                "storeforge.storefront.rate-limits.checkout-completion.capacity=1000000",
+                "storeforge.storefront.rate-limits.discount-attempts.capacity=1000000",
+                "storeforge.storefront.rate-limits.search.capacity=1000000",
                 // Background work runs only when a test triggers it explicitly (no timer races).
                 "storeforge.scheduling.enabled=false",
                 // The fake payment provider's webhooks are delivered by the tests (to duplicate, drop, reorder them).

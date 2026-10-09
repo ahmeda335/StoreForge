@@ -65,7 +65,13 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
-  forward-headers-strategy: framework
+  # X-Forwarded-For/-Proto/-Host are honoured ONLY when the direct peer is a trusted proxy (Tomcat
+  # RemoteIpValve). "framework" trusted them from anyone: spoofed X-Forwarded-For bypassed every
+  # per-IP limit (P14). Production: the load balancer's addresses.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: ${TRUSTED_PROXIES:127.0.0.0/8, ::1/128}
   error:
     include-stacktrace: never
     include-message: never
@@ -96,6 +102,16 @@ storeforge:
     backoff-base: 5s
     backoff-cap: 1h
     retention: 7d
+  http:
+    max-request-body: ${HTTP_MAX_REQUEST_BODY:1MB}
+    admin-origins: ${AUTH_ALLOWED_ORIGINS:http://localhost:4200}
+  storefront:
+    rate-limits:                  # per client address (IPv6: per /64), shared via Redis, fail open
+      general: { capacity: 300, period: 1m }
+      cart-creation: { capacity: 20, period: 1m }
+      checkout-completion: { capacity: 10, period: 1m }
+      discount-attempts: { capacity: 10, period: 10m }
+      search: { capacity: 60, period: 1m }
   storage:
     # Any S3-compatible store. Local: SeaweedFS from compose.yaml. Production: real S3 with IAM credentials.
     endpoint: ${STORAGE_ENDPOINT:http://localhost:8333}

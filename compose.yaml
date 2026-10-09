@@ -81,6 +81,9 @@ services:
       MAIL_HOST: mailpit
       REDIS_URL: redis://redis:6379
       STORAGE_ENDPOINT: http://seaweedfs:8333
+      # Requests from the host arrive through the Docker bridge; trust it to forward X-Forwarded-* (LOCAL ONLY:
+      # in production this is the load balancer's address range, never a range clients can reach directly).
+      TRUSTED_PROXIES: 127.0.0.0/8, ::1/128, 172.16.0.0/12
       STORAGE_PUBLIC_ENDPOINT: http://localhost:8333   # presigned URLs are opened by clients outside Compose
       # With "--profile observability" too, telemetry goes to the otel-lgtm container.
       SPRING_PROFILES_ACTIVE: ${APP_PROFILES:-default}

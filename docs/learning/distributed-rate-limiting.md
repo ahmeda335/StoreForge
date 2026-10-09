@@ -37,7 +37,7 @@
 **Testing.** `RateLimitIT`: burst; shared budget (a second limiter instance on the same Redis spends it); store-wide cap; frozen Redis (container paused) → serving, limited locally, fast, DEGRADED, recovery. EXP-014 repeats this with two real instances and a stopped Redis.
 
 **Observability.**
-- `storeforge_ratelimit_decisions_total{backend=redis|local, outcome}`;
+- `storeforge_ratelimit_decisions_total{limit, backend=redis|local, outcome}`;
 - `resilience4j_circuitbreaker_state{name="redis"}`;
 - `X-RateLimit-*` headers;
 - `rate_limited` in hourly usage;

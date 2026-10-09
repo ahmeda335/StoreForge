@@ -4,8 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.storeforge.developer.internal.DeveloperProperties;
 import dev.storeforge.developer.internal.ratelimit.ApiRateLimiter;
-import dev.storeforge.developer.internal.ratelimit.RedisConnections;
 import dev.storeforge.developer.internal.ratelimit.UsageCounters;
+import dev.storeforge.shared.redis.RedisConnections;
+import dev.storeforge.shared.redis.RedisProperties;
 import dev.storeforge.support.DeveloperFlows;
 import dev.storeforge.support.DeveloperFlows.Key;
 import dev.storeforge.support.IntegrationTest;
@@ -33,7 +34,7 @@ class RateLimitIT extends IntegrationTest {
     DeveloperProperties limits;
 
     @Autowired
-    DeveloperProperties.Redis redisSettings;
+    RedisProperties redisSettings;
 
     @Autowired
     CircuitBreaker redisCircuitBreaker;
@@ -131,7 +132,7 @@ class RateLimitIT extends IntegrationTest {
         assertThat(allowed).as("still limited, per instance").isBetween(40L, 50L);
         assertThat(redisCircuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
         assertThat(millis.subList(20, 60)).as("no request waits for Redis once the breaker is open").allMatch(ms -> ms < 200);
-        assertThat(management.get("/actuator/prometheus").body()).contains("storeforge_ratelimit_decisions_total{application=\"storeforge\",backend=\"local\"");
+        assertThat(management.get("/actuator/prometheus").body()).containsPattern("storeforge_ratelimit_decisions_total\\{application=\"storeforge\",backend=\"local\",limit=\"developer-api\"");
 
         // Recovery without a restart: Redis answers again, the breaker closes, budgets are shared again.
         awaitRedis();

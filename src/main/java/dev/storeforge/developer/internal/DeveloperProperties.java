@@ -8,7 +8,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-/** {@code storeforge.developer.*} and {@code storeforge.redis.*} */
+/** {@code storeforge.developer.*} */
 @Validated
 @ConfigurationProperties("storeforge.developer")
 public record DeveloperProperties(
@@ -22,8 +22,4 @@ public record DeveloperProperties(
     public record Bucket(@Min(1) int capacity, @Min(1) int refillPerSecond) {
     }
 
-    @Validated
-    @ConfigurationProperties("storeforge.redis")
-    public record Redis(@NotBlank String url, @NotNull Duration commandTimeout, @NotNull Duration reconnectBackoff) {
-    }
 }

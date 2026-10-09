@@ -2,14 +2,11 @@ package dev.storeforge.developer.internal;
 
 import dev.storeforge.developer.internal.credentials.ApiCredentialIntrospector;
 import dev.storeforge.developer.internal.ratelimit.ApiRateLimiter;
-import dev.storeforge.developer.internal.ratelimit.RedisConnections;
 import dev.storeforge.developer.internal.ratelimit.UsageCounters;
 import dev.storeforge.developer.internal.web.UsageFilter;
+import dev.storeforge.shared.redis.RedisConnections;
 import dev.storeforge.shared.web.ProblemResponses;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
-import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -17,9 +14,6 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import java.time.Clock;
-import java.time.Duration;
-import org.springframework.boot.health.contributor.Health;
-import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -68,25 +62,6 @@ class DeveloperConfiguration {
                 .build();
     }
 
-    @Bean(destroyMethod = "close")
-    RedisConnections redisConnections(DeveloperProperties.Redis redis, Clock clock) {
-        return new RedisConnections(redis, clock);
-    }
-
-    /** Opens after repeated Redis failures: rate limiting and usage then skip Redis immediately. */
-    @Bean
-    CircuitBreaker redisCircuitBreaker(MeterRegistry meterRegistry) {
-        CircuitBreakerRegistry registry = CircuitBreakerRegistry.of(CircuitBreakerConfig.custom()
-                .slidingWindowSize(20)
-                .minimumNumberOfCalls(5)
-                .failureRateThreshold(50)
-                .waitDurationInOpenState(Duration.ofSeconds(10))
-                .permittedNumberOfCallsInHalfOpenState(3)
-                .build());
-        TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(registry).bindTo(meterRegistry);
-        return registry.circuitBreaker("redis");
-    }
-
     @Bean
     ApiRateLimiter apiRateLimiter(RedisConnections redis, CircuitBreaker redisCircuitBreaker, DeveloperProperties properties,
                                   MeterRegistry meterRegistry) {
@@ -97,17 +72,6 @@ class DeveloperConfiguration {
     UsageCounters usageCounters(RedisConnections redis, CircuitBreaker redisCircuitBreaker, JdbcClient jdbc, TransactionTemplate transaction,
                                 DeveloperProperties properties, MeterRegistry meterRegistry) {
         return new UsageCounters(redis, redisCircuitBreaker, jdbc, transaction, properties.usageRetentionInRedis(), meterRegistry);
-    }
-
-    /**
-     * Redis down is DEGRADED, not DOWN: the app keeps serving (ADR-020). DOWN would turn the overall
-     * /actuator/health into 503 and make monitors call a working app dead (found in EXP-014).
-     * Not part of readiness either.
-     */
-    @Bean
-    HealthIndicator redisHealthIndicator(RedisConnections redis) {
-        return () -> redis.ping() ? Health.up().build()
-                : Health.status("DEGRADED").withDetail("impact", "rate limits per instance; usage not recorded").build();
     }
 
     @Bean

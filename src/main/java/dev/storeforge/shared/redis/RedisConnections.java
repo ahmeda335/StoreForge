@@ -1,6 +1,5 @@
-package dev.storeforge.developer.internal.ratelimit;
+package dev.storeforge.shared.redis;
 
-import dev.storeforge.developer.internal.DeveloperProperties;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.TimeoutOptions;
@@ -25,13 +24,13 @@ import org.jspecify.annotations.Nullable;
 public class RedisConnections implements AutoCloseable {
 
     private final RedisClient client;
-    private final DeveloperProperties.Redis settings;
+    private final RedisProperties settings;
     private final Clock clock;
     private volatile @Nullable StatefulRedisConnection<byte[], byte[]> bytes;
     private volatile @Nullable StatefulRedisConnection<String, String> strings;
     private volatile Instant nextAttempt = Instant.EPOCH;
 
-    public RedisConnections(DeveloperProperties.Redis settings, Clock clock) {
+    public RedisConnections(RedisProperties settings, Clock clock) {
         this.settings = settings;
         this.clock = clock;
         this.client = RedisClient.create(settings.url());

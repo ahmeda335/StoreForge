@@ -8,9 +8,14 @@ import dev.storeforge.stores.StoreAccess;
 import dev.storeforge.stores.StoreDirectory;
 import dev.storeforge.stores.StoreInfo;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -30,6 +35,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.web.WebAttributes;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.HtmlUtils;
@@ -129,13 +135,35 @@ class OAuthPagesController {
         }
     }
 
+    private static final String STYLE = "body{font-family:system-ui,sans-serif;max-width:28rem;margin:3rem auto;padding:0 1rem;color:#1f2328}"
+            + "label{display:block;margin:.75rem 0}input[type=email],input[type=password]{display:block;width:100%;padding:.5rem;margin-top:.25rem}"
+            + "button{padding:.5rem 1rem;margin-top:1rem}.secondary{background:none;border:none;text-decoration:underline}.error{color:#b42318}";
+
+    /**
+     * These pages run no script and load nothing; their one inline style is allowed by its hash.
+     * No {@code form-action}: browsers apply it to the redirect after the consent form, which goes
+     * to the app's (external) callback.
+     */
+    static final String PAGE_POLICY = "default-src 'none'; style-src 'sha256-" + sha256(STYLE) + "'; frame-ancestors 'none'; base-uri 'none'";
+
+    @ModelAttribute
+    void pagePolicy(HttpServletResponse response) {
+        response.setHeader("Content-Security-Policy", PAGE_POLICY);
+    }
+
     private static String page(String title, String body) {
         return """
                 <!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-                <title>%s</title><style>body{font-family:system-ui,sans-serif;max-width:28rem;margin:3rem auto;padding:0 1rem;color:#1f2328}
-                label{display:block;margin:.75rem 0}input[type=email],input[type=password]{display:block;width:100%%;padding:.5rem;margin-top:.25rem}
-                button{padding:.5rem 1rem;margin-top:1rem}.secondary{background:none;border:none;text-decoration:underline}.error{color:#b42318}</style>
-                </head><body><h1>%s</h1>%s</body></html>""".formatted(esc(title), esc(title), body);
+                <title>%s</title><style>%s</style>
+                </head><body><h1>%s</h1>%s</body></html>""".formatted(esc(title), STYLE, esc(title), body);
+    }
+
+    private static String sha256(String value) {
+        try {
+            return Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static String esc(@Nullable String value) {

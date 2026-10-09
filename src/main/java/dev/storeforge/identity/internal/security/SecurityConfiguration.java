@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -42,6 +43,7 @@ class SecurityConfiguration {
     @Order(1)
     SecurityFilterChain authApi(HttpSecurity http) throws Exception {
         return stateless(http.securityMatcher("/auth/**"))
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
                 .build();
     }
@@ -52,6 +54,7 @@ class SecurityConfiguration {
     SecurityFilterChain adminApi(HttpSecurity http, UserTokenConverter converter, JsonMapper jsonMapper) throws Exception {
         var entryPoint = ProblemSecurityHandlers.authenticationEntryPoint(jsonMapper);
         return stateless(http.securityMatcher("/admin/**"))
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(requests -> requests.anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(converter))
@@ -70,6 +73,7 @@ class SecurityConfiguration {
     @Order(3)
     SecurityFilterChain storefrontApi(HttpSecurity http) throws Exception {
         return stateless(http.securityMatcher("/storefront/**"))
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
                 .build();
     }

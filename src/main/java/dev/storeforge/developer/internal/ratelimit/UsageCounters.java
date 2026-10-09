@@ -1,5 +1,6 @@
 package dev.storeforge.developer.internal.ratelimit;
 
+import dev.storeforge.shared.redis.RedisConnections;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.lettuce.core.KeyScanCursor;
 import io.lettuce.core.ScanArgs;

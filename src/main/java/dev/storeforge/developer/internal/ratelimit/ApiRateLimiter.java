@@ -3,6 +3,7 @@ package dev.storeforge.developer.internal.ratelimit;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.storeforge.developer.internal.DeveloperProperties;
+import dev.storeforge.shared.redis.RedisConnections;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
@@ -64,7 +65,7 @@ public class ApiRateLimiter {
         } catch (RuntimeException e) {   // includes CallNotPermittedException: circuit open, Redis skipped
             decision = consume(credentialKey, storeKey, this::localBucket, "local");
         }
-        meterRegistry.counter("storeforge.ratelimit.decisions", "backend", decision.backend(),
+        meterRegistry.counter("storeforge.ratelimit.decisions", "limit", "developer-api", "backend", decision.backend(),
                 "outcome", decision.allowed() ? "allowed" : "limited").increment();
         return decision;
     }

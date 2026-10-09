@@ -1,12 +1,13 @@
 package dev.storeforge.webhooks.internal.subscriptions;
 
 import dev.storeforge.audit.AuditLog;
-import dev.storeforge.shared.ids.Ids;
-import dev.storeforge.shared.tenancy.StoreId;
-import dev.storeforge.shared.tenancy.TenantTransactions;
 import dev.storeforge.developer.ApiClientPrincipal;
 import dev.storeforge.developer.ApiCredentialRevoked;
 import dev.storeforge.developer.Scope;
+import dev.storeforge.shared.crypto.SecretBox;
+import dev.storeforge.shared.ids.Ids;
+import dev.storeforge.shared.tenancy.StoreId;
+import dev.storeforge.shared.tenancy.TenantTransactions;
 import dev.storeforge.stores.Actor;
 import dev.storeforge.stores.Permission;
 import dev.storeforge.stores.StoreAccess;
@@ -15,7 +16,6 @@ import dev.storeforge.webhooks.internal.WebhooksProperties;
 import dev.storeforge.webhooks.internal.delivery.Topics;
 import dev.storeforge.webhooks.internal.security.DestinationNotAllowedException;
 import dev.storeforge.webhooks.internal.security.EndpointPolicy;
-import dev.storeforge.webhooks.internal.security.SecretBox;
 import dev.storeforge.webhooks.internal.security.WebhookSignature;
 import dev.storeforge.webhooks.internal.subscriptions.SubscriptionStore.Subscription;
 import java.net.URI;

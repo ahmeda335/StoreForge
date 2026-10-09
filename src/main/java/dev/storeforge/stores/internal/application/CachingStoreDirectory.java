@@ -32,6 +32,12 @@ class CachingStoreDirectory implements StoreDirectory {
     private final Cache<String, Optional<StoreInfo>> byHost = Caffeine.newBuilder()
             .maximumSize(10_000).expireAfterWrite(Duration.ofSeconds(60)).build();
 
+    /** After a status change. Other instances catch up within the cache TTL (60 s). */
+    void evictAll() {
+        byId.invalidateAll();
+        byHost.invalidateAll();
+    }
+
     @Override
     public Optional<StoreInfo> find(StoreId storeId) {
         return byId.get(storeId.value(), id -> query("WHERE s.id = :key", id));

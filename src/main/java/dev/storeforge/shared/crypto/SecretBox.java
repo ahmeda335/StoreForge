@@ -1,4 +1,4 @@
-package dev.storeforge.webhooks.internal.security;
+package dev.storeforge.shared.crypto;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -10,12 +10,13 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Encrypts webhook signing secrets at rest. They can't be hashed (we need the plaintext to sign),
- * so a database dump must not reveal them: AES-256-GCM with a key that lives outside the database
- * (secret store / environment). GCM also authenticates: a modified ciphertext fails to open.
+ * Encrypts secrets the application must be able to read back (webhook signing secrets, TOTP
+ * secrets), so a database dump doesn't reveal them: AES-256-GCM with a key that lives outside the
+ * database (secret store / environment). GCM also authenticates: a modified ciphertext fails to open.
+ * Each use has its OWN key.
  *
- * <p>The subscription id is bound as associated data, so a ciphertext copied into another
- * subscription's row does not decrypt there. Format: {@code v1:base64(iv ‖ ciphertext+tag)};
+ * <p>The owning row's id is bound as associated data, so a ciphertext copied into another row
+ * does not decrypt there. Format: {@code v1:base64(iv ‖ ciphertext+tag)};
  * the version prefix leaves room to rotate the key later.
  */
 public final class SecretBox {
@@ -29,7 +30,7 @@ public final class SecretBox {
 
     public SecretBox(byte[] key) {
         if (key.length != 32) {
-            throw new IllegalArgumentException("The webhook encryption key must be 32 bytes (base64 of 32 random bytes)");
+            throw new IllegalArgumentException("An encryption key must be 32 bytes (base64 of 32 random bytes)");
         }
         this.key = new SecretKeySpec(key, "AES");
     }
@@ -59,7 +60,7 @@ public final class SecretBox {
             cipher.updateAAD(associatedData.getBytes(StandardCharsets.UTF_8));
             return new String(cipher.doFinal(data, IV_BYTES, data.length - IV_BYTES), StandardCharsets.UTF_8);
         } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Webhook secret could not be decrypted (wrong key or tampered data)", e);
+            throw new IllegalStateException("Secret could not be decrypted (wrong key or tampered data)", e);
         }
     }
 }

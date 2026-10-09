@@ -90,6 +90,41 @@ class SecurityConfiguration {
                 .build();
     }
 
+    /**
+     * The step up to the platform API: enrolling a second factor and exchanging a code for a
+     * platform token. Requires a MERCHANT token (the password step); the endpoints themselves
+     * check that the user is a platform admin.
+     */
+    @Bean
+    @Order(5)
+    SecurityFilterChain platformStepUp(HttpSecurity http, UserTokenConverter converter, JsonMapper jsonMapper) throws Exception {
+        var entryPoint = ProblemSecurityHandlers.authenticationEntryPoint(jsonMapper);
+        return stateless(http.securityMatcher("/platform/v1/session", "/platform/v1/mfa/**"))
+                .authorizeHttpRequests(requests -> requests.anyRequest().authenticated())
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(converter))
+                        .authenticationEntryPoint(entryPoint))
+                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(entryPoint))
+                .build();
+    }
+
+    /** /platform/**: StoreForge staff only, with a PLATFORM token (password + second factor, minutes old). */
+    @Bean
+    @Order(6)
+    SecurityFilterChain platformApi(HttpSecurity http, PlatformTokens tokens, PlatformTokenConverter converter, JsonMapper jsonMapper)
+            throws Exception {
+        var entryPoint = ProblemSecurityHandlers.authenticationEntryPoint(jsonMapper);
+        return stateless(http.securityMatcher("/platform/**"))
+                .authorizeHttpRequests(requests -> requests.anyRequest().hasRole("PLATFORM_ADMIN"))
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .jwt(jwt -> jwt.decoder(tokens.decoder()).jwtAuthenticationConverter(converter))
+                        .authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(ProblemSecurityHandlers.accessDeniedHandler(jsonMapper)))
+                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(entryPoint))
+                .addFilterAfter(new UserMdcFilter(), BearerTokenAuthenticationFilter.class)
+                .build();
+    }
+
     /** Everything else (unknown paths → 404 problems; actuator on the private management port). */
     @Bean
     @Order(Ordered.LOWEST_PRECEDENCE)

@@ -39,4 +39,20 @@ public final class PostgresTestDatabase {
         registry.add("spring.flyway.user", () -> "storeforge_owner");
         registry.add("spring.flyway.password", () -> OWNER_PASSWORD);
     }
+
+    /**
+     * Runs a statement as the OWNER role, for what the application role is deliberately not allowed
+     * to do (e.g. granting platform admin rights, an operator action).
+     */
+    public static int executeAsOwner(String sql, Object... parameters) {
+        try (java.sql.Connection connection = java.sql.DriverManager.getConnection(CONTAINER.getJdbcUrl(), "storeforge_owner", OWNER_PASSWORD);
+             java.sql.PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < parameters.length; i++) {
+                statement.setObject(i + 1, parameters[i]);
+            }
+            return statement.executeUpdate();
+        } catch (java.sql.SQLException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 }

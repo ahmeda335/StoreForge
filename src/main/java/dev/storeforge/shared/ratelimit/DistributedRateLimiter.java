@@ -62,6 +62,24 @@ public class DistributedRateLimiter {
         return decision;
     }
 
+    /**
+     * Gives back a token taken by {@link #tryConsume}: for limits on FAILED attempts, which take a
+     * token up front (so parallel attempts can't all pass a check) and return it when the attempt
+     * turns out not to be a failure. Best effort: if Redis fails here, the token stays spent.
+     */
+    public void refund(Limit limit, String key) {
+        String bucketKey = "rl:" + limit.name() + ":" + key;
+        BucketConfiguration configuration = configurations.computeIfAbsent(limit, DistributedRateLimiter::configuration);
+        try {
+            breaker.executeRunnable(() -> proxies().builder().build(bucketKey.getBytes(StandardCharsets.UTF_8), () -> configuration).addTokens(1));
+        } catch (RuntimeException e) {
+            io.github.bucket4j.Bucket local = localBuckets.getIfPresent(bucketKey);
+            if (local != null) {
+                local.addTokens(1);
+            }
+        }
+    }
+
     private static Decision decide(ConsumptionProbe probe, String backend) {
         long retryAfter = probe.isConsumed() ? 0 : Math.max(1, (probe.getNanosToWaitForRefill() + 999_999_999L) / 1_000_000_000L);
         return new Decision(probe.isConsumed(), retryAfter, backend);

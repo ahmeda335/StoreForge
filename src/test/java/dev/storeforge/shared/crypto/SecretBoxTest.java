@@ -1,9 +1,8 @@
-package dev.storeforge.webhooks.internal;
+package dev.storeforge.shared.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.storeforge.webhooks.internal.security.SecretBox;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
 

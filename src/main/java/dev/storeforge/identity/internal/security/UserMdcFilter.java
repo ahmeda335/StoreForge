@@ -1,5 +1,6 @@
 package dev.storeforge.identity.internal.security;
 
+import dev.storeforge.identity.PlatformAdminPrincipal;
 import dev.storeforge.identity.UserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,6 +23,8 @@ class UserMdcFilter extends OncePerRequestFilter {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
             MDC.put(MDC_KEY, principal.userId().toString());
+        } else if (authentication != null && authentication.getPrincipal() instanceof PlatformAdminPrincipal admin) {
+            MDC.put(MDC_KEY, admin.userId().toString());
         }
         try {
             chain.doFilter(request, response);

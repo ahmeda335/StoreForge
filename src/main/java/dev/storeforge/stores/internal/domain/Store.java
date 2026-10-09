@@ -69,6 +69,32 @@ public class Store {
         this.updatedAt = now;
     }
 
+    /**
+     * Platform action: storefront, developer API and admin API refuse the store (admin: 403
+     * {@code store_suspended}, the P3 rule). The merchant can still sign in and is told why.
+     */
+    public void suspend(Instant now) {
+        if (status != StoreStatus.ACTIVE) {
+            throw new StoreStatusConflict("Only an ACTIVE store can be suspended (it is " + status + ").");
+        }
+        status = StoreStatus.SUSPENDED;
+        updatedAt = now;
+    }
+
+    public void reinstate(Instant now) {
+        if (status != StoreStatus.SUSPENDED) {
+            throw new StoreStatusConflict("Only a SUSPENDED store can be reinstated (it is " + status + ").");
+        }
+        status = StoreStatus.ACTIVE;
+        updatedAt = now;
+    }
+
+    public static class StoreStatusConflict extends dev.storeforge.shared.error.StoreForgeException {
+        StoreStatusConflict(String detail) {
+            super(org.springframework.http.HttpStatus.CONFLICT, "store_status_conflict", detail);
+        }
+    }
+
     public StoreId id() {
         return StoreId.of(id);
     }

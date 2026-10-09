@@ -1,7 +1,6 @@
 package dev.storeforge.jobs.internal;
 
-import java.time.Clock;
-import java.util.List;
+import dev.storeforge.jobs.JobAdministration;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +14,8 @@ import org.springframework.stereotype.Component;
 /**
  * Operator view of the queue on the PRIVATE management port: {@code GET /actuator/jobs} (counts,
  * latest DEAD jobs), {@code POST /actuator/jobs/{id}} (requeue a DEAD job). Dead jobs never
- * disappear silently: a human looks at them, fixes the cause, and requeues. (Platform admin API: P14.)
+ * disappear silently: a human looks at them, fixes the cause, and requeues. The authenticated, audited
+ * way is the platform API ({@code /platform/v1/jobs}, P14); this endpoint is for operators on the private port.
  */
 @Component
 @Endpoint(id = "jobs")
@@ -23,23 +23,16 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class JobsEndpoint {
 
-    private final JobStore store;
-    private final OutboxRelay relay;
-    private final Clock clock;
-
-    record Overview(Map<String, Long> jobsByStatus, long unpublishedEvents, double oldestReadyAgeSeconds,
-                    List<JobStore.DeadJob> deadJobs) {
-    }
+    private final JobAdministration administration;
 
     @ReadOperation
-    Overview overview() {
-        return new Overview(store.countsByStatus(), relay.unpublishedCount(), store.oldestReadyAgeSeconds(clock.instant()),
-                store.deadJobs(50));
+    JobAdministration.Overview overview() {
+        return administration.overview(50);
     }
 
     @WriteOperation
     Map<String, Object> requeue(@Selector UUID id) {
-        boolean requeued = store.requeue(id, clock.instant());
+        boolean requeued = administration.requeue(id);
         log.atInfo().addKeyValue("jobId", id).addKeyValue("requeued", requeued).log("Operator requeue of a DEAD job");
         return Map.of("jobId", id, "requeued", requeued);
     }

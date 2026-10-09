@@ -1,10 +1,10 @@
 package dev.storeforge.webhooks.internal;
 
+import dev.storeforge.shared.crypto.SecretBox;
 import dev.storeforge.webhooks.internal.delivery.RetryPolicy;
 import dev.storeforge.webhooks.internal.delivery.WebhookSender;
 import dev.storeforge.webhooks.internal.security.Cidr;
 import dev.storeforge.webhooks.internal.security.EndpointPolicy;
-import dev.storeforge.webhooks.internal.security.SecretBox;
 import java.net.InetAddress;
 import java.util.Base64;
 import java.util.List;

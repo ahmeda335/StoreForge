@@ -102,6 +102,11 @@ storeforge:
     backoff-base: 5s
     backoff-cap: 1h
     retention: 7d
+  platform:
+    # base64 of 32 random bytes sealing platform admins' TOTP secrets. LOCAL DEVELOPMENT value only.
+    mfa-encryption-key: ${PLATFORM_MFA_ENCRYPTION_KEY:Xy2rGv0aQm9mTqB7w5Zr3kN8pE1sU4dJ6hL0cV2bF9o=}
+    session-ttl: ${PLATFORM_SESSION_TTL:15m}
+    totp-issuer: StoreForge
   http:
     max-request-body: ${HTTP_MAX_REQUEST_BODY:1MB}
     admin-origins: ${AUTH_ALLOWED_ORIGINS:http://localhost:4200}

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.storeforge.support.IntegrationTest;
 import dev.storeforge.support.Json;
+import dev.storeforge.support.SampleRequests;
 import dev.storeforge.support.StoreFlows;
 import dev.storeforge.support.StoreFlows.Owner;
 import java.net.http.HttpResponse;
@@ -27,31 +28,6 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  */
 class TenantIsolationIT extends IntegrationTest {
 
-    /** Valid request bodies, so requests get past Bean Validation and actually reach the tenant check. */
-    private static final Map<String, String> SAMPLE_BODIES = Map.ofEntries(
-            Map.entry("PATCH /admin/v1/stores/{storeId}", "{\"name\":\"Hijacked\"}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/roles", "{\"name\":\"x\",\"permissions\":[]}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/invitations", "{\"email\":\"x@example.test\",\"roleId\":\"" + UUID.randomUUID() + "\"}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/invitations/acceptance", "{\"token\":\"not-a-real-token\"}"),
-            Map.entry("PATCH /admin/v1/stores/{storeId}/members/{userId}", "{\"roleId\":\"" + UUID.randomUUID() + "\"}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/products", "{\"title\":\"Injected\",\"options\":[],\"variants\":[{\"price\":\"1.00\",\"options\":[]}]}"),
-            Map.entry("PATCH /admin/v1/stores/{storeId}/products/{productId}", "{\"title\":\"Hijacked\"}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/products/{productId}/variants", "{\"price\":\"1.00\",\"options\":[]}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/products/{productId}/images/uploads", "{\"contentType\":\"image/png\",\"sizeBytes\":100}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/customers/{customerId}/erasure", "{\"reason\":\"request\"}"),
-            Map.entry("PATCH /admin/v1/stores/{storeId}/products/{productId}/variants/{variantId}", "{\"price\":\"1.00\"}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/variants/{variantId}/inventory/adjustments", "{\"delta\":5,\"reason\":\"RECEIVED\"}"),
-            Map.entry("PATCH /admin/v1/stores/{storeId}/variants/{variantId}/inventory", "{\"tracked\":false}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/orders/{orderId}/cancellation", "{\"reason\":\"other\"}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/orders/{orderId}/manual-payment", "{}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/orders/{orderId}/refunds", "{\"amount\":\"1.00\",\"reason\":\"other\"}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/shipping-rates", "{\"name\":\"Standard\",\"price\":\"4.90\"}"),
-            Map.entry("PATCH /admin/v1/stores/{storeId}/shipping-rates/{rateId}", "{\"active\":false}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/discounts", "{\"code\":\"SAVE10\",\"kind\":\"PERCENTAGE\",\"value\":\"10\"}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/api-keys", "{\"name\":\"x\",\"scopes\":[\"read_orders\"]}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/webhook-subscriptions", "{\"url\":\"https://example.com/hooks\",\"topics\":[\"orders/create\"]}"),
-            Map.entry("POST /admin/v1/stores/{storeId}/webhook-subscriptions/{subscriptionId}/replays",
-                    "{\"statuses\":[\"DEAD\"],\"since\":\"2026-01-01T00:00:00Z\"}"));
 
     @Autowired
     @Qualifier("requestMappingHandlerMapping")
@@ -78,7 +54,7 @@ class TenantIsolationIT extends IntegrationTest {
             String method = endpoint.substring(0, endpoint.indexOf(' '));
             String pattern = endpoint.substring(endpoint.indexOf(' ') + 1);
             String path = pattern.replace("{storeId}", storeB.storeId().toString()).replaceAll("\\{[^}]+}", UUID.randomUUID().toString());
-            String body = SAMPLE_BODIES.getOrDefault(endpoint, method.equals("GET") || method.equals("DELETE") ? null : "{}");
+            String body = SampleRequests.BODIES.getOrDefault(endpoint, method.equals("GET") || method.equals("DELETE") ? null : "{}");
 
             HttpResponse<String> response = api.request(method, path, body, storeA.auth());
 

@@ -36,6 +36,8 @@ Why: least privilege, plus RLS in P3 only applies to non-owner roles ([ADR-002](
 |---|---|---|
 | V1 | `V1__baseline_privileges.sql` | Default privileges: every future table/sequence/function created by the owner is usable by the app role |
 | V2 | `V2__identity.sql` | `citext` extension; `users`, `refresh_tokens`, `email_tokens` (see [domains/identity.md](../domains/identity.md)) |
+| V19 | `V19__customer_erasure.sql` | `customers.erased_at` (P14 privacy, [ADR-027](../decisions/ADR-027-customer-data-export-and-erasure.md)) |
+| V18 | `V18__platform_admins.sql` | `platform_admins` (sealed TOTP secret, last step, recovery code hashes; **app role can't INSERT/DELETE**), `platform_audit_log` (append-only). See [domains/platform.md](../domains/platform.md) |
 | V17 | `V17__product_images.sql` | `product_images` (PENDING/READY, CHECKed tenant-prefixed `object_key`, RLS), `stores_with_abandoned_image_uploads()` definer fn. See [domains/storage.md](../domains/storage.md) |
 | V16 | `V16__search_under_rls.sql` | `search_product_matches(query)`: SECURITY DEFINER match step scoped by `current_store_id()`, ids and scores only ([ADR-025](../decisions/ADR-025-search-in-postgresql-and-no-cache.md), [EXP-018](../experiments/EXP-018-search-at-scale-under-rls.md)) |
 | V15 | `V15__product_search.sql` | `unaccent`, `pg_trgm`, `btree_gin`; `product_search` text search config; `search_normalize()`; generated weighted `products.search_vector`; GIN indexes |

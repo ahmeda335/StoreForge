@@ -16,8 +16,9 @@
 | P11 Outbound webhooks | ✅ Done (2026-10-08) | See below |
 | P12 Developer platform (+ Redis) | ✅ Done (2026-10-08) | See below |
 | P13 Commerce extensions | ✅ Done (2026-10-08) | See below |
-| P14 Security hardening | ⏭ Next | Study list below |
-| P15–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P14 Security hardening | ✅ Done (2026-10-09) | See below |
+| P15 Load testing & performance | ⏭ Next | Study list below |
+| P16–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -363,3 +364,82 @@ Built in five milestones, each tested, verified and committed: 13a discounts, 13
 - **dependency and image scanning** (OWASP Dependency-Check / Trivy, SBOMs) as CI gates;
 - **privacy:** customer data export and erasure vs. orders that must be kept (retention, pseudonymization);
 - [roadmap P14](blueprint/30-roadmap.md), [blueprint 18](blueprint/18-security.md).
+
+## P14: Security hardening (as built)
+
+Built in six milestones, each tested, verified and committed:
+- **14a** the HTTP edge;
+- **14b** merchant input and over-posting;
+- **14c** platform admin with TOTP;
+- **14d** customer data export and erasure;
+- **14e** supply chain;
+- **14f** function-level authorization and the documentation.
+
+The review started black-box ("what can a client send?") and then went per trust boundary: [threat model](security/threat-model.md), [OWASP API Top 10 mapping](security/owasp-api-top-10.md).
+
+**What exists**
+- **Edge** ([ADR-028](decisions/ADR-028-http-edge-hardening.md)):
+  - forwarded headers believed only from `TRUSTED_PROXIES`;
+  - 1 MB bodies (413);
+  - CSP `default-src 'none'` and friends on JSON, a hash-based CSP on the OAuth pages;
+  - CORS per API;
+  - storefront abuse limits per client address (IPv6 /64) through a shared, fail-open `DistributedRateLimiter` (Redis infrastructure moved to `shared.redis`).
+- **Merchant input:** product descriptions sanitized with an allow list (OWASP Java HTML Sanitizer). Unknown JSON fields were already rejected; now proven endpoint by endpoint.
+- **Platform admins** ([ADR-026](decisions/ADR-026-platform-admin-and-mfa.md), [domains/platform.md](domains/platform.md)):
+  - granted only by an operator (the app role can't INSERT);
+  - password + mandatory TOTP (RFC 6238, replay-proof, 5 wrong codes / 15 min), recovery codes;
+  - 15-minute tokens with their own audience, re-checked per request;
+  - store suspension/reinstatement, job queue, platform audit log; store actions are also visible in the merchant's audit log.
+- **Privacy** ([ADR-027](decisions/ADR-027-customer-data-export-and-erasure.md)): customer data export and erasure through a `PersonalData` contract in every module, in one transaction. Accounting is kept; erasure needs the new `customers:erase` permission and is refused while orders are open.
+- **Supply chain** ([ADR-029](decisions/ADR-029-supply-chain-and-secrets.md)):
+  - CI gates: gitleaks over the history, Trivy over the image (fixable HIGH/CRITICAL);
+  - CycloneDX SBOM (CI artifact, `/actuator/sbom` on the private port);
+  - actions pinned by SHA, scanners and base images by exact version; Dependabot;
+  - Spring Boot 4.0.8 + documented overrides;
+  - hardened container (non-root, read-only, no capabilities);
+  - development secrets refused at startup when `ALLOW_DEVELOPMENT_SECRETS=false`.
+- **Migrations and docs:** V18, V19; ADR-026…029; [api/platform.md](api/platform.md); [conventions](api/conventions.md) (limits and browser rules); runbooks [secrets](operations/runbooks/secrets.md), [platform-admin](operations/runbooks/platform-admin.md); `http/platform.http`.
+
+**Tests: 367 total** (121 unit + 246 integration). New:
+- `HttpEdgeIT`, `StorefrontRateLimitIT` (own context, low limits);
+- `PropertyLevelAuthorizationIT`, `FunctionLevelAuthorizationIT` (every endpoint, discovered);
+- `PlatformAdminIT`, `TotpTest`, `CustomerPrivacyIT` (searches every column of every table);
+- `RichTextTest`, `DevelopmentSecretsGuardTest`, `StorefrontRateLimitFilterTest`.
+
+Mutation-checked: [EXP-021](experiments/EXP-021-platform-and-privacy-mutations.md) and the 14a/14b mutations.
+
+**Verified manually**
+- **[EXP-020](experiments/EXP-020-forwarded-headers-and-oversized-bodies.md):**
+  - rotating `X-Forwarded-For`: 40/40 login attempts accepted before, limited at 30 after;
+  - 20 MB body: parsed in 425 ms before, 413 in 3 ms after.
+- **[EXP-022](experiments/EXP-022-supply-chain-scan.md):**
+  - 47 HIGH/CRITICAL brought to 0;
+  - the hardened container runs as uid 999 on a read-only filesystem;
+  - startup is refused with development secrets.
+
+**Bugs found:**
+- spoofable client addresses defeated every per-IP limit;
+- unbounded JSON bodies;
+- stored XSS through product descriptions;
+- the Docker image hadn't built since P8 (`lombok.config` not copied);
+- 47 vulnerable dependencies (and a stale base image behind a floating tag);
+- development secrets only warned;
+- the MFA limit counted successes;
+- a path-based gitleaks exception that hid a planted token.
+
+**Known limitations:**
+- TOTP is phishable in real time (WebAuthn later); no MFA for merchants;
+- per-address limits don't stop distributed attacks;
+- admin permission checks run after Bean Validation (422 before 403);
+- logs, provider records and backups are outside erasure;
+- encryption keys can't be rotated without re-sealing;
+- descriptions written before P14 stay unsanitized until edited;
+- rate limits on storefront search apply per address, not per store.
+
+**Study before P15** (load testing & performance):
+- **load testing with k6:** scenarios vs. synthetic floods, open vs. closed models, arrival rates, think time; coordinated omission;
+- **reading latency:** percentiles, histograms vs. averages, why p99 under load ≠ p99 alone; SLOs and error budgets, burn-rate alerts;
+- **PostgreSQL under load:** `pg_stat_statements`, `EXPLAIN (ANALYZE, BUFFERS)` as the app role (EXP-018), connection pool sizing (HikariCP), lock waits, autovacuum;
+- **JVM:** async-profiler (CPU, allocation, wall-clock flame graphs), GC logs, virtual threads and pinning;
+- **seed data at realistic scale:** the EXP-018 generator as a starting point;
+- [roadmap P15](blueprint/30-roadmap.md), [blueprint 21](blueprint/21-reliability-performance.md).

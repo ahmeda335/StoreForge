@@ -69,6 +69,9 @@ Authenticating an API request (`/admin/**`): `BearerTokenAuthenticationFilter` â
 ## Security notes
 Account enumeration resistance (registration, reset, resend, login), hashing parity (dummy hash for unknown emails), per-IP + per-email rate limits, temporary exponential lockout, secrets hashed at rest, redacted `toString()` on every DTO/event carrying secrets, tokens never in URL paths or logs (tested).
 
+## Platform administrators (P14)
+Step-up from a merchant session to a platform session (mandatory TOTP, recovery codes, platform-audience tokens, per-request re-check): see [platform.md](platform.md) and [ADR-026](../decisions/ADR-026-platform-admin-and-mfa.md). Code: `internal/platform` (`Totp`, `PlatformMfaService`), `internal/security` (`PlatformTokens`, `PlatformTokenConverter`, chains `platformStepUp` / `platformApi`).
+
 ## Tests
 `RegistrationIT`, `LoginIT`, `TokenRefreshIT`, `AccessTokenSecurityIT`, `PasswordResetIT`, `SensitiveDataLoggingIT`, `EmailAddressTest`.
 

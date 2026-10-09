@@ -19,6 +19,10 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [012](ADR-012-observability-pipeline.md) | Micrometer Observation → OpenTelemetry, OTLP push, grafana/otel-lgtm locally | Accepted | P6 |
 | [013](ADR-013-checkout-and-idempotency.md) | Checkout scope (guest customers, order in P8), expectedTotal guard, transactional idempotency | Accepted | P7 |
 | [014](ADR-014-orders-lifecycle.md) | Order state machine, gapless per-store numbers, the order owns the payment deadline, locked transitions | Accepted | P8 |
+| [029](ADR-029-supply-chain-and-secrets.md) | Supply chain: gitleaks + Trivy image gate + SBOM, pinned actions/images, patched dependencies, development secrets refused at startup | Accepted | P14 |
+| [028](ADR-028-http-edge-hardening.md) | HTTP edge: forwarded headers only from trusted proxies, 1 MB bodies, strict CSP/headers, CORS per API, storefront abuse limits via Redis | Accepted | P14 |
+| [027](ADR-027-customer-data-export-and-erasure.md) | Customer data export/erasure: per-module PersonalData contract in one tenant transaction; placeholders, accounting kept; verified by searching every column | Accepted | P14 |
+| [026](ADR-026-platform-admin-and-mfa.md) | Platform admins: DB-granted only, password + mandatory TOTP step-up to a platform-audience token, every action audited (store's own log too) | Accepted | P14 |
 | [025](ADR-025-search-in-postgresql-and-no-cache.md) | Product search in PostgreSQL (weighted full text + trigram), matched by a tenant-bound definer function because RLS blocks non-leakproof index conditions; no cache (measured) | Accepted | P13 |
 | [024](ADR-024-object-storage-and-presigned-uploads.md) | Object storage on the S3 API: presigned uploads signed for type and length, stored object verified on completion, tenant-prefixed keys, SeaweedFS instead of MinIO | Accepted | P13 |
 | [023](ADR-023-discounts-shipping-and-order-totals.md) | Discounts and shipping priced in checkout (fixed pipeline), conditional-update usage limits, 409 on stale choices, totals frozen on the order; shipments for partial fulfilment | Accepted | P13 |

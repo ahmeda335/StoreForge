@@ -1,0 +1,50 @@
+### Platform administration, P14 (StoreForge staff). Needs a platform admin row (runbook: platform-admin.md)
+### and accessToken from http/auth.http (password login).
+
+@base = http://localhost:8080
+
+### 1. Enroll an authenticator (once): import otpauthUri into the app (QR code or paste the secret)
+POST {{base}}/platform/v1/mfa/enrollment
+Authorization: Bearer {{accessToken}}
+
+### 2. Confirm with the first code: returns 10 recovery codes, shown ONCE
+POST {{base}}/platform/v1/mfa/enrollment/confirmation
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"code": "123456"}
+
+### 3. Step up: a 15-minute platform token (each code works once)
+POST {{base}}/platform/v1/session
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"code": "123456"}
+
+> {% client.global.set("platformToken", response.body.access_token); %}
+
+### Stores
+GET {{base}}/platform/v1/stores?q=acme&status=ACTIVE
+Authorization: Bearer {{platformToken}}
+
+### Suspend a store (storefront and APIs go offline; written to the store's own audit log)
+POST {{base}}/platform/v1/stores/{{storeId}}/suspension
+Authorization: Bearer {{platformToken}}
+Content-Type: application/json
+
+{"reason": "Card testing through checkout, ticket #123"}
+
+### Reinstate
+POST {{base}}/platform/v1/stores/{{storeId}}/reinstatement
+Authorization: Bearer {{platformToken}}
+Content-Type: application/json
+
+{"reason": "Resolved with the merchant"}
+
+### Job queue, and requeue a DEAD job
+GET {{base}}/platform/v1/jobs
+Authorization: Bearer {{platformToken}}
+
+### Platform audit log
+GET {{base}}/platform/v1/audit?limit=50
+Authorization: Bearer {{platformToken}}

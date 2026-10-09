@@ -49,3 +49,14 @@ Authorization: Bearer {{accessToken}}
 ### Audit log (newest first, cursor-paginated)
 GET {{base}}/admin/v1/stores/{{storeId}}/audit-log?limit=10
 Authorization: Bearer {{accessToken}}
+
+### Customer data export (P14): everything the store holds about one customer, as a JSON download
+GET {{base}}/admin/v1/stores/{{storeId}}/customers/PASTE_CUSTOMER_ID/export
+Authorization: Bearer {{accessToken}}
+
+### Customer erasure (P14, customers:erase, IRREVERSIBLE): personal data replaced, accounting kept
+POST {{base}}/admin/v1/stores/{{storeId}}/customers/PASTE_CUSTOMER_ID/erasure
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"reason": "Customer request by email, ticket #4711"}

@@ -43,3 +43,5 @@ Storefront calls are anonymous. The store comes from the hostname (`X-Forwarded-
 |---|---|
 | `GET /customers?limit=&cursor=` | `200 {data: [{id, email, firstName, lastName, createdAt}], page}` |
 | `GET /customers/{customerId}` | `200` customer, or `customer_not_found` |
+| `GET /customers/{customerId}/export` | `200` JSON download (`Content-Disposition: attachment`, no-store): `customer`, `orders` (items, addresses), `checkouts`, `discountRedemptions`, `emails`, `exportedAt`; audited `customer.exported` (P14) |
+| `POST /customers/{customerId}/erasure` `{reason}` | `204`; **`customers:erase`**, irreversible: personal data replaced everywhere, accounting kept ([ADR-027](../decisions/ADR-027-customer-data-export-and-erasure.md)); `customer_has_open_orders` (409), `customer_not_found` (also when already erased) |

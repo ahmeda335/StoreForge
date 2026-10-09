@@ -18,6 +18,7 @@ Permissions: `products:read` for GET, `products:write` for everything else. Prod
 
 - **Money:** request prices are decimal strings in the store's currency (`"19.99"`; at most the currency's decimal places). Responses use `{"amount": "19.99", "currency": "USD"}`.
 - **Status:** `DRAFT` (default, hidden from the storefront), `ACTIVE`, `ARCHIVED`.
+- **Description:** HTML, sanitized on write with an allow list (paragraphs, emphasis, headings, lists, quotes, http/https/mailto links with `rel="nofollow noopener noreferrer"`); everything else is removed and text is escaped (P14).
 - **Handle:** derived from the title when omitted (`"Blue Tee!"` → `blue-tee`).
 
 ## Public storefront: `/storefront/v1/products`

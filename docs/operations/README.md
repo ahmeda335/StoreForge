@@ -5,6 +5,8 @@ Runbooks describe how to diagnose and act on a symptom. Every alert (P15/P16) li
 | Runbook | Symptom |
 |---|---|
 | [database-unavailable](runbooks/database-unavailable.md) | Readiness DOWN with `db` component DOWN; 503s; Hikari timeouts |
+| [secrets](runbooks/secrets.md) | Startup refuses development secrets; gitleaks failures; leaked secrets; every client shows the proxy's address |
+| [platform-admin](runbooks/platform-admin.md) | Granting/revoking platform admins; lost authenticator; suspicious platform sessions |
 | [object-storage-and-search](runbooks/object-storage-and-search.md) | Image uploads failing, storage errors, DEAD deletion jobs, slow storefront search |
 | [developer-platform](runbooks/developer-platform.md) | Redis down / DEGRADED, 429 complaints, leaked keys or app tokens, failed installs |
 | [webhooks](runbooks/webhooks.md) | Failing or paused merchant endpoints, blocked destinations, replays, secret problems |

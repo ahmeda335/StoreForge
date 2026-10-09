@@ -127,6 +127,8 @@ Why this order differs from the prompt's sketch: **observability (P6) comes befo
 ## P14 — Security hardening
 - **Features:** full audit coverage, platform admin API with MFA (TOTP), CSP and security headers, dependency/image scanning gates, HTML sanitization, privacy endpoints (export/delete customer), threat-model review per module, pen-test style test suite (OWASP API Top 10 checklist).
 
+- **As built (P14):** see PROGRESS; ADR-026…029, [threat model](../security/threat-model.md), [OWASP mapping](../security/owasp-api-top-10.md). Merchant MFA and impersonation deferred.
+
 ## P15 — Load testing and performance
 - **Features:** seed-data generator, k6 scenario suite, baselines, `pg_stat_statements`, async-profiler runs, SLO dashboards + burn-rate alerts.
 - **DoD:** documented baselines and at least three measured improvements (with before/after).

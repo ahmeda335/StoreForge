@@ -16,6 +16,7 @@ One page per business module, written when the module is implemented: responsibi
 | `payments` | P10 | [payments.md](payments.md) |
 | `webhooks` | P11 | [webhooks.md](webhooks.md) |
 | `developer` | P12 | [developer.md](developer.md) |
+| `platform` (+ platform MFA in `identity`) | P14 | [platform.md](platform.md) |
 | `discounts` | P13 | [discounts.md](discounts.md) |
 | `shipping` (+ shipments in `orders`) | P13 | [shipping.md](shipping.md) |
 | `storage` (+ product images in `catalog`) | P13 | [storage.md](storage.md) |

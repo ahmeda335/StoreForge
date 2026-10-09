@@ -27,6 +27,12 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [money](money.md) | P4 | Minor units, strict parsing, decimal strings on the wire |
 | [postgresql-locking-and-conditional-updates](postgresql-locking-and-conditional-updates.md) | P5 | MVCC, EvalPlanQual, deadlocks and lock ordering, SKIP LOCKED, pool size as race width |
 | [security-definer-functions](security-definer-functions.md) | P5 | Controlled privilege escalation, search_path hijacking, least privilege |
+| [trusted-proxies-and-client-addresses](trusted-proxies-and-client-addresses.md) | P14 | X-Forwarded-For, trusted proxies, IPv6 /64, why address-based limits need them |
+| [totp-and-step-up-authentication](totp-and-step-up-authentication.md) | P14 | HOTP/TOTP, windows, replay, attempt limits, sealed secrets, step-up audiences |
+| [browser-security-headers-and-cors](browser-security-headers-and-cors.md) | P14 | CSP (hashes, form-action), framing, referrer, CORS with and without credentials |
+| [html-sanitization-and-stored-xss](html-sanitization-and-stored-xss.md) | P14 | Allow-list sanitizing, why block lists fail, where to sanitize |
+| [privacy-export-and-erasure](privacy-export-and-erasure.md) | P14 | Personal data, copies, pseudonymization vs. deletion, searching instead of listing |
+| [supply-chain-security](supply-chain-security.md) | P14 | Image scanning, overrides, pinning, SBOMs, exceptions as code, fail-closed config |
 | [postgresql-full-text-search](postgresql-full-text-search.md) | P13 | tsvector, configurations, weights, websearch queries, trigrams, GIN, facets |
 | [rls-and-leakproof-operators](rls-and-leakproof-operators.md) | P13 | Why RLS stops non-leakproof conditions from using indexes; tenant-bound definer functions |
 | [presigned-uploads-and-object-storage](presigned-uploads-and-object-storage.md) | P13 | Signed PUT/GET, signed headers, magic numbers, two-phase uploads, cleanup |

@@ -26,6 +26,8 @@ public enum Permission {
     ORDERS_WRITE("orders:write"),
     ORDERS_REFUND("orders:refund"),
     CUSTOMERS_READ("customers:read"),
+    /* Irreversible: erasing a customer's personal data (P14). Not grantable to apps. */
+    CUSTOMERS_ERASE("customers:erase"),
     WEBHOOKS_MANAGE("webhooks:manage"),
     APPS_MANAGE("apps:manage"),
     DISCOUNTS_MANAGE("discounts:manage");

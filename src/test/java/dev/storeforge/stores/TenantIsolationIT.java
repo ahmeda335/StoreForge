@@ -38,6 +38,7 @@ class TenantIsolationIT extends IntegrationTest {
             Map.entry("PATCH /admin/v1/stores/{storeId}/products/{productId}", "{\"title\":\"Hijacked\"}"),
             Map.entry("POST /admin/v1/stores/{storeId}/products/{productId}/variants", "{\"price\":\"1.00\",\"options\":[]}"),
             Map.entry("POST /admin/v1/stores/{storeId}/products/{productId}/images/uploads", "{\"contentType\":\"image/png\",\"sizeBytes\":100}"),
+            Map.entry("POST /admin/v1/stores/{storeId}/customers/{customerId}/erasure", "{\"reason\":\"request\"}"),
             Map.entry("PATCH /admin/v1/stores/{storeId}/products/{productId}/variants/{variantId}", "{\"price\":\"1.00\"}"),
             Map.entry("POST /admin/v1/stores/{storeId}/variants/{variantId}/inventory/adjustments", "{\"delta\":5,\"reason\":\"RECEIVED\"}"),
             Map.entry("PATCH /admin/v1/stores/{storeId}/variants/{variantId}/inventory", "{\"tracked\":false}"),

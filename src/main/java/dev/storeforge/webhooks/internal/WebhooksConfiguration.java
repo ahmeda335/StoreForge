@@ -16,15 +16,9 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 class WebhooksConfiguration {
 
-    /** The key committed in application.yml for local development. Anything real must override it. */
-    static final String DEVELOPMENT_KEY = "uJpdIXQiVMWS3GxRYbhcbQPA/RSV8pSJsHcBn1vA/0M=";
-
     @Bean
     SecretBox webhookSecretBox(WebhooksProperties properties) {
-        if (DEVELOPMENT_KEY.equals(properties.encryptionKey())) {
-            log.warn("Using the DEVELOPMENT webhook encryption key from application.yml: webhook secrets are not protected. "
-                    + "Set WEBHOOK_ENCRYPTION_KEY (base64 of 32 random bytes) outside local development.");
-        }
+        // A development key is refused at startup outside local development (DevelopmentSecretsGuard).
         return new SecretBox(Base64.getDecoder().decode(properties.encryptionKey()));
     }
 

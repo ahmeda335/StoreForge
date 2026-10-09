@@ -1,0 +1,23 @@
+# Secret scanning (gitleaks, CI job "secrets"). Default rules, plus documented exceptions.
+# Every exception says WHY it is not a leak. Adding one needs the same justification in review.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public LOCAL DEVELOPMENT values from application.yml; startup refuses them when ALLOW_DEVELOPMENT_SECRETS=false (DevelopmentSecretsGuard)"
+regexes = [
+  '''uJpdIXQiVMWS3GxRYbhcbQPA/RSV8pSJsHcBn1vA/0M=''',
+  '''Xy2rGv0aQm9mTqB7w5Zr3kN8pE1sU4dJ6hL0cV2bF9o=''',
+  '''whsec_fake_local_development_only''',
+  '''storeforge-local-secret''',
+]
+
+[[allowlists]]
+description = "Idempotency keys in example requests are UUIDs, not credentials (whole-line match; not path-based, which exempted entire files)"
+regexTarget = "line"
+regexes = ['''^\s*(?i)idempotency-key:\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\s*$''']
+
+[[allowlists]]
+description = "Fake Stripe client secrets in contract-test fixtures (pi_<digits>_secret_<lowercase>); real ones are random base62"
+regexTarget = "line"
+regexes = ['''"client_secret":"pi_[0-9]+_secret_[a-z]+"''']

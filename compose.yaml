@@ -73,6 +73,12 @@ services:
   app:
     profiles: ["app"]
     build: .
+    # Hardened like production should be: nothing in the image is writable, no Linux capabilities,
+    # no privilege escalation (setuid). The JVM only needs /tmp.
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/storeforge
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-storeforge_owner_dev}

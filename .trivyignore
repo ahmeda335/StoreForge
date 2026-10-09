@@ -1,0 +1,4 @@
+# Accepted vulnerabilities for the image scan (CI job "image"). One per line, each with:
+#   reason, who accepted it, and an expiry date (review then: fix or extend).
+# Format: CVE-ID  # reason (owner, until YYYY-MM-DD)
+# Empty: every HIGH/CRITICAL with a fix is fixed (P14, EXP-022).

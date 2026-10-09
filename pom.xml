@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.6</version>
+        <version>4.0.8</version>
         <relativePath/>
     </parent>
 
@@ -28,6 +28,13 @@
         <resilience4j.version>2.4.0</resilience4j.version>
         <wiremock.version>3.13.2</wiremock.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <!-- Security overrides of Spring Boot's managed versions (Trivy, P14, EXP-022). Remove each one once
+             the Spring Boot patch release manages that version or newer. -->
+        <tomcat.version>11.0.25</tomcat.version>               <!-- 3 CRITICAL fixed after Boot 4.0.8's 11.0.24 -->
+        <jackson-bom.version>3.1.7</jackson-bom.version>       <!-- HIGH, fixed in 3.1.7 -->
+        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>  <!-- HIGH, fixed in 2.21.7 (transitive users) -->
+        <httpclient5.version>5.6.4</httpclient5.version>       <!-- with its own httpcore5 5.4.3: HIGH in httpcore5 5.3.x -->
+        <httpcore5.version>5.4.3</httpcore5.version>
     </properties>
 
     <dependencyManagement>
@@ -235,6 +242,13 @@
 
     <build>
         <plugins>
+            <!-- SBOM (P14): CycloneDX JSON of every runtime dependency, configured by the Spring Boot parent.
+                 Written into the jar (META-INF/sbom/application.cdx.json, served at /actuator/sbom on the
+                 private port) and kept per CI build: "are we affected by CVE-X?" becomes a lookup. -->
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

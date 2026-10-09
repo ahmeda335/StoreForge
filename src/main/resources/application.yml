@@ -102,6 +102,9 @@ storeforge:
     backoff-base: 5s
     backoff-cap: 1h
     retention: 7d
+  security:
+    # false in every real deployment: startup then FAILS while a committed development secret is in use.
+    allow-development-secrets: ${ALLOW_DEVELOPMENT_SECRETS:true}
   platform:
     # base64 of 32 random bytes sealing platform admins' TOTP secrets. LOCAL DEVELOPMENT value only.
     mfa-encryption-key: ${PLATFORM_MFA_ENCRYPTION_KEY:Xy2rGv0aQm9mTqB7w5Zr3kN8pE1sU4dJ6hL0cV2bF9o=}
@@ -230,7 +233,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, prometheus, metrics, jobs
+        include: health, info, prometheus, metrics, jobs, sbom   # private port only
   endpoint:
     health:
       probes:

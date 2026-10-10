@@ -1,0 +1,32 @@
+# Operational alerts that aren't SLOs (P16). Runbooks in docs/operations/runbooks.
+groups:
+  - name: storeforge-ops
+    rules:
+      - alert: InstanceDown
+        expr: up{job="storeforge"} == 0
+        for: 2m
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $labels.instance }} ({{ $labels.role }}) has not answered scrapes for 2 minutes"
+          runbook: docs/operations/runbooks/deploy.md
+      - alert: NoWorkerRunning
+        expr: absent(up{job="storeforge", role="worker"} == 1)
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "No worker instance is up: jobs, emails, webhooks and sweepers are not running"
+          runbook: docs/operations/runbooks/dead-jobs.md
+      - alert: DeadJobs
+        expr: max(storeforge_jobs_queue_depth{status="DEAD"}) > 0   # refreshed by the worker only (scheduled), hence max
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "{{ $value }} DEAD jobs need a decision"
+          runbook: docs/operations/runbooks/dead-jobs.md
+      - alert: LoadShedding
+        expr: sum(rate(storeforge_http_requests_shed_total[5m])) > 1
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Instances are refusing requests at capacity (503 overloaded) for 10 minutes: add capacity"
+          runbook: docs/operations/runbooks/slo-burn.md

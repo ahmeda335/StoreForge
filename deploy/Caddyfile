@@ -1,0 +1,33 @@
+# TLS termination and routing for one environment (P16). Locally: Caddy's own CA ("tls internal");
+# on a real host: a wildcard certificate via the DNS challenge for *.{$DOMAIN} (custom domains: on-demand TLS).
+{
+	admin off
+}
+
+# Object storage for presigned URLs. The Host header is passed through: it is part of the signature.
+storage.{$DOMAIN} {
+	tls internal
+	request_body {
+		max_size 11MB
+	}
+	reverse_proxy seaweedfs:8333
+}
+
+{$DOMAIN}, *.{$DOMAIN} {
+	tls internal
+	encode zstd gzip
+	request_body {
+		max_size 2MB
+	}
+	# Two API instances; a failing or draining one is taken out by the active health check, and a
+	# request that can't reach an instance is retried on the other (rolling deploys without errors).
+	# Caddy replaces any client-sent X-Forwarded-For with the real client address (the app trusts only Caddy).
+	reverse_proxy api-1:8080 api-2:8080 {
+		lb_policy round_robin
+		lb_try_duration 5s
+		health_uri /actuator/health/readiness
+		health_port 8081
+		health_interval 2s
+		health_fails 1
+	}
+}

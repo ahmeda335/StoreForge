@@ -1,9 +1,11 @@
 package dev.storeforge.identity.internal.application;
 
 import dev.storeforge.identity.internal.security.AuthProperties;
+import dev.storeforge.shared.crypto.SecretTokens;
 import dev.storeforge.shared.email.EmailAddress;
-import dev.storeforge.shared.ratelimit.RateLimiter;
-import io.micrometer.core.instrument.MeterRegistry;
+import dev.storeforge.shared.ratelimit.DistributedRateLimiter;
+import dev.storeforge.shared.ratelimit.DistributedRateLimiter.Limit;
+import dev.storeforge.shared.ratelimit.RateLimitExceededException;
 import java.time.Duration;
 import org.springframework.stereotype.Component;
 
@@ -14,24 +16,37 @@ import org.springframework.stereotype.Component;
  *   <li>per target email: slows many machines (a botnet) attacking one account.</li>
  * </ul>
  * Account lockout (see LoginService) is the third, slower layer.
+ *
+ * <p>Shared by all instances through Redis (P16): in memory, each API instance had its own budget,
+ * so two instances behind the proxy allowed twice the attempts (EXP-024). Fails open to per-instance
+ * buckets while Redis is down (ADR-020). Email keys are hashed: no addresses in Redis key names.
  */
 @Component
 class AuthRateLimits {
 
-    private final RateLimiter perIp;
-    private final RateLimiter perEmail;
+    private final DistributedRateLimiter limiter;
+    private final Limit perIp;
+    private final Limit perEmail;
 
-    AuthRateLimits(AuthProperties properties, MeterRegistry meterRegistry) {
-        this.perIp = new RateLimiter("auth-ip", properties.rateLimits().perIp(), Duration.ofMinutes(1), meterRegistry);
-        this.perEmail = new RateLimiter("auth-email", properties.rateLimits().perEmail(), Duration.ofMinutes(1), meterRegistry);
+    AuthRateLimits(AuthProperties properties, DistributedRateLimiter limiter) {
+        this.limiter = limiter;
+        this.perIp = new Limit("auth-ip", properties.rateLimits().perIp(), Duration.ofMinutes(1));
+        this.perEmail = new Limit("auth-email", properties.rateLimits().perEmail(), Duration.ofMinutes(1));
     }
 
     void check(String action, String clientIp, EmailAddress email) {
-        perIp.acquire(clientIp);
-        perEmail.acquire(action + ":" + email.value());
+        acquire(perIp, clientIp);
+        acquire(perEmail, action + ":" + SecretTokens.hash(email.value()));
     }
 
     void checkIp(String clientIp) {
-        perIp.acquire(clientIp);
+        acquire(perIp, clientIp);
+    }
+
+    private void acquire(Limit limit, String key) {
+        var decision = limiter.tryConsume(limit, key);
+        if (!decision.allowed()) {
+            throw new RateLimitExceededException(Duration.ofSeconds(decision.retryAfterSeconds()));
+        }
     }
 }

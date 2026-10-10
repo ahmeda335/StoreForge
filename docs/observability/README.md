@@ -40,7 +40,6 @@ flowchart LR
 | `hikaricp_connections_{active,idle,pending,max}`, acquire histogram | Pool saturation is the earliest DB trouble signal | Hikari | Dashboard "Database" row |
 | `storeforge_inventory_reserve_*` (timer) | Reservation latency and outcome | `inventory.reserve` Observation | Prometheus |
 | `storeforge_auth_logins_total{outcome}`, `…_token_refreshes_total{outcome}`, `…_registrations_total` | Auth health and attacks | identity | Dashboard "Business" row |
-| `storeforge_ratelimit_rejected_total{limiter}` | 429s per limiter | `RateLimiter` | Dashboard |
 | `storeforge_inventory_reservations_total{outcome}`, `…_expired_total` | Demand vs. stock-outs; abandoned checkouts | inventory | Dashboard |
 | `storeforge_notifications_emails_total{outcome}` | Email delivery | notifications | Prometheus |
 | `checkout.complete` span + `storeforge_checkout_complete_*` timer | Completion latency; the span parents the reservation and SQL spans | `CheckoutService` Observation | Tempo / Prometheus |

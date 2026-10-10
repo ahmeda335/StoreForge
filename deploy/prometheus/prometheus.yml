@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/slo-rules.yml     # P15: burn-rate alerts (infra/prometheus, tested with promtool in CI)
+  - /etc/prometheus/ops-rules.yml     # P16: instance, job queue and backup health
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: storeforge
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["api-1:8081", "api-2:8081"]
+        labels: {role: api}
+      - targets: ["worker:8081"]
+        labels: {role: worker}

@@ -9,6 +9,12 @@
 #                     list WHICH stores need background work (ids only). See ADR-011.
 set -euo pipefail
 
+# Passwords may come as files (Docker secrets, P16): STOREFORGE_*_PASSWORD_FILE wins over the variable.
+for name in STOREFORGE_OWNER_PASSWORD STOREFORGE_APP_PASSWORD; do
+  file_var="${name}_FILE"
+  if [ -n "${!file_var:-}" ]; then export "$name"="$(cat "${!file_var}")"; fi
+done
+
 : "${STOREFORGE_OWNER_PASSWORD:?must be set}"
 : "${STOREFORGE_APP_PASSWORD:?must be set}"
 

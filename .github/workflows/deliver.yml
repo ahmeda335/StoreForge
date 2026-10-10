@@ -1,0 +1,82 @@
+name: Deliver
+
+# Continuous delivery (P16): after CI passes on main, build the image ONCE, push it by digest, deploy that
+# exact digest to staging, then to production after a human approves (GitHub environment protection rule
+# "required reviewers" on the "production" environment). The same deploy/deploy.sh runs on the host,
+# with smoke tests and automatic rollback (docs/operations/runbooks/deploy.md).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deliver
+  cancel-in-progress: false   # never cancel a deploy halfway
+
+jobs:
+  image:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/storeforge:${{ github.event.workflow_run.head_sha || github.sha }}
+          provenance: mode=max   # build attestation: which commit and workflow produced this image
+          sbom: true
+      - id: ref
+        run: echo "image=ghcr.io/${{ github.repository_owner }}/storeforge@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  staging:
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Deploy to staging (same script as by hand)
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ vars.DEPLOY_HOST }}
+          IMAGE: ${{ needs.image.outputs.image }}
+        run: deploy/remote.sh staging "$IMAGE"
+
+  production:
+    needs: [image, staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production   # protected: required reviewers approve before this job starts
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Deploy to production
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ vars.DEPLOY_HOST }}
+          IMAGE: ${{ needs.image.outputs.image }}
+        run: deploy/remote.sh production "$IMAGE"

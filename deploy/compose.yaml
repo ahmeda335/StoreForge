@@ -1,0 +1,224 @@
+# One StoreForge environment (P16). Run once per environment, as its own project:
+#   docker compose -p storeforge-staging --env-file deploy/env/staging.env -f deploy/compose.yaml up -d
+# The deploy script (deploy/deploy.sh) does that, plus the migrate job, the rolling restart and smoke tests.
+# IMAGE is the app image, by digest in CD (ghcr.io/<owner>/storeforge@sha256:...).
+name: storeforge-${ENVIRONMENT:?}
+
+x-app: &app
+  image: ${IMAGE:?set IMAGE to the app image}
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  mem_limit: 1536m
+  environment: &app-env
+    ENVIRONMENT: ${ENVIRONMENT}
+    JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"
+    SPRING_CONFIG_IMPORT: "optional:configtree:/run/secrets/"
+    DB_URL: jdbc:postgresql://postgres:5432/storeforge
+    REDIS_URL: redis://redis:6379
+    MAIL_HOST: mailpit
+    MAIL_FROM: "StoreForge <no-reply@${DOMAIN}>"
+    STORAGE_ENDPOINT: http://seaweedfs:8333
+    STORAGE_PUBLIC_ENDPOINT: https://storage.${DOMAIN}:${HTTPS_PORT}
+    STORAGE_CREATE_BUCKET: "true"
+    PLATFORM_DOMAIN: ${DOMAIN}
+    AUTH_ISSUER: https://${DOMAIN}
+    APP_BASE_URL: https://admin.${DOMAIN}:${HTTPS_PORT}
+    AUTH_ALLOWED_ORIGINS: https://admin.${DOMAIN}:${HTTPS_PORT}
+    TRUSTED_PROXIES: ${PROXY_IP}/32
+    ALLOW_DEVELOPMENT_SECRETS: "false"
+    AUTH_ALLOW_EPHEMERAL_SIGNING_KEY: "false"
+    FAKE_PROVIDER_WEBHOOK_URL: ""
+  secrets: &app-secrets
+    - DB_APP_PASSWORD
+    - WEBHOOK_ENCRYPTION_KEY
+    - PLATFORM_MFA_ENCRYPTION_KEY
+    - STORAGE_ACCESS_KEY
+    - STORAGE_SECRET_KEY
+    - FAKE_PROVIDER_WEBHOOK_SECRET
+    - AUTH_SIGNING_JWK
+  healthcheck:
+    test: ["CMD", "curl", "-sf", "http://localhost:8081/actuator/health/readiness"]
+    interval: 5s
+    timeout: 3s
+    retries: 3
+    start_period: 60s
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+
+services:
+  caddy:
+    image: caddy:2.11.4
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "${HTTPS_PORT}:443"
+      - "${HTTP_PORT}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    networks:
+      default:
+        ipv4_address: ${PROXY_IP}
+
+  # Release job: migrations as the owner role, then exit. Not started by "up" (profile release).
+  migrate:
+    <<: *app
+    profiles: [release]
+    restart: "no"
+    environment:
+      <<: *app-env
+      SPRING_PROFILES_ACTIVE: migrate
+    secrets: [DB_APP_PASSWORD, DB_OWNER_PASSWORD, WEBHOOK_ENCRYPTION_KEY, PLATFORM_MFA_ENCRYPTION_KEY, STORAGE_ACCESS_KEY,
+              STORAGE_SECRET_KEY, FAKE_PROVIDER_WEBHOOK_SECRET, AUTH_SIGNING_JWK]
+    healthcheck: {disable: true}
+
+  api-1:
+    <<: *app
+    environment:
+      <<: *app-env
+      SPRING_PROFILES_ACTIVE: api
+  api-2:
+    <<: *app
+    environment:
+      <<: *app-env
+      SPRING_PROFILES_ACTIVE: api
+  worker:
+    <<: *app
+    environment:
+      <<: *app-env
+      SPRING_PROFILES_ACTIVE: worker
+
+  postgres:
+    build: ./postgres
+    image: storeforge-postgres:17.10-walg3.0.9
+    restart: unless-stopped
+    shm_size: 256m
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "track_io_timing=on",
+              "-c", "archive_mode=on", "-c", "archive_timeout=60",
+              "-c", "archive_command=walg-env wal-push %p", "-c", "wal_level=replica", "-c", "max_wal_senders=3"]
+    environment:
+      POSTGRES_DB: storeforge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+      STOREFORGE_OWNER_PASSWORD_FILE: /run/secrets/DB_OWNER_PASSWORD
+      STOREFORGE_APP_PASSWORD_FILE: /run/secrets/DB_APP_PASSWORD
+      WALG_S3_PREFIX: s3://storeforge-backups/${ENVIRONMENT}
+      AWS_ENDPOINT: http://seaweedfs:8333
+      AWS_S3_FORCE_PATH_STYLE: "true"
+      AWS_REGION: us-east-1
+    secrets: [POSTGRES_PASSWORD, DB_OWNER_PASSWORD, DB_APP_PASSWORD, BACKUP_ACCESS_KEY, BACKUP_SECRET_KEY]
+    volumes:
+      - ../infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d storeforge"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      seaweedfs: {condition: service_started}
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-ttl"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.97
+    restart: unless-stopped
+    command: ["server", "-s3", "-s3.config=/run/secrets/s3.json", "-dir=/data", "-volume.max=0", "-master.volumeSizeLimitMB=256"]
+    secrets: [s3.json]
+    volumes:
+      - seaweedfs-data:/data
+
+  # Local stand-in for an SMTP relay: application mail and alert notifications (UI on the ops port).
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${OPS_PORT_PREFIX}8025:8025"
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=15d", "--web.enable-lifecycle"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../infra/prometheus/slo-rules.yml:/etc/prometheus/slo-rules.yml:ro
+      - ./prometheus/ops-rules.yml:/etc/prometheus/ops-rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${OPS_PORT_PREFIX}9090:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.0
+    restart: unless-stopped
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:${OPS_PORT_PREFIX}9093:9093"
+
+  grafana:
+    image: grafana/grafana:13.2.2
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/GRAFANA_ADMIN_PASSWORD
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    secrets: [GRAFANA_ADMIN_PASSWORD]
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:${OPS_PORT_PREFIX}3000:3000"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${SUBNET}
+          ip_range: ${IP_RANGE}   # dynamic addresses from the upper half: PROXY_IP (fixed, trusted by the app) stays free
+
+volumes:
+  caddy-data:
+  postgres-data:
+  seaweedfs-data:
+  prometheus-data:
+
+secrets:
+  POSTGRES_PASSWORD:
+    file: ./secrets/${ENVIRONMENT}/POSTGRES_PASSWORD
+  DB_OWNER_PASSWORD:
+    file: ./secrets/${ENVIRONMENT}/DB_OWNER_PASSWORD
+  DB_APP_PASSWORD:
+    file: ./secrets/${ENVIRONMENT}/DB_APP_PASSWORD
+  WEBHOOK_ENCRYPTION_KEY:
+    file: ./secrets/${ENVIRONMENT}/WEBHOOK_ENCRYPTION_KEY
+  PLATFORM_MFA_ENCRYPTION_KEY:
+    file: ./secrets/${ENVIRONMENT}/PLATFORM_MFA_ENCRYPTION_KEY
+  STORAGE_ACCESS_KEY:
+    file: ./secrets/${ENVIRONMENT}/STORAGE_ACCESS_KEY
+  STORAGE_SECRET_KEY:
+    file: ./secrets/${ENVIRONMENT}/STORAGE_SECRET_KEY
+  BACKUP_ACCESS_KEY:
+    file: ./secrets/${ENVIRONMENT}/BACKUP_ACCESS_KEY
+  BACKUP_SECRET_KEY:
+    file: ./secrets/${ENVIRONMENT}/BACKUP_SECRET_KEY
+  FAKE_PROVIDER_WEBHOOK_SECRET:
+    file: ./secrets/${ENVIRONMENT}/FAKE_PROVIDER_WEBHOOK_SECRET
+  AUTH_SIGNING_JWK:
+    file: ./secrets/${ENVIRONMENT}/AUTH_SIGNING_JWK
+  GRAFANA_ADMIN_PASSWORD:
+    file: ./secrets/${ENVIRONMENT}/GRAFANA_ADMIN_PASSWORD
+  s3.json:
+    file: ./secrets/${ENVIRONMENT}/s3.json

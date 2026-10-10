@@ -10,3 +10,5 @@ out/
 load/data/
 load/results/
 load/tools/async-profiler/
+deploy/secrets/
+deploy/state/

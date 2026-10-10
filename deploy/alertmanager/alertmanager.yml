@@ -1,0 +1,33 @@
+# Routing (P16): pages go out at once, tickets are batched. Locally both are emails to Mailpit; in production
+# "page" goes to the on-call channel (pager/chat webhook) and "ticket" to the team's queue.
+global:
+  smtp_smarthost: mailpit:1025
+  smtp_from: alerts@storeforge.localhost
+  smtp_require_tls: false
+
+route:
+  receiver: tickets
+  group_by: [alertname, api, role]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    - matchers: [severity="page"]
+      receiver: on-call
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: on-call
+    email_configs:
+      - to: oncall@storeforge.localhost
+        send_resolved: true
+  - name: tickets
+    email_configs:
+      - to: ops-tickets@storeforge.localhost
+        send_resolved: true
+
+inhibit_rules:
+  # A down instance explains its own errors: don't also page for the burn.
+  - source_matchers: [alertname="InstanceDown"]
+    target_matchers: [severity="ticket"]

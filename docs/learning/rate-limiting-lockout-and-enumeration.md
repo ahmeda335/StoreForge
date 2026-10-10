@@ -14,7 +14,7 @@
 - **Enumeration resistance:** registration, password reset and resend always answer `202` with the same body. Login answers `invalid_credentials` for unknown email, wrong password, locked and disabled. The *real* reason is recorded in metrics, not in responses. Timing parity: unknown emails are checked against a dummy Argon2 hash.
 - Lockout counters use **atomic SQL** (`count = count + 1`): a read-modify-write would lose increments exactly under the concurrent attack it should stop.
 
-**Project usage.** `RateLimiter` (shared), `AuthRateLimits`, `UserLoginCounters`, `LoginService`, `RegistrationService`.
+**Project usage.** `DistributedRateLimiter` (Redis, shared by all instances since P16; it was per-instance memory before, EXP-024), `AuthRateLimits`, `UserLoginCounters`, `LoginService`, `RegistrationService`.
 
 **Configuration.** `AUTH_RATE_LIMIT_PER_IP` (30/min), `AUTH_RATE_LIMIT_PER_EMAIL` (10/min), `storeforge.auth.lockout.*` (5 failures → 1 min doubling to 1 h).
 
@@ -24,8 +24,8 @@
 - Lockout as a DoS: attackers can still lock a victim for up to an hour. Password reset clears the lock.
 - Email is still enumerable via the "account exists" email (but only to the inbox owner, which is fine).
 
-**Testing.** `RateLimiterTest`; `LoginIT` (lockout, 429 with `Retry-After`, uniform errors); `RegistrationIT` (identical responses).
+**Testing.** `LoginIT` (lockout, 429 with `Retry-After`, uniform errors); `RegistrationIT` (identical responses).
 
-**Observability.** `storeforge_ratelimit_rejected_total{limiter}`, `storeforge_auth_logins_total{outcome}`.
+**Observability.** `storeforge_ratelimit_decisions_total{limit="auth-ip"|"auth-email", outcome="limited"}` (shared via Redis since P16, EXP-024), `storeforge_auth_logins_total{outcome}`.
 
 **When NOT to use it.** Don't apply strict per-IP limits to endpoints legitimately used by shared IPs at scale (corporate NAT, mobile carriers) without measuring. Storefront limits (P12) are tuned separately.

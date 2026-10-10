@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: storeforge
+    folder: StoreForge
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

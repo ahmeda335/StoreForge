@@ -19,6 +19,7 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [012](ADR-012-observability-pipeline.md) | Micrometer Observation → OpenTelemetry, OTLP push, grafana/otel-lgtm locally | Accepted | P6 |
 | [013](ADR-013-checkout-and-idempotency.md) | Checkout scope (guest customers, order in P8), expectedTotal guard, transactional idempotency | Accepted | P7 |
 | [014](ADR-014-orders-lifecycle.md) | Order state machine, gapless per-store numbers, the order owns the payment deadline, locked transitions | Accepted | P8 |
+| [032](ADR-032-failure-semantics.md) | Dependency outages answer 503 + Retry-After (WARN), bugs 500 (ERROR); bounded PostgreSQL driver timeouts; SLO ratios not recorded without traffic; latency page on > 50 % slow | Accepted | P17 |
 | [031](ADR-031-single-host-production-and-delivery.md) | Production on one Docker host per environment: Caddy, api×2 + worker + migrate job, WAL archiving; delivery by digest with smoke tests and automatic rollback; alert routing | Accepted | P16 |
 | [030](ADR-030-bounded-concurrency-and-virtual-threads.md) | Keep virtual threads; bound work in progress (64 in flight, then 503) and never block inside a monitor or cache compute | Accepted | P15 |
 | [029](ADR-029-supply-chain-and-secrets.md) | Supply chain: gitleaks + Trivy image gate + SBOM, pinned actions/images, patched dependencies, development secrets refused at startup | Accepted | P14 |

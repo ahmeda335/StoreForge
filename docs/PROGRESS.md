@@ -571,3 +571,53 @@ Built and verified on one machine with **staging and production side by side** (
 - **partial failures:** slow (not down) dependencies, disk full, clock skew, a node killed mid-transaction, a worker killed mid-job;
 - what the alerts and runbooks from P15/P16 should say during each experiment (are they useful at 3 a.m.?);
 - [roadmap P17](blueprint/30-roadmap.md).
+
+## P17: Failure experiment suite (as built)
+
+Faults injected into **staging under steady traffic**, with a hypothesis, an abort path and a data-invariant check per run ([deploy/chaos/](../deploy/chaos/README.md), [EXP-025](experiments/EXP-025-failure-suite-on-staging.md), [ADR-032](decisions/ADR-032-failure-semantics.md)).
+
+**What exists**
+- **Chaos overlay:**
+  - Toxiproxy 2.12.0 between the app and PostgreSQL and Redis (`COMPOSE_EXTRA` in `deploy.sh`);
+  - `run.sh <experiment>`: steady traffic, inject, heal, report;
+  - steady traffic: browse 3/s and checkouts 6/min, under every per-address limit;
+  - `invariants.sql`: orders, outbox, checkouts, totals, inventory vs reservations, job leases;
+  - Ctrl-C/SIGTERM heals before exiting.
+- **Experiments:** PostgreSQL killed, PostgreSQL slowed (+200 ms), Redis killed, `store_counters` locked, worker SIGKILL, storage stopped, one client flooding one store. The remaining catalogue entries map to earlier tests and experiments (table in EXP-025).
+
+**Results**
+
+| Fault | Users | Data |
+|---|---|---|
+| PostgreSQL down 90 s | fast **503 + Retry-After**; back **2–3 s** after PostgreSQL is ready; paged after 59 s | intact |
+| PostgreSQL +200 ms | no errors, most requests > 1 s, no pool starvation | intact |
+| Redis down 2 min | nothing failed; limits per instance meanwhile | intact |
+| Order counter locked 60 s | only completions fail (503 after `statement_timeout`), browsing unaffected | intact |
+| Worker SIGKILL | nothing visible; jobs and emails complete after restart | intact |
+| Storage down | uploads 503 `storage_unavailable`; shopping unaffected | intact |
+| One client at 200/s | that client 429; others unaffected | intact |
+
+**Fixed (found by the experiments):**
+- database outages, lock and statement timeouts, lost connections and storage outages answered **500** with ERROR traces; now 503 + `Retry-After`, logged at WARN. This includes a rollback on an evicted connection, where Hikari's exception replaces the original;
+- the pool took **~41 s** to recover after PostgreSQL was back; driver connect, login and socket timeouts cut it to 2–3 s;
+- **pages were blind for an hour (tickets for six) after any idle stretch:** 0/0 = NaN poisoned the averaged ratios. Ratios are now recorded only when there are requests;
+- the **latency page** could not fire for ~43 min on a total slowdown (5 % budget, max 20× burn); it now pages on > 50 % slow over 15 min and 5 min.
+
+**Tests: 381 total** (135 unit + 246 integration). New: `ApiExceptionHandlerTest` (MockMvc through the real handler), `S3ObjectStorageFailureTest`, and two promtool tests (idle stretch, total slowdown). Mutation-checked.
+
+**Known limitations:**
+- **No per-store limit:** rate limits are per client address and per credential. Many addresses flooding one store are stopped only by global load shedding (P15), which affects every tenant. Not tested: one host can't present many addresses through Caddy.
+- **No alert on failed WAL archiving:** a long storage outage delays backups silently, and `pg_wal` grows. There is no PostgreSQL exporter in the stack.
+- **Lease reclaim not exercised on staging:** the SIGKILL hit when no job was mid-run (jobs take milliseconds). Covered by P9 and P11 tests.
+- **Not run:** disk full, clock skew, a network partition between the app instances. The slow payment provider was not run on staging (in-process fake; covered by P10 tests).
+- Single runs per experiment, except PostgreSQL killed (5 runs) and Redis killed (2).
+
+**Study before P18** (scaling & selective extraction):
+- **read replicas:** streaming replication, replication lag, read-your-writes, routing reads (storefront) vs writes; what RLS and `SET LOCAL` mean on a replica;
+- **PgBouncer:** transaction pooling vs session state (`SET LOCAL` is fine, `SET` and prepared statements are not), pool sizing across instances;
+- **partitioning:** declarative range partitions for `audit_log`, `jobs` and outbox; partition pruning; dropping old partitions instead of `DELETE`;
+- **extraction:** when a module earns its own process (the webhook dispatcher), the outbox as the seam, and what you lose (transactions across the boundary, simple deploys);
+- **messaging:** RabbitMQ vs Kafka (+ Debezium CDC); the bar is "measured need", not fashion;
+- **Kubernetes:** what Deployments, readiness probes, PodDisruptionBudgets and HPA replace from `deploy.sh`;
+- **sharding / Citus:** tenant as distribution key (the schema already carries `store_id` everywhere);
+- [roadmap P18](blueprint/30-roadmap.md).

@@ -2,7 +2,7 @@
 
 A multi-tenant commerce platform (Shopify-inspired), built as a long-term learning project in backend engineering, SaaS architecture, reliability, security, observability and production operations.
 
-> Status: **Phase 16 (Production infrastructure & CD: staging/production stacks, zero-downtime deploys with rollback, backups, alerting) complete.** Next: P17 (failure experiment suite). See [docs/PROGRESS.md](docs/PROGRESS.md).
+> Status: **Phase 17 (Failure experiment suite: fault injection on staging, 503 semantics for dependency outages, faster recovery, alert fixes) complete.** Next: P18 (scaling & selective extraction). See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Quick start
 

@@ -1,7 +1,7 @@
 # Runbook: Object storage (product images) and storefront search
 
 ## Symptoms
-- Merchants can't add images: `upload_missing` although they uploaded, 5xx on `…/images/uploads` or `…/completion`, or storage returns 403 on the PUT.
+- Merchants can't add images: `upload_missing` although they uploaded, **503 `storage_unavailable`** (storage down or answering 5xx; `Retry-After: 30`), 502 from the proxy on the PUT to the storage host, other 5xx on `…/images/uploads` or `…/completion`, or storage returns 403 on the PUT.
 - `storeforge_storage_requests_seconds_count{outcome="error"}` rising; DEAD jobs of type `storage.delete-object`.
 - Storefront images broken (403 / expired URLs).
 - Storefront search slow or timing out (`QueryTimeoutException` in logs, p95 of `/storefront/v1/search` above budget).
@@ -15,7 +15,7 @@
 6. **Slow search:** `EXPLAIN (ANALYZE)` **as `storeforge_app` inside a tenant transaction** (see [EXP-018](../../experiments/EXP-018-search-at-scale-under-rls.md)). Check: the plan uses `search_product_matches`; no `Rows Removed by Filter` in the hundreds of thousands; catalog size of the store (`SELECT count(*) FROM products WHERE store_id = …`); `ANALYZE products` after bulk imports.
 
 ## Act
-- **Storage outage:** restore it; uploads can be retried by clients (start again). Nothing else in StoreForge depends on storage. DEAD deletion jobs can be retried once it's back ([dead-jobs](dead-jobs.md)).
+- **Storage outage:** restore it; uploads can be retried by clients (start again). SeaweedFS's S3 API answers ~10 s after the container starts. Shopping is unaffected (EXP-025); **WAL archiving and base backups also go to this storage**: check `SELECT failed_count, last_failed_time FROM pg_stat_archiver` after a long outage. Segments wait in `pg_wal` until archived, so a long outage grows the database disk. DEAD deletion jobs can be retried once it's back ([dead-jobs](dead-jobs.md)).
 - **Orphan objects** (an object under `stores/{store}/products/…` without a `product_images` row): safe to delete. Never delete objects that still have a row.
 - **Search:** for one huge catalog, consider the facet cache described in [ADR-025](../../decisions/ADR-025-search-in-postgresql-and-no-cache.md) (not built). Don't disable RLS on `products` to "make it fast".
 - **Never** make the bucket public or reuse its credentials outside the app.

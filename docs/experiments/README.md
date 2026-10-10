@@ -4,6 +4,7 @@ Planned catalogue: [blueprint/25-failure-experiments.md](../blueprint/25-failure
 
 | ID | Experiment | Phase | Result |
 |---|---|---|---|
+| [EXP-025](EXP-025-failure-suite-on-staging.md) | Failure suite on staging: kill/slow PostgreSQL, kill Redis, lock, worker SIGKILL, storage down, noisy client | P17 | Data intact in every run; dependency outages were 500s (now 503 + Retry-After); pool recovery 41 s → 2–3 s; pages blind for 1 h after idle time; latency page too slow |
 | [EXP-001](EXP-001-database-unavailable-p1.md) | Database unavailable (stop/start, start while down, graceful shutdown) | P1 | As expected; probe timeout must be > 3s |
 | [EXP-024](EXP-024-production-like-delivery.md) | Deploys under traffic, broken releases, restore drill, instance-down alert, production from scratch | P16 | 0 user-visible errors in every deploy and failed deploy; restore identical in 10 s; page in 2m17s; login limits were per instance (fixed) |
 | [EXP-023](EXP-023-load-baseline.md) | Baseline, capacity steps, overload; 4 fixes measured | P15 | 5× load deadlocked (pinned carriers) then died in GC → 754 req/s with shedding; handle lookup 3.7 → 0.05 ms; search match −64 % |

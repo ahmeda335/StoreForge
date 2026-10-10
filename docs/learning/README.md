@@ -6,6 +6,7 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 
 | Note | Introduced | Topic |
 |---|---|---|
+| [fault-injection-and-failure-semantics](fault-injection-and-failure-semantics.md) | P17 | Steady state and hypotheses, 500 vs 503, layered timeouts, recovery measured from the dependency, alert-maths edge cases |
 | [postgresql-roles-and-least-privilege](postgresql-roles-and-least-privilege.md) | P1 | PostgreSQL roles, schema ownership, default privileges, role-level timeouts |
 | [flyway-migrations](flyway-migrations.md) | P1 | Versioned schema migrations |
 | [docker-and-compose](docker-and-compose.md) | P1 | Images, multi-stage builds, Compose, init scripts |

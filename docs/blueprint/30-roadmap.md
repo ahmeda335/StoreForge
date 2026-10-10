@@ -133,6 +133,8 @@ Why this order differs from the prompt's sketch: **observability (P6) comes befo
 - **Features:** seed-data generator, k6 scenario suite, baselines, `pg_stat_statements`, async-profiler runs, SLO dashboards + burn-rate alerts.
 - **DoD:** documented baselines and at least three measured improvements (with before/after).
 
+- **As built (P15):** [performance](../performance/README.md), EXP-023, ADR-030. No async-profiler finding was needed (the bottlenecks were the database and concurrency); SLO dashboard deferred to P16 with alert routing.
+
 ## P16 — Production infrastructure and CD
 - **Features:** VM or managed container deployment, reverse proxy + TLS, separate api/worker roles, secrets management, migration job, staging + prod environments, smoke tests, rollback procedure, backups + restore drill, alerts routed (e.g. email/Telegram/Slack).
 

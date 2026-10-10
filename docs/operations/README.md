@@ -5,6 +5,7 @@ Runbooks describe how to diagnose and act on a symptom. Every alert (P15/P16) li
 | Runbook | Symptom |
 |---|---|
 | [database-unavailable](runbooks/database-unavailable.md) | Readiness DOWN with `db` component DOWN; 503s; Hikari timeouts |
+| [slo-burn](runbooks/slo-burn.md) | SLO burn-rate alerts: errors or latency spending the budget too fast |
 | [secrets](runbooks/secrets.md) | Startup refuses development secrets; gitleaks failures; leaked secrets; every client shows the proxy's address |
 | [platform-admin](runbooks/platform-admin.md) | Granting/revoking platform admins; lost authenticator; suspicious platform sessions |
 | [object-storage-and-search](runbooks/object-storage-and-search.md) | Image uploads failing, storage errors, DEAD deletion jobs, slow storefront search |

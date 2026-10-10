@@ -27,6 +27,9 @@ Prerequisite map (what to study before each phase): [blueprint/27-learning-map.m
 | [money](money.md) | P4 | Minor units, strict parsing, decimal strings on the wire |
 | [postgresql-locking-and-conditional-updates](postgresql-locking-and-conditional-updates.md) | P5 | MVCC, EvalPlanQual, deadlocks and lock ordering, SKIP LOCKED, pool size as race width |
 | [security-definer-functions](security-definer-functions.md) | P5 | Controlled privilege escalation, search_path hijacking, least privilege |
+| [load-testing-open-and-closed-models](load-testing-open-and-closed-models.md) | P15 | Open vs. closed models, percentiles, cliffs, Little's law, paired runs |
+| [virtual-threads-pinning-and-backpressure](virtual-threads-pinning-and-backpressure.md) | P15 | Carriers, pinning, hidden monitors, load shedding, dumps that show virtual threads |
+| [slos-and-error-budgets](slos-and-error-budgets.md) | P15 | SLIs/SLOs, error budgets, multi-window burn rates, testing alert rules |
 | [trusted-proxies-and-client-addresses](trusted-proxies-and-client-addresses.md) | P14 | X-Forwarded-For, trusted proxies, IPv6 /64, why address-based limits need them |
 | [totp-and-step-up-authentication](totp-and-step-up-authentication.md) | P14 | HOTP/TOTP, windows, replay, attempt limits, sealed secrets, step-up audiences |
 | [browser-security-headers-and-cors](browser-security-headers-and-cors.md) | P14 | CSP (hashes, form-action), framing, referrer, CORS with and without credentials |

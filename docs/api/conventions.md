@@ -44,6 +44,7 @@ Content-Type: application/problem+json
 ## Limits and browser rules (P14, [ADR-028](../decisions/ADR-028-http-edge-hardening.md))
 - **Unknown JSON fields are rejected** (400 `bad_request`): a misspelled or extra field is a client bug, never silently ignored.
 - **Request bodies:** at most 1 MB (`413 payload_too_large`).
+- **Overload:** each instance processes a bounded number of requests at once; beyond it `503 overloaded` with `Retry-After: 1`, answered immediately (P15, [ADR-030](../decisions/ADR-030-bounded-concurrency-and-virtual-threads.md)). Retry with backoff.
 - **Rate limits:** developer API per credential/store (P12); storefront per client address (IPv6: per /64): every request 300/min, cart creation 20/min, checkout completion 10/min, discount codes 10 per 10 min, search 60/min. `429 rate_limited` with `Retry-After`.
 - **Client address:** taken from `X-Forwarded-For` only when the request comes through a configured proxy (`TRUSTED_PROXIES`).
 - **CORS:** `/auth` and `/admin` only from the configured admin origins (with credentials); `/storefront` from any origin, without credentials; `/api` (server-to-server) none. Rejected: `403 cross_site_request_rejected`.

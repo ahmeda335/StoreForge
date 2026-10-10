@@ -19,6 +19,7 @@ Template: [TEMPLATE.md](TEMPLATE.md). Status values: Proposed · Accepted · Sup
 | [012](ADR-012-observability-pipeline.md) | Micrometer Observation → OpenTelemetry, OTLP push, grafana/otel-lgtm locally | Accepted | P6 |
 | [013](ADR-013-checkout-and-idempotency.md) | Checkout scope (guest customers, order in P8), expectedTotal guard, transactional idempotency | Accepted | P7 |
 | [014](ADR-014-orders-lifecycle.md) | Order state machine, gapless per-store numbers, the order owns the payment deadline, locked transitions | Accepted | P8 |
+| [030](ADR-030-bounded-concurrency-and-virtual-threads.md) | Keep virtual threads; bound work in progress (64 in flight, then 503) and never block inside a monitor or cache compute | Accepted | P15 |
 | [029](ADR-029-supply-chain-and-secrets.md) | Supply chain: gitleaks + Trivy image gate + SBOM, pinned actions/images, patched dependencies, development secrets refused at startup | Accepted | P14 |
 | [028](ADR-028-http-edge-hardening.md) | HTTP edge: forwarded headers only from trusted proxies, 1 MB bodies, strict CSP/headers, CORS per API, storefront abuse limits via Redis | Accepted | P14 |
 | [027](ADR-027-customer-data-export-and-erasure.md) | Customer data export/erasure: per-module PersonalData contract in one tenant transaction; placeholders, accounting kept; verified by searching every column | Accepted | P14 |

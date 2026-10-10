@@ -17,8 +17,9 @@
 | P12 Developer platform (+ Redis) | ✅ Done (2026-10-08) | See below |
 | P13 Commerce extensions | ✅ Done (2026-10-08) | See below |
 | P14 Security hardening | ✅ Done (2026-10-09) | See below |
-| P15 Load testing & performance | ⏭ Next | Study list below |
-| P16–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P15 Load testing & performance | ✅ Done (2026-10-10) | See below |
+| P16 Production infrastructure & CD | ⏭ Next | Study list below |
+| P17–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -443,3 +444,78 @@ Mutation-checked: [EXP-021](experiments/EXP-021-platform-and-privacy-mutations.m
 - **JVM:** async-profiler (CPU, allocation, wall-clock flame graphs), GC logs, virtual threads and pinning;
 - **seed data at realistic scale:** the EXP-018 generator as a starting point;
 - [roadmap P15](blueprint/30-roadmap.md), [blueprint 21](blueprint/21-reliability-performance.md).
+
+## P15: Load testing & performance (as built)
+
+Built in steps:
+1. tooling and baseline;
+2. capacity steps;
+3. diagnose and fix whatever broke, measuring each fix;
+4. SLOs and alerting;
+5. docs.
+
+[Performance overview](performance/README.md).
+
+**What exists**
+- **Load environment** ([load/README](../load/README.md)):
+  - a separate `storeforge_load` database;
+  - 50 tenants created through the API, with ~400k orders of history (bulk SQL, resumable);
+  - a fixed-JVM launcher;
+  - k6 2.3.0 open-model mix (browse, search, full checkout, admin, developer feed; 40 % on the largest store; one client address per iteration) with the SLOs as thresholds;
+  - `load/run.sh` stores the k6 summary, top `pg_stat_statements` and pool/JVM metrics per run;
+  - pinned async-profiler.
+- **SLOs** ([slos.md](performance/slos.md)):
+  - storefront reads p95 < 200 ms, p99 < 500 ms; checkout completion p95 < 500 ms; admin and developer p95 < 300 ms; 99.9 % availability;
+  - histogram buckets at the thresholds;
+  - burn-rate alert rules with promtool tests in CI ([alerting.md](performance/alerting.md), [runbook](operations/runbooks/slo-burn.md)).
+- **Fixes** ([EXP-023](experiments/EXP-023-load-baseline.md), [ADR-030](decisions/ADR-030-bounded-concurrency-and-virtual-threads.md)):
+  - store lookup outside the cache's lock (a deadlock of pinned virtual threads);
+  - load shedding (64 in flight, then 503 + Retry-After);
+  - product-by-handle on a text index under RLS (V20);
+  - stored normalized search title (V21);
+  - index-friendly citext lookups where there's no RLS (login, store domains), guarded by `CitextComparisonTest`;
+  - object storage no longer blocks startup.
+
+**Baseline (final):** SCALE 1 (173 req/s) within every objective (storefront p95 36 ms, checkout p95 28 ms). Capacity on the shared 12-core laptop is about SCALE 1.5–2 (~300 req/s). Beyond it the instance sheds load and stays healthy (SCALE 5: 754 req/s, 0 dropped iterations).
+
+**Measured improvements:**
+
+| Fix | Before | After |
+|---|---|---|
+| Deadlock at 5× load | permanently hung instance | serving |
+| Load shedding (SCALE 5) | 252 req/s, 36k dropped, 1,432 full GCs | 754 req/s, 0 dropped, 0 full GCs |
+| Load shedding (SCALE 3) | storefront p95 3,029 ms | 224 ms |
+| Handle lookup | 3.67 ms | 0.05 ms |
+| Search match | 37.5 ms | 13.7 ms (−29 % connection time) |
+
+A bigger pool (20) measurably didn't help: the database CPU is the limit.
+
+**Tests: 370 total** (124 unit + 246 integration). New: `CachingStoreDirectoryTest`, `ConcurrencyLimitFilterTest`, `CitextComparisonTest`; promtool rule tests (3 cases) in CI.
+
+**Bugs found:**
+- a deadlock under load (virtual threads pinned in a cache loader);
+- unbounded concurrency filling the heap;
+- citext comparisons that could never use an index (under RLS: not even with a cast);
+- 9 M redundant `unaccent` calls per 2 minutes;
+- the app wouldn't start without object storage.
+
+In the tooling:
+- temp tables without ANALYZE (seeding took minutes);
+- a VU-level client address tripping our own rate limits;
+- `docker compose exec` swallowing a loop's stdin.
+
+**Known limitations:**
+- Numbers come from one shared machine (app, database and k6 together). Production capacity needs P16's environment.
+- Search remains the main database cost (common words rank thousands of matches; facets over all).
+- The load-shedding limit is static per instance.
+- JavaMail still pins carriers in the email job: JDK 25 recommended (JEP 491).
+- The SLO alert rules are tested but not yet loaded by a Prometheus with routing (P16). No SLO dashboard yet.
+
+**Study before P16** (production infrastructure & CD):
+- **container deployment:** a VM with Docker Compose vs. managed containers; health checks, rolling restarts, graceful shutdown with in-flight requests;
+- **reverse proxy + TLS:** Caddy/Traefik/nginx, Let's Encrypt, forwarding headers and `TRUSTED_PROXIES` (ADR-028);
+- **separate API and worker roles** (jobs, sweepers, relays) and what that means for scheduling and the pool;
+- **secrets management:** platform secret stores, rotation; the `ALLOW_DEVELOPMENT_SECRETS=false` checklist ([runbook](operations/runbooks/secrets.md));
+- **database operations:** migrations as a release step, backups (PITR) and a restore drill;
+- **alert routing** (Alertmanager), the SLO rules from P15; staging vs. production; smoke tests and rollback;
+- [roadmap P16](blueprint/30-roadmap.md), [blueprint 19](blueprint/19-infrastructure-cicd.md).

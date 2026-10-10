@@ -47,6 +47,8 @@ flowchart LR
 | `storeforge_checkouts_completions_total{outcome}` | `completed` / `total_changed` (price changed during checkout) | `CheckoutService` | Prometheus |
 | `storeforge_orders_created_total`, `storeforge_orders_paid_total{method}`, `storeforge_orders_cancelled_total{reason}` | Sales funnel and expiry rate (`reason="payment_timeout"` rising → payment trouble) | `DefaultOrders`, `OrderService` | Prometheus |
 | Order timeline (`order_events`) | Per-order history for support | `OrderRecords` | `GET …/orders/{id}` |
+| `storeforge_http_requests_in_flight` | Requests being processed (load-shedding limit, default 64) | `ConcurrencyLimitFilter` | Prometheus |
+| `storeforge_http_requests_shed_total` | Requests refused with 503 `overloaded` because the limit was reached | `ConcurrencyLimitFilter` | Prometheus |
 | `storeforge_ratelimit_decisions_total{limit,backend,outcome}` | Rate-limit decisions: `limit="developer-api"` (P12) or a storefront limit (`storefront`, `cart-creation`, `checkout-completion`, `discount-attempts`, `search`, P14); `backend="local"` means Redis is bypassed | `ApiRateLimiter`, `DistributedRateLimiter` | Prometheus |
 | `resilience4j_circuitbreaker_state{name="redis"}` | Redis breaker | Resilience4j | Prometheus |
 | `storeforge_usage_dropped_total` | Usage increments lost (Redis down) | `UsageCounters` | Prometheus |

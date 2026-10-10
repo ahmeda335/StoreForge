@@ -1,0 +1,26 @@
+# Chaos overlay for STAGING (P17): the app reaches PostgreSQL and Redis through Toxiproxy, so experiments
+# can add latency, cut bandwidth or reset connections without touching the services themselves.
+#   COMPOSE_EXTRA=chaos/compose.chaos.yaml deploy/deploy.sh staging <image>
+# Toxiproxy API on 127.0.0.1:<prefix>8474. Never in production.
+services:
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    restart: unless-stopped
+    command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
+    volumes:
+      - ./chaos/toxiproxy.json:/config/toxiproxy.json:ro
+    ports:
+      - "127.0.0.1:${OPS_PORT_PREFIX}8474:8474"
+  migrate:
+    environment: &through-toxiproxy
+      DB_URL: jdbc:postgresql://toxiproxy:15432/storeforge
+      REDIS_URL: redis://toxiproxy:16379
+  api-1:
+    environment: *through-toxiproxy
+    depends_on: [toxiproxy]
+  api-2:
+    environment: *through-toxiproxy
+    depends_on: [toxiproxy]
+  worker:
+    environment: *through-toxiproxy
+    depends_on: [toxiproxy]

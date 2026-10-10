@@ -19,7 +19,8 @@ if [ "$TARGET" = "--rollback" ]; then
   [ -n "$TARGET" ] || { echo "nothing to roll back to"; exit 1; }
 fi
 export IMAGE="$TARGET"
-compose() { docker compose -p "storeforge-$ENV" --env-file "env/$ENV.env" -f compose.yaml "$@"; }
+# COMPOSE_EXTRA: an overlay file (e.g. chaos/compose.chaos.yaml for experiments in staging).
+compose() { docker compose -p "storeforge-$ENV" --env-file "env/$ENV.env" -f compose.yaml ${COMPOSE_EXTRA:+-f "$COMPOSE_EXTRA"} "$@"; }
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 
 wait_healthy() {   # service, timeout seconds
@@ -55,7 +56,7 @@ rollback() {
 }
 
 log "deploying $IMAGE to $ENV (current: ${PREVIOUS:-none})"
-compose up -d postgres redis seaweedfs mailpit caddy prometheus alertmanager grafana
+compose up -d postgres redis seaweedfs mailpit caddy prometheus alertmanager grafana ${COMPOSE_EXTRA:+toxiproxy}
 wait_healthy postgres 120
 for bucket in storeforge-media storeforge-backups; do
   echo "s3.bucket.create -name $bucket" | compose exec -T seaweedfs weed shell >/dev/null 2>&1 || true

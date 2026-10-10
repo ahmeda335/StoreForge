@@ -18,6 +18,9 @@ One Docker host per environment (staging, production), each a Compose project ([
 ## Data
 `deploy/backup.sh <env>` (daily base backup); WAL is archived continuously. `deploy/restore-drill.sh <env>` proves a restore works. Runbook: [deploy.md](../docs/operations/runbooks/deploy.md).
 
+## Failure experiments (staging)
+`COMPOSE_EXTRA=chaos/compose.chaos.yaml deploy/deploy.sh staging <image>` routes the app through Toxiproxy; `deploy/chaos/run.sh <experiment>` injects a fault under steady traffic and checks data invariants. See [chaos/README.md](chaos/README.md).
+
 ## Files
 | File | What |
 |---|---|
@@ -28,3 +31,4 @@ One Docker host per environment (staging, production), each a Compose project ([
 | `prometheus/`, `alertmanager/`, `grafana/` | Scraping, operational rules (+ `infra/prometheus/slo-rules.yml`), routing, SLO dashboard |
 | `deploy.sh`, `smoke.py`, `remote.sh` | Rollout with rollback; end-to-end smoke test; CD over SSH |
 | `backup.sh`, `restore-drill.sh` | Base backups; restore drill with RTO |
+| `chaos/` | Staging-only fault injection: Toxiproxy overlay, experiment runner, steady traffic, invariants |

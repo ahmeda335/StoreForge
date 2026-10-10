@@ -3,6 +3,7 @@ package dev.storeforge.storage.internal;
 import dev.storeforge.jobs.Jobs;
 import dev.storeforge.shared.tenancy.StoreId;
 import dev.storeforge.storage.ObjectStorage;
+import dev.storeforge.storage.StorageUnavailableException;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.net.URI;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.regions.Region;
@@ -140,6 +142,13 @@ class S3ObjectStorage implements ObjectStorage {
             T result = call.get();
             outcome = "success";
             return result;
+        } catch (SdkClientException e) {
+            throw new StorageUnavailableException(e);   // network: unreachable, timed out
+        } catch (S3Exception e) {
+            if (e.statusCode() >= 500) {
+                throw new StorageUnavailableException(e);
+            }
+            throw e;
         } finally {
             sample.stop(meterRegistry.timer("storeforge.storage.requests", "operation", operation, "outcome", outcome));
         }

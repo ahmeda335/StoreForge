@@ -9,13 +9,18 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -43,6 +48,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final String TYPE_BASE = "https://docs.storeforge.dev/errors/";
+    private static final String HIKARI_CLOSED = "Connection is closed";
 
     private final Tracer tracer;
 
@@ -52,6 +58,40 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setProperty("code", exception.code());
         return handleExceptionInternal(exception, problem, exception.headers(), exception.status(), request);
     }
+
+    /**
+     * The database is unreachable, overloaded or blocked (no connection within the pool's timeout, a
+     * statement cut by statement_timeout while waiting for a lock, a deadlock): temporarily
+     * unavailable, not broken. The transaction rolled back (idempotency records included), so a retry
+     * is safe. 503 + Retry-After; WARN, not ERROR (EXP-025: all of these were 500s).
+     */
+    @ExceptionHandler({CannotGetJdbcConnectionException.class, CannotCreateTransactionException.class, DataAccessResourceFailureException.class,
+            QueryTimeoutException.class, PessimisticLockingFailureException.class})
+    ResponseEntity<Object> handleDatabaseUnavailable(Exception exception, WebRequest request) {
+        log.atWarn().addKeyValue("error", exception.getClass().getSimpleName()).log("Database unavailable: answering 503");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, "The service is temporarily unavailable. Retry shortly.");
+        problem.setProperty("code", "service_unavailable");
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.RETRY_AFTER, "5");
+        return handleExceptionInternal(exception, problem, headers, HttpStatus.SERVICE_UNAVAILABLE, request);
+    }
+
+    /**
+     * SQLSTATE class 08 = connection exception, however deeply the persistence layers wrapped it. Also
+     * HikariCP's "Connection is closed" (no SQLSTATE): Hikari closes a connection that failed with 08,
+     * the rollback then hits the closed proxy, and TransactionTemplate throws THAT instead of the
+     * original error (it only logs the original). Seen in EXP-025.
+     */
+    static boolean lostDatabaseConnection(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof java.sql.SQLException sql
+                    && (sql.getSQLState() != null ? sql.getSQLState().startsWith("08") : HIKARI_CLOSED.equals(sql.getMessage()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     /**
      * Two writers changed the same aggregate concurrently and JPA's {@code @Version} check caught the
@@ -86,6 +126,9 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<Object> handleUnexpected(Exception exception, WebRequest request) {
+        if (lostDatabaseConnection(exception)) {
+            return handleDatabaseUnavailable(exception, request);   // e.g. a rollback on a connection that just died
+        }
         // The only place unexpected failures are logged: once, with the stack trace, at ERROR.
         log.error("Unhandled exception while processing request", exception);
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(

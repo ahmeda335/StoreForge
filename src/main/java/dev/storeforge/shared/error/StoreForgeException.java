@@ -22,6 +22,12 @@ public abstract class StoreForgeException extends RuntimeException {
         this.code = code;
     }
 
+    protected StoreForgeException(HttpStatus status, String code, String message, Throwable cause) {
+        super(message, cause);
+        this.status = status;
+        this.code = code;
+    }
+
     /** Extra response headers (e.g. {@code Retry-After}). */
     public HttpHeaders headers() {
         return new HttpHeaders();

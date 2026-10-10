@@ -45,6 +45,7 @@ Content-Type: application/problem+json
 - **Unknown JSON fields are rejected** (400 `bad_request`): a misspelled or extra field is a client bug, never silently ignored.
 - **Request bodies:** at most 1 MB (`413 payload_too_large`).
 - **Overload:** each instance processes a bounded number of requests at once; beyond it `503 overloaded` with `Retry-After: 1`, answered immediately (P15, [ADR-030](../decisions/ADR-030-bounded-concurrency-and-virtual-threads.md)). Retry with backoff.
+- **Dependency outages:** `503 service_unavailable` (database unreachable, blocked or timed out; `Retry-After: 5`) and `503 storage_unavailable` (file storage; `Retry-After: 30`). Nothing was changed by the failed request, so retrying is safe; for checkout completion reuse the same `Idempotency-Key` (P17, [ADR-032](../decisions/ADR-032-failure-semantics.md)). A `500` means a bug: quote the `requestId`.
 - **Rate limits:** developer API per credential/store (P12); storefront per client address (IPv6: per /64): every request 300/min, cart creation 20/min, checkout completion 10/min, discount codes 10 per 10 min, search 60/min. `429 rate_limited` with `Retry-After`.
 - **Client address:** taken from `X-Forwarded-For` only when the request comes through a configured proxy (`TRUSTED_PROXIES`).
 - **CORS:** `/auth` and `/admin` only from the configured admin origins (with credentials); `/storefront` from any origin, without credentials; `/api` (server-to-server) none. Rejected: `403 cross_site_request_rejected`.

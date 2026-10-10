@@ -18,6 +18,14 @@ spring:
       # Fail fast when the pool is exhausted or the DB is down, instead of hanging requests.
       connection-timeout: 3000
       validation-timeout: 1000
+      # Driver timeouts (EXP-025): without them a connection attempt to a half-open endpoint (proxy, NAT,
+      # restarting server) can hang, and Hikari creates connections on ONE thread: the pool stayed
+      # empty for 40 s after PostgreSQL was back. socketTimeout sits above statement_timeout (10 s).
+      data-source-properties:
+        connectTimeout: 3
+        loginTimeout: 5
+        socketTimeout: 30
+        tcpKeepAlive: true
 
   # Migrations run as the schema owner, a separate role from the runtime one.
   flyway:

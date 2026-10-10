@@ -46,7 +46,7 @@ public class InvitationStore {
     public void revokePendingFor(StoreId storeId, String email, Instant now) {
         jdbc.sql("""
                 UPDATE invitations SET revoked_at = :now
-                 WHERE store_id = :storeId AND email = :email AND accepted_at IS NULL AND revoked_at IS NULL
+                 WHERE store_id = :storeId AND email = CAST(:email AS citext) AND accepted_at IS NULL AND revoked_at IS NULL
                 """)
                 .param("storeId", storeId.value())
                 .param("email", email)

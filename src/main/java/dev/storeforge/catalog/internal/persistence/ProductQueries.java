@@ -107,10 +107,11 @@ public class ProductQueries {
     public @Nullable ProductRow activeByHandle(StoreId storeId, String handle) {
         return jdbc.sql("""
                 SELECT id, handle, title, description, vendor, product_type, option_names, created_at
-                  FROM products WHERE store_id = :storeId AND handle = :handle AND status = 'ACTIVE'
+                  FROM products WHERE store_id = :storeId AND handle::text = :handle AND status = 'ACTIVE'
                 """)
                 .param("storeId", storeId.value())
-                .param("handle", handle)
+                // Text comparison on purpose (V20): citext "=" can't use an index under RLS. Handles are lowercase by constraint.
+                .param("handle", handle.toLowerCase(java.util.Locale.ROOT))
                 .query(ProductQueries::productRow)
                 .optional()
                 .orElse(null);

@@ -32,7 +32,7 @@ import tools.jackson.databind.json.JsonMapper;
  * grouped by /64: one host typically controls a whole /64 and could otherwise rotate addresses.
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 3)
+@Order(Ordered.HIGHEST_PRECEDENCE + 4)
 public class StorefrontRateLimitFilter extends OncePerRequestFilter {
 
     private record Rule(String method, Pattern path, Limit limit) {

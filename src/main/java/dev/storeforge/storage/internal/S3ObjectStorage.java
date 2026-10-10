@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -112,15 +113,23 @@ class S3ObjectStorage implements ObjectStorage {
         jobs.enqueue(storeId, DELETE_JOB, key, Map.of("key", key));
     }
 
+    /**
+     * Local development and tests only. Best effort: storage being down must not stop the whole
+     * application from starting (ADR-024: an outage affects uploads only; found in P15).
+     */
     private void createBucketIfMissing() {
         try {
             s3.headBucket(r -> r.bucket(bucket));
         } catch (S3Exception e) {
             if (e.statusCode() != 404) {
-                throw e;
+                log.atWarn().addKeyValue("bucket", bucket).addKeyValue("status", e.statusCode()).log("Could not check the object storage bucket");
+                return;
             }
             s3.createBucket(r -> r.bucket(bucket));
             log.atInfo().addKeyValue("bucket", bucket).log("Created object storage bucket");
+        } catch (SdkException e) {
+            log.atWarn().addKeyValue("bucket", bucket).addKeyValue("error", e.getMessage())
+                    .log("Object storage unreachable at startup; uploads fail until it is back (bucket not checked)");
         }
     }
 

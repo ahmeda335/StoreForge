@@ -39,6 +39,7 @@ public class DistributedRateLimiter {
     private final Cache<String, io.github.bucket4j.Bucket> localBuckets =
             Caffeine.newBuilder().expireAfterAccess(Duration.ofMinutes(30)).maximumSize(200_000).build();
     private volatile @Nullable ProxyManager<byte[]> proxies;
+    private final java.util.concurrent.locks.ReentrantLock proxiesLock = new java.util.concurrent.locks.ReentrantLock();
 
     public DistributedRateLimiter(RedisConnections redis, CircuitBreaker redisCircuitBreaker, MeterRegistry meterRegistry) {
         this.redis = redis;
@@ -94,13 +95,16 @@ public class DistributedRateLimiter {
     private ProxyManager<byte[]> proxies() {
         ProxyManager<byte[]> current = proxies;
         if (current == null) {
-            synchronized (this) {
+            proxiesLock.lock();   // not synchronized: may connect to Redis (I/O) and would pin a virtual thread
+            try {
                 if (proxies == null) {
                     proxies = Bucket4jLettuce.casBasedBuilder(redis.bytes())
                             .expirationAfterWrite(ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(Duration.ofSeconds(30)))
                             .build();
                 }
                 current = proxies;
+            } finally {
+                proxiesLock.unlock();
             }
         }
         return current;

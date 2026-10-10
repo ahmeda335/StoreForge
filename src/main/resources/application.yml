@@ -113,6 +113,9 @@ storeforge:
   http:
     max-request-body: ${HTTP_MAX_REQUEST_BODY:1MB}
     admin-origins: ${AUTH_ALLOWED_ORIGINS:http://localhost:4200}
+    # Load shedding (503) beyond this. ~ a few times the DB pool: more in flight only queues for connections (EXP-023).
+    max-concurrent-requests: ${HTTP_MAX_CONCURRENT_REQUESTS:64}
+    concurrency-wait: 50ms
   storefront:
     rate-limits:                  # per client address (IPv6: per /64), shared via Redis, fail open
       general: { capacity: 300, period: 1m }
@@ -282,3 +285,7 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+      # Exact bucket boundaries at the SLO thresholds (docs/performance/slos.md): "share of requests
+      # under 200 ms" is then a count, not an interpolation between neighbouring buckets.
+      slo:
+        http.server.requests: 200ms, 300ms, 500ms

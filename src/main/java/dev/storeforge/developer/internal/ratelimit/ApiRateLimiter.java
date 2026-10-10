@@ -43,6 +43,7 @@ public class ApiRateLimiter {
     private final long credentialCapacity;
     private final Cache<String, Bucket> localBuckets = Caffeine.newBuilder().expireAfterAccess(Duration.ofMinutes(10)).maximumSize(100_000).build();
     private volatile @Nullable ProxyManager<byte[]> proxies;
+    private final java.util.concurrent.locks.ReentrantLock proxiesLock = new java.util.concurrent.locks.ReentrantLock();
 
     public ApiRateLimiter(RedisConnections redis, CircuitBreaker breaker, DeveloperProperties properties, MeterRegistry meterRegistry) {
         this.redis = redis;
@@ -98,7 +99,8 @@ public class ApiRateLimiter {
     private ProxyManager<byte[]> proxies() {
         ProxyManager<byte[]> current = proxies;
         if (current == null) {
-            synchronized (this) {
+            proxiesLock.lock();   // not synchronized: may connect to Redis (I/O) and would pin a virtual thread
+            try {
                 if (proxies == null) {
                     proxies = Bucket4jLettuce.casBasedBuilder(redis.bytes())
                             // A bucket left alone refills completely; Redis may then forget it.
@@ -106,6 +108,8 @@ public class ApiRateLimiter {
                             .build();
                 }
                 current = proxies;
+            } finally {
+                proxiesLock.unlock();
             }
         }
         return current;

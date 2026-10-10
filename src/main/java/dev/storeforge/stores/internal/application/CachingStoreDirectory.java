@@ -10,6 +10,7 @@ import java.util.Currency;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,13 @@ import org.springframework.stereotype.Component;
  * <p>Trade-off, accepted and documented: suspending a store or changing a domain takes up to 60s
  * to reach every instance. Negative results ("no such host") are cached too, otherwise random
  * hostnames would bypass the cache and hit the database on every request.
+ *
+ * <p>The database is queried OUTSIDE the cache: never {@code cache.get(key, loader)} with a blocking
+ * loader. Caffeine runs loaders inside {@code ConcurrentHashMap.compute}, a {@code synchronized}
+ * section; on JDK 21 a virtual thread blocking there pins its carrier, and so does every request
+ * waiting for the same key. Under load all carriers were pinned while the loader waited for a pooled
+ * connection held by parked threads: a permanent deadlock (EXP-023). A miss may now load twice;
+ * the second result just overwrites the first.
  */
 @Component
 @RequiredArgsConstructor
@@ -40,14 +48,23 @@ class CachingStoreDirectory implements StoreDirectory {
 
     @Override
     public Optional<StoreInfo> find(StoreId storeId) {
-        return byId.get(storeId.value(), id -> query("WHERE s.id = :key", id));
+        return cached(byId, storeId.value(), id -> query("WHERE s.id = :key", id));
     }
 
     @Override
     public Optional<StoreInfo> resolveHost(String hostname) {
-        String normalized = hostname.toLowerCase(Locale.ROOT);
-        return byHost.get(normalized, host -> query(
-                "JOIN store_domains d ON d.store_id = s.id WHERE d.hostname = :key AND d.verified_at IS NOT NULL", host));
+        return cached(byHost, hostname.toLowerCase(Locale.ROOT), host -> query(
+                "JOIN store_domains d ON d.store_id = s.id WHERE d.hostname = CAST(:key AS citext) AND d.verified_at IS NOT NULL", host));
+    }
+
+    private static <K> Optional<StoreInfo> cached(Cache<K, Optional<StoreInfo>> cache, K key, Function<K, Optional<StoreInfo>> load) {
+        Optional<StoreInfo> hit = cache.getIfPresent(key);
+        if (hit != null) {
+            return hit;
+        }
+        Optional<StoreInfo> loaded = load.apply(key);   // no lock held while waiting for the database
+        cache.put(key, loaded);
+        return loaded;
     }
 
     private Optional<StoreInfo> query(String condition, Object key) {

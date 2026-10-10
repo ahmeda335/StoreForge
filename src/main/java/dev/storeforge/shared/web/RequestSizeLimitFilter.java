@@ -26,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
  * </ul>
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 @RequiredArgsConstructor
 public class RequestSizeLimitFilter extends OncePerRequestFilter {
 

@@ -8,6 +8,7 @@ import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.StringCodec;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 
@@ -29,6 +30,8 @@ public class RedisConnections implements AutoCloseable {
     private volatile @Nullable StatefulRedisConnection<byte[], byte[]> bytes;
     private volatile @Nullable StatefulRedisConnection<String, String> strings;
     private volatile Instant nextAttempt = Instant.EPOCH;
+    /** Not {@code synchronized}: connecting is network I/O, and a virtual thread blocking inside a monitor pins its carrier (EXP-023). */
+    private final ReentrantLock connecting = new ReentrantLock();
 
     public RedisConnections(RedisProperties settings, Clock clock) {
         this.settings = settings;
@@ -44,11 +47,14 @@ public class RedisConnections implements AutoCloseable {
     public StatefulRedisConnection<byte[], byte[]> bytes() {
         StatefulRedisConnection<byte[], byte[]> connection = bytes;
         if (connection == null) {
-            synchronized (this) {
+            connecting.lock();
+            try {
                 if (bytes == null) {
                     bytes = connect(ByteArrayCodec.INSTANCE);
                 }
                 connection = bytes;
+            } finally {
+                connecting.unlock();
             }
         }
         return connection;
@@ -57,11 +63,14 @@ public class RedisConnections implements AutoCloseable {
     public StatefulRedisConnection<String, String> strings() {
         StatefulRedisConnection<String, String> connection = strings;
         if (connection == null) {
-            synchronized (this) {
+            connecting.lock();
+            try {
                 if (strings == null) {
                     strings = connect(StringCodec.UTF8);
                 }
                 connection = strings;
+            } finally {
+                connecting.unlock();
             }
         }
         return connection;

@@ -17,7 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * framed. HTML pages (OAuth login/consent) set their own, slightly wider policy.
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 2)
+@Order(Ordered.HIGHEST_PRECEDENCE + 3)
 public class SecurityHeadersFilter extends OncePerRequestFilter {
 
     public static final String API_POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";

@@ -2,7 +2,10 @@
 
 ## Symptoms
 - `AvailabilityBudgetFastBurn` / `SlowBurn`: 5xx are spending the error budget too fast (label `api`).
-- `LatencyBudgetFastBurn` / `SlowBurn`: too many requests slower than the objective (storefront 200 ms, admin/developer 300 ms).
+- `LatencyBudgetFastBurn`: **more than half** of the requests have been slower than the objective (storefront 200 ms, admin/developer 300 ms) for 15 minutes: a broad slowdown, usually the database or the host (EXP-025: +200 ms per database round trip made almost every request slower than 1 s).
+- `LatencyBudgetSlowBurn`: a smaller share slow for hours (6× the 5 % budget).
+- Many `503 service_unavailable` in the 5xx: a dependency (database, storage) is down or blocked, not a bug. Start with [database-unavailable](database-unavailable.md) or [object storage](object-storage-and-search.md).
+- **Missing alerts:** the ratios aren't recorded while an API has no traffic (no sample instead of 0/0). An API with no requests can't burn budget, and its alerts are silent by design.
 
 ## Diagnose
 1. **Scope:** which `api`? All of them (database, JVM, host) or one (a query, a dependency)?

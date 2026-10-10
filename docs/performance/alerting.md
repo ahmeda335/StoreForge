@@ -11,7 +11,8 @@ The **burn rate** is how fast that budget is being spent: 1× uses it up in exac
 
 | Alert | Condition (long window AND short window) | Means | Severity |
 |---|---|---|---|
-| `*FastBurn` | 1 h and 5 min above **14.4×** | 2 % of the monthly budget gone in one hour | page |
+| `AvailabilityBudgetFastBurn` | 1 h and 5 min above **14.4×** | 2 % of the monthly budget gone in one hour | page |
+| `LatencyBudgetFastBurn` | 15 min and 5 min with more than **50 %** of requests slow | latency budgets are large (5 %): at most 20× burn, so 14.4× over 1 h would take ~43 min to page a total slowdown (EXP-025) | page |
 | `*SlowBurn` | 6 h and 1 h above **6×** | 5 % gone in six hours | ticket |
 
 The short window makes the alert resolve soon after the problem stops; the long one keeps blips from paging.

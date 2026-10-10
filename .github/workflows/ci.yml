@@ -73,3 +73,14 @@ jobs:
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/.trivyignore:/.trivyignore:ro" \
             aquasec/trivy:0.74.0 image --timeout 20m --severity HIGH,CRITICAL --ignore-unfixed --ignorefile /.trivyignore \
             --exit-code 1 storeforge:${{ github.sha }}
+
+  slo-rules:
+    name: SLO alert rules are valid and fire when they should (promtool)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: promtool test rules
+        run: |
+          docker run --rm -v "$PWD/infra/prometheus:/rules:ro" -w /rules --entrypoint promtool prom/prometheus:v3.14.0 check rules slo-rules.yml
+          docker run --rm -v "$PWD/infra/prometheus:/rules:ro" -w /rules --entrypoint promtool prom/prometheus:v3.14.0 test rules slo-rules.test.yml

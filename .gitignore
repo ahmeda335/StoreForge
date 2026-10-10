@@ -7,3 +7,6 @@ out/
 .DS_Store
 .env
 *.log
+load/data/
+load/results/
+load/tools/async-profiler/

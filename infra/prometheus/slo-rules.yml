@@ -1,0 +1,66 @@
+# SLO recording rules and burn-rate alerts (P15, docs/performance/alerting.md).
+# Objectives: docs/performance/slos.md. Error budgets: availability 0.1 %, latency 5 % (p95 objectives).
+# Multi-window, multi-burn-rate (Google SRE workbook): a fast burn pages within minutes, a slow
+# burn opens a ticket; the short window makes alerts stop soon after the problem does.
+groups:
+  - name: storeforge-slo-recording
+    rules:
+      # Requests per API family (label "api"), excluding rate limiting (429): refusing abuse is not unavailability.
+      - record: storeforge:requests:rate5m
+        expr: sum by (api) (label_replace(rate(http_server_requests_seconds_count{status!="429"}[5m]), "api", "$1", "uri", "/(storefront|admin|api|platform|auth)/.*"))
+      - record: storeforge:errors:rate5m
+        expr: sum by (api) (label_replace(rate(http_server_requests_seconds_count{status=~"5.."}[5m]), "api", "$1", "uri", "/(storefront|admin|api|platform|auth)/.*"))
+      # Latency SLI: share of requests SLOWER than the API's threshold (storefront 200 ms, admin/api 300 ms).
+      - record: storeforge:slow:rate5m
+        expr: |
+          (
+            sum by (api) (label_replace(rate(http_server_requests_seconds_count{uri=~"/storefront/.*",status!="429"}[5m]), "api", "$1", "uri", "/(storefront)/.*"))
+            - sum by (api) (label_replace(rate(http_server_requests_seconds_bucket{uri=~"/storefront/.*",status!="429",le="0.2"}[5m]), "api", "$1", "uri", "/(storefront)/.*"))
+          )
+          or
+          (
+            sum by (api) (label_replace(rate(http_server_requests_seconds_count{uri=~"/(admin|api)/.*",status!="429"}[5m]), "api", "$1", "uri", "/(admin|api)/.*"))
+            - sum by (api) (label_replace(rate(http_server_requests_seconds_bucket{uri=~"/(admin|api)/.*",status!="429",le="0.3"}[5m]), "api", "$1", "uri", "/(admin|api)/.*"))
+          )
+      - record: storeforge:error_ratio:rate5m
+        expr: storeforge:errors:rate5m / storeforge:requests:rate5m
+      - record: storeforge:slow_ratio:rate5m
+        expr: storeforge:slow:rate5m / storeforge:requests:rate5m
+      # Longer windows from the 5m ratios (cheap approximation of ratio-of-sums; fine for alerting).
+      - record: storeforge:error_ratio:rate1h
+        expr: avg_over_time(storeforge:error_ratio:rate5m[1h])
+      - record: storeforge:error_ratio:rate6h
+        expr: avg_over_time(storeforge:error_ratio:rate5m[6h])
+      - record: storeforge:slow_ratio:rate1h
+        expr: avg_over_time(storeforge:slow_ratio:rate5m[1h])
+      - record: storeforge:slow_ratio:rate6h
+        expr: avg_over_time(storeforge:slow_ratio:rate5m[6h])
+
+  - name: storeforge-slo-alerts
+    rules:
+      # Availability (budget 0.001). 14.4x for 1h = 2 % of a 30-day budget in one hour: page.
+      - alert: AvailabilityBudgetFastBurn
+        expr: storeforge:error_ratio:rate1h > (14.4 * 0.001) and storeforge:error_ratio:rate5m > (14.4 * 0.001)
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $labels.api }}: 5xx are burning the 30-day error budget 14x too fast"
+          runbook: docs/operations/runbooks/slo-burn.md
+      - alert: AvailabilityBudgetSlowBurn
+        expr: storeforge:error_ratio:rate6h > (6 * 0.001) and storeforge:error_ratio:rate1h > (6 * 0.001)
+        labels: {severity: ticket}
+        annotations:
+          summary: "{{ $labels.api }}: 5xx are burning the error budget 6x too fast"
+          runbook: docs/operations/runbooks/slo-burn.md
+      # Latency (budget 0.05 = the 5 % allowed above the p95 threshold).
+      - alert: LatencyBudgetFastBurn
+        expr: storeforge:slow_ratio:rate1h > (14.4 * 0.05) and storeforge:slow_ratio:rate5m > (14.4 * 0.05)
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $labels.api }}: most requests are slower than the objective"
+          runbook: docs/operations/runbooks/slo-burn.md
+      - alert: LatencyBudgetSlowBurn
+        expr: storeforge:slow_ratio:rate6h > (6 * 0.05) and storeforge:slow_ratio:rate1h > (6 * 0.05)
+        labels: {severity: ticket}
+        annotations:
+          summary: "{{ $labels.api }}: requests slower than the objective, budget burning 6x too fast"
+          runbook: docs/operations/runbooks/slo-burn.md

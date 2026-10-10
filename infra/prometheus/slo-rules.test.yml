@@ -1,0 +1,56 @@
+# promtool test rules infra/prometheus/slo-rules.test.yml: the alerts fire on a burn, stay quiet otherwise.
+rule_files: [slo-rules.yml]
+evaluation_interval: 1m
+tests:
+  - name: 5xx on the storefront pages
+    interval: 1m
+    input_series:
+      # 100 req/s, 2 % of them 5xx (20x the 0.1 % budget) for two hours
+      - series: 'http_server_requests_seconds_count{uri="/storefront/v1/products",status="200"}'
+        values: '0+5880x120'
+      - series: 'http_server_requests_seconds_count{uri="/storefront/v1/products",status="503"}'
+        values: '0+120x120'
+      - series: 'http_server_requests_seconds_bucket{uri="/storefront/v1/products",status="200",le="0.2"}'
+        values: '0+5880x120'
+      - series: 'http_server_requests_seconds_bucket{uri="/storefront/v1/products",status="503",le="0.2"}'
+        values: '0+120x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: AvailabilityBudgetFastBurn
+        exp_alerts:
+          - exp_labels: {severity: page, api: storefront}
+            exp_annotations:
+              summary: "storefront: 5xx are burning the 30-day error budget 14x too fast"
+              runbook: docs/operations/runbooks/slo-burn.md
+      - eval_time: 90m
+        alertname: LatencyBudgetFastBurn
+        exp_alerts: []
+  - name: healthy admin API stays quiet
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/admin/v1/stores/{storeId}/orders",status="200"}'
+        values: '0+600x120'
+      - series: 'http_server_requests_seconds_bucket{uri="/admin/v1/stores/{storeId}/orders",status="200",le="0.3"}'
+        values: '0+590x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: LatencyBudgetFastBurn
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: AvailabilityBudgetFastBurn
+        exp_alerts: []
+  - name: 80 % of the storefront requests slower than 200 ms (fast burn needs > 14.4 x 5 % = 72 %)
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/storefront/v1/search",status="200"}'
+        values: '0+6000x120'
+      - series: 'http_server_requests_seconds_bucket{uri="/storefront/v1/search",status="200",le="0.2"}'
+        values: '0+1200x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: LatencyBudgetFastBurn
+        exp_alerts:
+          - exp_labels: {severity: page, api: storefront}
+            exp_annotations:
+              summary: "storefront: most requests are slower than the objective"
+              runbook: docs/operations/runbooks/slo-burn.md

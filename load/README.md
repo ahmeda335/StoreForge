@@ -28,4 +28,6 @@ Reproducible load runs against a dedicated database (`storeforge_load`); your de
 - for a whole run: `JAVA_EXTRA="-agentpath:load/tools/async-profiler/lib/libasyncProfiler.so=start,event=cpu,file=/tmp/cpu.html" load/run-app.sh`;
 - for a running app: `load/tools/async-profiler/bin/asprof -d 30 -e cpu -f flame.html <pid>`.
 
+**Credentials:** `load/data/` and `load/results/` (gitignored) contain the load tenants' passwords, access tokens and API keys (k6 summaries include the tokens returned by `setup()`). They're valid only against the local `storeforge_load` database; don't copy them anywhere else. The secret scan flags them in a working-tree scan, which is expected; the CI scan covers the git history.
+
 **Caveat:** app, database and load generator share one machine (12 cores); numbers are comparable between runs, not a statement of production capacity.

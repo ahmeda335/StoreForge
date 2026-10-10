@@ -18,8 +18,9 @@
 | P13 Commerce extensions | ✅ Done (2026-10-08) | See below |
 | P14 Security hardening | ✅ Done (2026-10-09) | See below |
 | P15 Load testing & performance | ✅ Done (2026-10-10) | See below |
-| P16 Production infrastructure & CD | ⏭ Next | Study list below |
-| P17–P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
+| P16 Production infrastructure & CD | ✅ Done (2026-10-10) | See below |
+| P17 Failure experiment suite | ⏭ Next | Study list below |
+| P18 | Planned | [Roadmap](blueprint/30-roadmap.md) |
 
 ## P1: Foundation (as built)
 
@@ -519,3 +520,54 @@ In the tooling:
 - **database operations:** migrations as a release step, backups (PITR) and a restore drill;
 - **alert routing** (Alertmanager), the SLO rules from P15; staging vs. production; smoke tests and rollback;
 - [roadmap P16](blueprint/30-roadmap.md), [blueprint 19](blueprint/19-infrastructure-cicd.md).
+
+## P16: Production infrastructure & CD (as built)
+
+Built and verified on one machine with **staging and production side by side** ([deploy/](../deploy/README.md), [ADR-031](decisions/ADR-031-single-host-production-and-delivery.md)). No cloud account was used: a real VM needs only the host, DNS and a registry login; the scripts and the CD workflow are the same.
+
+**What exists**
+- **Roles from one image:** `api` (HTTP), `worker` (jobs, relays, sweepers), `migrate` (release job: Flyway as the owner, then exit). API and worker hold no owner credentials and refuse a schema older than their code (`SchemaVersionGuard`, V22).
+- **Stack per environment:**
+  - Caddy (TLS, wildcard store hosts, a storage host for presigned URLs, health-checked load balancing with retries) in front of api-1 and api-2, plus a worker;
+  - PostgreSQL 17.10 + wal-g, Redis, SeaweedFS (separate app and backup identities), Mailpit as mail relay;
+  - Prometheus (SLO and operational rules), Alertmanager (page vs ticket), Grafana (SLO dashboard).
+- **Secrets as files** (configtree, named after the variables they replace), generated per environment, development secrets refused, only the proxy trusted.
+- **Delivery:**
+  - `deploy.sh`: migrate (abort before rollout) → api-1 → api-2 → worker with health gates → end-to-end smoke test through the proxy → automatic rollback; `--rollback`;
+  - CD (`deliver.yml`): image built once, pushed by digest with provenance and SBOM, staging, then production after approval; actionlint clean.
+- **Data:** continuous WAL archiving (RPO ≤ ~1 min), `backup.sh` (base backups), `restore-drill.sh` (restore next to live, compare, time it).
+- **Alerting:** P15 burn-rate rules plus instance down, no worker, dead jobs, sustained shedding; emails to on-call vs tickets (Mailpit locally).
+
+**Verified** ([EXP-024](experiments/EXP-024-production-like-delivery.md)):
+
+| Check | Result |
+|---|---|
+| Deploy under traffic | 0 errors / 601 requests |
+| Broken release (invalid setting) | stopped at migrate, 0 errors |
+| Broken release (never healthy) | rolled back automatically, 0 errors / 1,200 |
+| Restore drill | identical counts in 10 s, including data only in WAL |
+| Instance down | paged by email after 2 min 17 s; resolved notice after recovery |
+| Production | from nothing in 1 min 44 s |
+
+**Tests: 371 total** (125 unit + 246 integration). New: `SchemaVersionGuardTest`. The in-memory `RateLimiter` and its test were removed.
+
+**Bugs found:**
+- login rate limits were per instance (two API instances = twice the attempts); now shared through Redis, email keys hashed;
+- the migrate profile couldn't start without a web server;
+- tooling: Compose YAML, IP ranges, a load test tripping our own limits.
+
+**Known limitations:**
+- One host = one failure domain (no HA; proxy not replicated).
+- No base-backup age metric or scheduler shipped (host cron/timer, documented).
+- The CD workflow and GHCR push are untested on GitHub (linted, and the same scripts verified locally).
+- Alert routing goes to Mailpit, not a pager.
+- Resolved notices wait up to Alertmanager's 5-minute group interval.
+- The OAuth login pages' sessions are still per instance (P12 open item): with two API instances, app installs need sticky sessions. Not addressed.
+
+**Study before P17** (failure experiment suite):
+- **fault injection with Toxiproxy:** latency, bandwidth, timeouts, resets between app and PostgreSQL, Redis and object storage;
+- the [failure experiment catalogue](blueprint/25-failure-experiments.md) and how to write hypotheses and abort conditions; blast radius;
+- **steady-state definition:** the SLOs and the k6 mix from P15 as the "normal" to compare against;
+- **partial failures:** slow (not down) dependencies, disk full, clock skew, a node killed mid-transaction, a worker killed mid-job;
+- what the alerts and runbooks from P15/P16 should say during each experiment (are they useful at 3 a.m.?);
+- [roadmap P17](blueprint/30-roadmap.md).

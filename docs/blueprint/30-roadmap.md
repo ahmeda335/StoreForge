@@ -138,6 +138,8 @@ Why this order differs from the prompt's sketch: **observability (P6) comes befo
 ## P16 — Production infrastructure and CD
 - **Features:** VM or managed container deployment, reverse proxy + TLS, separate api/worker roles, secrets management, migration job, staging + prod environments, smoke tests, rollback procedure, backups + restore drill, alerts routed (e.g. email/Telegram/Slack).
 
+- **As built (P16):** [deploy/](../../deploy/README.md), ADR-031, EXP-024: one Docker host per environment, verified locally (staging and production side by side). A real VM, DNS and registry pushes need accounts; the scripts and the workflow are ready for them.
+
 ## P17 — Failure experiment suite
 - Run and document all experiments from [25-failure-experiments.md](25-failure-experiments.md) against staging with Toxiproxy. Fix what breaks; record it.
 

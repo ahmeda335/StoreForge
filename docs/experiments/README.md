@@ -5,6 +5,7 @@ Planned catalogue: [blueprint/25-failure-experiments.md](../blueprint/25-failure
 | ID | Experiment | Phase | Result |
 |---|---|---|---|
 | [EXP-001](EXP-001-database-unavailable-p1.md) | Database unavailable (stop/start, start while down, graceful shutdown) | P1 | As expected; probe timeout must be > 3s |
+| [EXP-024](EXP-024-production-like-delivery.md) | Deploys under traffic, broken releases, restore drill, instance-down alert, production from scratch | P16 | 0 user-visible errors in every deploy and failed deploy; restore identical in 10 s; page in 2m17s; login limits were per instance (fixed) |
 | [EXP-023](EXP-023-load-baseline.md) | Baseline, capacity steps, overload; 4 fixes measured | P15 | 5× load deadlocked (pinned carriers) then died in GC → 754 req/s with shedding; handle lookup 3.7 → 0.05 ms; search match −64 % |
 | [EXP-022](EXP-022-supply-chain-scan.md) | First gitleaks + Trivy scan, triage, hardened image | P14 | 47 HIGH/CRITICAL → 0; image hadn't built since P8; a path-based secret exception hid a planted token |
 | [EXP-021](EXP-021-platform-and-privacy-mutations.md) | Mutations of MFA replay, admin re-check, erasure, unknown fields, permission check | P14 | 5/5 caught; MFA limit counted successes (fixed); two wrong assumptions about earlier decisions |

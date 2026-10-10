@@ -92,3 +92,7 @@ See [testing/README.md](../testing/README.md). `./mvnw verify` needs Docker runn
 ## Later phases add
 
 Redis (P12), MinIO (P13), k6 (P15). Each comes behind its own Compose profile.
+
+## Production-like environments (P16)
+
+`deploy/` runs staging and production stacks locally, side by side (TLS proxy, two API instances, worker, backups, alerting): see [deploy/README.md](../../deploy/README.md).

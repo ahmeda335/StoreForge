@@ -1,0 +1,9 @@
+# Role "api" (P16): serves HTTP. No scheduled work (the worker does it), no migrations (a release job
+# does them, before the rollout); refuses to start on a schema older than its code (SchemaVersionGuard).
+# Needs only the APP database role: no owner credentials in this container.
+spring:
+  flyway:
+    enabled: false
+storeforge:
+  scheduling:
+    enabled: false

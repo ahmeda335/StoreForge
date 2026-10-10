@@ -1,0 +1,9 @@
+# Role "worker" (P16): jobs, outbox relay, sweepers, reconciliation. Not behind the reverse proxy, so it
+# serves no traffic; its management port still answers health and metrics. A flood of jobs can't take
+# connections or CPU from the API instances (bulkhead between roles).
+spring:
+  flyway:
+    enabled: false
+storeforge:
+  scheduling:
+    enabled: true

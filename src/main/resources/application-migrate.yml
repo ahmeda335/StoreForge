@@ -1,0 +1,14 @@
+# Role "migrate" (P16): a one-shot release step. Runs the Flyway migrations as the OWNER role and exits
+# (MigrationRunner). Run it before rolling out new API/worker containers.
+# Starts like any instance (on random ports, not served) so every bean resolves, then exits.
+server:
+  port: 0
+management:
+  server:
+    port: 0
+spring:
+  flyway:
+    enabled: true
+storeforge:
+  scheduling:
+    enabled: false

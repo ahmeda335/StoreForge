@@ -12,3 +12,5 @@ load/results/
 load/tools/async-profiler/
 deploy/secrets/
 deploy/state/
+
+prompt.md

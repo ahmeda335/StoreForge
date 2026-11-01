@@ -24,7 +24,7 @@
         <bouncycastle.version>1.86</bouncycastle.version>
         <datasource-micrometer.version>2.3.0</datasource-micrometer.version>
         <!-- Must match the OpenTelemetry SDK managed by Spring Boot (1.55.x) -->
-        <otel-instrumentation.version>2.21.0-alpha</otel-instrumentation.version>
+        <otel-instrumentation.version>2.33.1-alpha</otel-instrumentation.version>
         <resilience4j.version>2.4.0</resilience4j.version>
         <wiremock.version>3.13.2</wiremock.version>
         <springdoc.version>3.1.1</springdoc.version>

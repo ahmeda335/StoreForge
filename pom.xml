@@ -27,7 +27,7 @@
         <otel-instrumentation.version>2.21.0-alpha</otel-instrumentation.version>
         <resilience4j.version>2.4.0</resilience4j.version>
         <wiremock.version>3.13.2</wiremock.version>
-        <springdoc.version>3.1.1</springdoc.version>
+        <springdoc.version>3.2.0</springdoc.version>
         <!-- Security overrides of Spring Boot's managed versions (Trivy, P14, EXP-022). Remove each one once
              the Spring Boot patch release manages that version or newer. -->
         <tomcat.version>11.0.25</tomcat.version>               <!-- 3 CRITICAL fixed after Boot 4.0.8's 11.0.24 -->
